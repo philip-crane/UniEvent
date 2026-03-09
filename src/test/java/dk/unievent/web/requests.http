@@ -1,0 +1,27 @@
+### Create a page
+POST http://localhost:8080/api/pages
+Content-Type: application/json
+
+{
+  "id": "123456789",
+  "name": "S-huset",
+  "pictureUrl": "https://example.com/logo.jpg"
+}
+
+### Create an event
+POST http://localhost:8080/api/events
+Content-Type: application/json
+
+{
+  "id": "event-1",
+  "title": "Pub Night",
+  "description": "Join us for drinks and games!",
+  "startTime": "2026-03-20T20:00:00",
+  "pageId": "123456789"
+}
+
+### Get all events
+GET http://localhost:8080/api/events
+
+### Get future events
+GET http://localhost:8080/api/events/future
