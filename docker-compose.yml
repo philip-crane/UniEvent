@@ -38,8 +38,23 @@ services:
     networks:
       - unievent-network
 
+  vault:
+    image: hashicorp/vault:1.15
+    container_name: unievent-vault
+    command: "vault server -config=/vault/config/vault.hcl"
+    environment:
+      VAULT_ADDR: http://0.0.0.0:8200
+    ports:
+      - "127.0.0.1:8200:8200"
+    volumes:
+      - ./vault/config:/vault/config
+      - vault-data:/vault/file
+    networks:
+      - unievent-network
+
 volumes:
   mysql-data:
+  vault-data:
 
 networks:
   unievent-network:
