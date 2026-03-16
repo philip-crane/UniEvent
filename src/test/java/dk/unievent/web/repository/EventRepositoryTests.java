@@ -273,7 +273,7 @@ class EventRepositoryTests {
         event.setStartTime(LocalDateTime.now());
         // place is null
         
-        EventEntity savedEvent = eventRepository.save(event);
+        eventRepository.save(event);
 
         
         EventEntity retrieved = eventRepository.findById("event-no-place").orElseThrow();
@@ -293,7 +293,7 @@ class EventRepositoryTests {
         event.setStartTime(startTime);
         event.setEndTime(endTime);
         
-        EventEntity savedEvent = eventRepository.save(event);
+        eventRepository.save(event);
 
         
         EventEntity retrieved = eventRepository.findById("event-times").orElseThrow();

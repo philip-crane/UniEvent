@@ -63,7 +63,7 @@ class PlaceIntegrationTests {
     
     @Test
     void testGetPlaceById() {
-        PlaceDTO created = createTestPlace("place-find", "Find Me Venue", "Find St", "Odense");
+        createTestPlace("place-find", "Find Me Venue", "Find St", "Odense");
         
         PlaceDTO found = placeService.getPlaceById("place-find");
         
@@ -148,7 +148,7 @@ class PlaceIntegrationTests {
     
     @Test
     void testUpdatePlaceThroughService() {
-        PlaceDTO created = createTestPlace("place-update", "Original Name", "Street 1", "Copenhagen");
+        createTestPlace("place-update", "Original Name", "Street 1", "Copenhagen");
         
         PlaceDTO updateDTO = new PlaceDTO();
         updateDTO.setId("place-update");
@@ -231,7 +231,7 @@ class PlaceIntegrationTests {
         location.setLongitude(12.5883);
         dto.setLocation(location);
         
-        PlaceDTO created = placeService.createPlace(dto);
+        placeService.createPlace(dto);
         PlaceDTO retrieved = placeService.getPlaceById("place-complete");
         
         assertNotNull(retrieved);

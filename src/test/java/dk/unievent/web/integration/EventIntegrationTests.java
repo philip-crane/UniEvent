@@ -1,7 +1,6 @@
 package dk.unievent.web.integration;
 
 import dk.unievent.web.dto.EventDTO;
-import dk.unievent.web.dto.LocationDTO;
 import dk.unievent.web.dto.PlaceDTO;
 import dk.unievent.web.model.EventEntity;
 import dk.unievent.web.model.PageEntity;
@@ -116,9 +115,9 @@ class EventIntegrationTests {
         
         assertEquals(3, allEvents.size());
         // Verify ordering by startTime
-        assertEquals("Event 3", allEvents.get(0).getTitle()); // 15th
-        assertEquals("Event 1", allEvents.get(1).getTitle()); // 20th
-        assertEquals("Event 2", allEvents.get(2).getTitle()); // 25th
+        assertEquals(event3.getId(), allEvents.get(0).getId()); // 15th
+        assertEquals(event1.getId(), allEvents.get(1).getId()); // 20th
+        assertEquals(event2.getId(), allEvents.get(2).getId()); // 25th
     }
     
     @Test

@@ -1,7 +1,6 @@
 package dk.unievent.web.mapper;
 
 import dk.unievent.web.dto.EventDTO;
-import dk.unievent.web.dto.LocationDTO;
 import dk.unievent.web.dto.PlaceDTO;
 import dk.unievent.web.model.EventEntity;
 import dk.unievent.web.model.PageEntity;
