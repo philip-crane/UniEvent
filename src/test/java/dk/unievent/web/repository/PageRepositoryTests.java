@@ -196,7 +196,7 @@ class PageRepositoryTests {
         page.setTokenStatus("valid");
         page.setTokenExpiresInDays(30);
         
-        PageEntity savedPage = pageRepository.save(page);
+        pageRepository.save(page);
 
         
         PageEntity retrieved = pageRepository.findById("page-token").orElseThrow();
@@ -216,7 +216,7 @@ class PageRepositoryTests {
         page.setLastRefreshAttempt(lastAttempt);
         page.setLastRefreshSuccess(true);
         
-        PageEntity savedPage = pageRepository.save(page);
+        pageRepository.save(page);
 
         
         PageEntity retrieved = pageRepository.findById("page-refresh").orElseThrow();
@@ -232,7 +232,7 @@ class PageRepositoryTests {
         page.setName("Null Fields Test");
         // Other fields remain null
         
-        PageEntity savedPage = pageRepository.save(page);
+        pageRepository.save(page);
 
         
         PageEntity retrieved = pageRepository.findById("page-null").orElseThrow();

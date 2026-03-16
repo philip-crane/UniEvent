@@ -80,9 +80,9 @@ class PageIntegrationTests {
     
     @Test
     void testGetActivePages() {
-        PageEntity page1 = createDatabasePage("page-1", "Active Page", "valid");
-        PageEntity page2 = createDatabasePage("page-2", "Inactive Page", "expired");
-        PageEntity page3 = createDatabasePage("page-3", "Another Active", "valid");
+        createDatabasePage("page-1", "Active Page", "valid");
+        createDatabasePage("page-2", "Inactive Page", "expired");
+        createDatabasePage("page-3", "Another Active", "valid");
         
         List<PageDTO> activePages = pageService.getActivePages();
         
@@ -92,7 +92,7 @@ class PageIntegrationTests {
     
     @Test
     void testGetPageById() {
-        PageDTO created = createTestPage("page-search", "Search Me");
+        createTestPage("page-search", "Search Me");
         
         PageDTO found = pageService.getPageById("page-search");
         
@@ -134,7 +134,7 @@ class PageIntegrationTests {
     
     @Test
     void testUpdatePageThroughService() {
-        PageDTO created = createTestPage("page-update", "Original Name");
+        createTestPage("page-update", "Original Name");
         
         PageDTO updateDTO = new PageDTO();
         updateDTO.setId("page-update");

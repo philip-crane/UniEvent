@@ -230,7 +230,7 @@ class PlaceRepositoryTests {
         place.setLatitude(48.8566);
         place.setLongitude(2.3522);
         
-        PlaceEntity savedPlace = placeRepository.save(place);
+        placeRepository.save(place);
 
         
         PlaceEntity retrieved = placeRepository.findById("place-location").orElseThrow();
@@ -250,7 +250,7 @@ class PlaceRepositoryTests {
         place.setName("Minimal Place");
         // All other fields are null
         
-        PlaceEntity savedPlace = placeRepository.save(place);
+        placeRepository.save(place);
 
         
         PlaceEntity retrieved = placeRepository.findById("place-minimal").orElseThrow();
