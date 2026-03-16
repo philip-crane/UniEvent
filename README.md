@@ -44,5 +44,5 @@ TODO Database
 * Replace ddl-auto with database migrations (Flyway/Liquibase)
 * Add Spring Boot Actuator for monitoring/metrics
 * Add Springdoc/Swagger API documentation
-* Remove unused dependency: spring-boot-starter-webflux
+* Remove unused dependency: spring-boot-starter-webflux // DONE
 * Add @Valid/@NotNull/@NotBlank validation annotations to DTOs // DONE

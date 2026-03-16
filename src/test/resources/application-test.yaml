@@ -1,6 +1,9 @@
 spring:
   application:
     name: web
+  cloud:
+    vault:
+      enabled: false
   
   datasource:
     url: jdbc:h2:mem:testdb;MODE=MySQL
