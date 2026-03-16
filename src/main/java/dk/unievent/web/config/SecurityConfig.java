@@ -25,6 +25,7 @@ public class SecurityConfig {
             // Allow public access to /api endpoints (no authentication required)
             .authorizeHttpRequests(authz -> authz
                 .requestMatchers("/api/**").permitAll()  // All /api/* endpoints are public
+                .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll() // Swagger UI and OpenAPI docs
                 .anyRequest().authenticated()            // Everything else needs auth
             )
             // Disable CSRF for development (not recommended for production)
