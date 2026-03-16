@@ -32,7 +32,7 @@ TODO Database
 * Add cascade delete/orphan removal for page deletion
 * Validate location coordinates (latitude: -90 to 90, longitude: -180 to 180) // DONE
 * Replace ddl-auto with database migrations (Flyway/Liquibase)
-* Add Spring Boot Actuator for monitoring/metrics
-* Add Springdoc/Swagger API documentation
-* Remove unused dependency: spring-boot-starter-webflux
+* Add Spring Boot Actuator for monitoring/metrics // DONE (HEALTHCHECK NOT SET UP)
+* Add Springdoc/Swagger API documentation // DONE
+* Remove unused dependency: spring-boot-starter-webflux // DONE
 * Add @Valid/@NotNull/@NotBlank validation annotations to DTOs // DONE

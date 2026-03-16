@@ -26,7 +26,8 @@ public class SecurityConfig {
             .authorizeHttpRequests(authz -> authz
                 .requestMatchers("/api/**").permitAll()  // All /api/* endpoints are public
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll() // Swagger UI and OpenAPI docs
-                .anyRequest().authenticated()            // Everything else needs auth
+                .requestMatchers("/actuator/**").permitAll() // Actuator endpoints
+                .anyRequest().permitAll()            // Development: allow all other requests
             )
             // Disable CSRF for development (not recommended for production)
             .csrf(csrf -> csrf.disable())
