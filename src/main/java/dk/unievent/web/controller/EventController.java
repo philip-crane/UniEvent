@@ -8,6 +8,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 import java.util.List;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.Parameter;
 
 /**
  * REST Controller for Event endpoints
@@ -24,6 +28,7 @@ import java.util.List;
  */
 @RestController
 @RequestMapping("/api/events")
+@Tag(name = "Events", description = "Manage and retrieve events")
 public class EventController {
     
     @Autowired
@@ -37,6 +42,8 @@ public class EventController {
      * Example response: [{ id: "evt-1", title: "Pub Night", startTime: "2026-03-15T20:00:00" }, ...]
      */
     @GetMapping
+    @Operation(summary = "Get all events", description = "Retrieve all events ordered by start time")
+    @ApiResponse(responseCode = "200", description = "List of all events")
     public ResponseEntity<List<EventDTO>> getAllEvents() {
         List<EventDTO> events = eventService.getAllEvents();
         return ResponseEntity.ok(events);
@@ -52,6 +59,8 @@ public class EventController {
      * Returns: List of EventDTO ordered by startTime
      */
     @GetMapping("/future")
+    @Operation(summary = "Get future events", description = "Retrieve only upcoming events (startTime >= now)")
+    @ApiResponse(responseCode = "200", description = "List of future events")
     public ResponseEntity<List<EventDTO>> getFutureEvents() {
         List<EventDTO> events = eventService.getFutureEvents();
         return ResponseEntity.ok(events);
@@ -68,7 +77,10 @@ public class EventController {
      * Useful for: Event detail page
      */
     @GetMapping("/{id}")
-    public ResponseEntity<EventDTO> getEventById(@PathVariable String id) {
+    @Operation(summary = "Get event by ID", description = "Retrieve a single event by its ID")
+    @ApiResponse(responseCode = "200", description = "Event found")
+    @ApiResponse(responseCode = "404", description = "Event not found")
+    public ResponseEntity<EventDTO> getEventById(@PathVariable @Parameter(description = "Event ID") String id) {
         EventDTO event = eventService.getEventById(id);
         
         // If event not found, return 404
@@ -90,7 +102,9 @@ public class EventController {
      * Useful for: Filter events by organizer
      */
     @GetMapping("/page/{pageId}")
-    public ResponseEntity<List<EventDTO>> getEventsByPage(@PathVariable String pageId) {
+    @Operation(summary = "Get events by page", description = "Retrieve all events from a specific organizer (page)")
+    @ApiResponse(responseCode = "200", description = "List of events from the page")
+    public ResponseEntity<List<EventDTO>> getEventsByPage(@PathVariable @Parameter(description = "Facebook page ID") String pageId) {
         List<EventDTO> events = eventService.getEventsByPageId(pageId);
         return ResponseEntity.ok(events);
     }
@@ -145,6 +159,8 @@ public class EventController {
      * Note: Usually called by the Facebook sync service, not frontend
      */
     @PostMapping
+    @Operation(summary = "Create a new event", description = "Create a new event")
+    @ApiResponse(responseCode = "201", description = "Event created successfully")
     public ResponseEntity<EventDTO> createEvent(@Valid @RequestBody EventDTO eventDTO) {
         EventDTO created = eventService.createEvent(eventDTO);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
@@ -165,8 +181,11 @@ public class EventController {
      * Note: Only updates fields provided in request body
      */
     @PutMapping("/{id}")
+    @Operation(summary = "Update an event", description = "Update an existing event")
+    @ApiResponse(responseCode = "200", description = "Event updated successfully")
+    @ApiResponse(responseCode = "404", description = "Event not found")
     public ResponseEntity<EventDTO> updateEvent(
-            @PathVariable String id,
+            @PathVariable @Parameter(description = "Event ID") String id,
             @Valid @RequestBody EventDTO eventDTO) {
         EventDTO updated = eventService.updateEvent(id, eventDTO);
         
@@ -188,7 +207,10 @@ public class EventController {
      *          HTTP 404 Not Found (event doesn't exist)
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteEvent(@PathVariable String id) {
+    @Operation(summary = "Delete an event", description = "Delete an event permanently")
+    @ApiResponse(responseCode = "204", description = "Event deleted successfully")
+    @ApiResponse(responseCode = "404", description = "Event not found")
+    public ResponseEntity<Void> deleteEvent(@PathVariable @Parameter(description = "Event ID") String id) {
         boolean deleted = eventService.deleteEvent(id);
         
         if (!deleted) {

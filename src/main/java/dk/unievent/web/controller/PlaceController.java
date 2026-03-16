@@ -8,6 +8,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 import java.util.List;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.Parameter;
 
 /**
  * REST Controller for Place endpoints (Venues/Locations)
@@ -23,6 +27,7 @@ import java.util.List;
  */
 @RestController
 @RequestMapping("/api/places")
+@Tag(name = "Places", description = "Manage and search venues/locations for events")
 public class PlaceController {
     
     @Autowired
@@ -50,7 +55,10 @@ public class PlaceController {
      * }
      */
     @GetMapping("/{id}")
-    public ResponseEntity<PlaceDTO> getPlaceById(@PathVariable String id) {
+    @Operation(summary = "Get place by ID", description = "Retrieve a single venue by its ID")
+    @ApiResponse(responseCode = "200", description = "Place found")
+    @ApiResponse(responseCode = "404", description = "Place not found")
+    public ResponseEntity<PlaceDTO> getPlaceById(@PathVariable @Parameter(description = "Place ID") String id) {
         PlaceDTO place = placeService.getPlaceById(id);
         
         if (place == null) {
@@ -71,7 +79,9 @@ public class PlaceController {
      * Useful for: Map view - show all venues in a city
      */
     @GetMapping("/city/{city}")
-    public ResponseEntity<List<PlaceDTO>> getPlacesByCity(@PathVariable String city) {
+    @Operation(summary = "Get places by city", description = "Find all venues in a specific city")
+    @ApiResponse(responseCode = "200", description = "List of places in the city")
+    public ResponseEntity<List<PlaceDTO>> getPlacesByCity(@PathVariable @Parameter(description = "City name") String city) {
         List<PlaceDTO> places = placeService.getPlacesByCity(city);
         return ResponseEntity.ok(places);
     }
@@ -87,7 +97,9 @@ public class PlaceController {
      * Use case: Country-level event discovery
      */
     @GetMapping("/country/{country}")
-    public ResponseEntity<List<PlaceDTO>> getPlacesByCountry(@PathVariable String country) {
+    @Operation(summary = "Get places by country", description = "Find all venues in a specific country")
+    @ApiResponse(responseCode = "200", description = "List of places in the country")
+    public ResponseEntity<List<PlaceDTO>> getPlacesByCountry(@PathVariable @Parameter(description = "Country name") String country) {
         List<PlaceDTO> places = placeService.getPlacesByCountry(country);
         return ResponseEntity.ok(places);
     }
@@ -103,9 +115,11 @@ public class PlaceController {
      * More precise than just city (useful if city names repeat across countries)
      */
     @GetMapping("/location/{city}/{country}")
+    @Operation(summary = "Get places by location", description = "Find venues in a specific city and country combination")
+    @ApiResponse(responseCode = "200", description = "List of places in the location")
     public ResponseEntity<List<PlaceDTO>> getPlacesByLocation(
-            @PathVariable String city,
-            @PathVariable String country) {
+            @PathVariable @Parameter(description = "City name") String city,
+            @PathVariable @Parameter(description = "Country name") String country) {
         List<PlaceDTO> places = placeService.getPlacesByCityAndCountry(city, country);
         return ResponseEntity.ok(places);
     }
@@ -121,8 +135,10 @@ public class PlaceController {
      * Useful for: Autocomplete when user selects a venue for an event
      */
     @GetMapping("/search")
+    @Operation(summary = "Search places by name", description = "Search for venues using a partial name match (case-insensitive)")
+    @ApiResponse(responseCode = "200", description = "List of matching places")
     public ResponseEntity<List<PlaceDTO>> searchPlaces(
-            @RequestParam(name = "name") String name) {
+            @RequestParam(name = "name") @Parameter(description = "Partial place name to search for") String name) {
         List<PlaceDTO> places = placeService.searchByName(name);
         return ResponseEntity.ok(places);
     }
@@ -151,6 +167,8 @@ public class PlaceController {
      * Returns: Created PlaceDTO (HTTP 201 Created)
      */
     @PostMapping
+    @Operation(summary = "Create a new place", description = "Create a new venue/location")
+    @ApiResponse(responseCode = "201", description = "Place created successfully")
     public ResponseEntity<PlaceDTO> createPlace(@Valid @RequestBody PlaceDTO placeDTO) {
         PlaceDTO created = placeService.createPlace(placeDTO);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
@@ -171,8 +189,11 @@ public class PlaceController {
      * Use case: Fix venue address, update name, add/update coordinates
      */
     @PutMapping("/{id}")
+    @Operation(summary = "Update a place", description = "Update venue information")
+    @ApiResponse(responseCode = "200", description = "Place updated successfully")
+    @ApiResponse(responseCode = "404", description = "Place not found")
     public ResponseEntity<PlaceDTO> updatePlace(
-            @PathVariable String id,
+            @PathVariable @Parameter(description = "Place ID") String id,
             @Valid @RequestBody PlaceDTO placeDTO) {
         placeDTO.setId(id);  // Ensure we're updating the right place
         PlaceDTO updated = placeService.updatePlace(id, placeDTO);
@@ -199,7 +220,10 @@ public class PlaceController {
      *          HTTP 404 Not Found (place doesn't exist)
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deletePlace(@PathVariable String id) {
+    @Operation(summary = "Delete a place", description = "Delete a venue/location")
+    @ApiResponse(responseCode = "204", description = "Place deleted successfully")
+    @ApiResponse(responseCode = "404", description = "Place not found")
+    public ResponseEntity<Void> deletePlace(@PathVariable @Parameter(description = "Place ID") String id) {
         boolean deleted = placeService.deletePlace(id);
         
         if (!deleted) {
