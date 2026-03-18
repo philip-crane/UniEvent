@@ -4,39 +4,60 @@ import dk.unievent.web.entity.Event;
 import dk.unievent.web.entity.Page;
 import dk.unievent.web.repository.EventRepository;
 import dk.unievent.web.repository.PageRepository;
-import dk.unievent.web.service.*;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.RestTemplate;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.time.Instant;
 import java.util.*;
-import java.util.stream.Collectors;
+
 
 @RestController
 @RequestMapping("/api")
 public class EventController {
 
-    private final FacebookService facebookService;
+    private static final ParameterizedTypeReference<Map<String, Object>> MAP_TYPE =
+            new ParameterizedTypeReference<>() {
+            };
+
     private final PageRepository pageRepository;
     private final EventRepository eventRepository;
-    private final SecretManagerService secretManagerService;
-    private final StorageService storageService;
+    private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
 
-    public EventController(FacebookService facebookService, PageRepository pageRepository,
-                          EventRepository eventRepository, SecretManagerService secretManagerService,
-                          StorageService storageService, ObjectMapper objectMapper) {
-        this.facebookService = facebookService;
+    @Value("${services.facebook.url:http://localhost:8081}")
+    private String facebookServiceUrl;
+
+    @Value("${services.core.url:http://localhost:8082}")
+    private String coreServiceUrl;
+
+    public EventController(PageRepository pageRepository,
+                          EventRepository eventRepository,
+                          ObjectMapper objectMapper) {
+        this(pageRepository, eventRepository, objectMapper, "http://localhost:8081", "http://localhost:8082", "http://localhost:8083");
+    }
+
+    public EventController(PageRepository pageRepository,
+                          EventRepository eventRepository,
+                          ObjectMapper objectMapper,
+                          String facebookServiceUrl,
+                          String coreServiceUrl) {
         this.pageRepository = pageRepository;
         this.eventRepository = eventRepository;
-        this.secretManagerService = secretManagerService;
-        this.storageService = storageService;
+        this.restTemplate = new RestTemplate();
         this.objectMapper = objectMapper;
+        this.facebookServiceUrl = facebookServiceUrl;
+        this.coreServiceUrl = coreServiceUrl;
     }
 
     @PostMapping("/callback")
+    @SuppressWarnings("unchecked")
     public ResponseEntity<Map<String, Object>> handleCallback(@RequestBody Map<String, String> input) {
         String code = input.get("code");
         boolean debug = Boolean.parseBoolean(input.get("debug"));
@@ -46,29 +67,69 @@ public class EventController {
         }
 
         try {
-            String shortLivedToken = facebookService.getShortLivedToken(code);
-            FacebookService.LongLivedToken longLivedToken = facebookService.getLongLivedToken(shortLivedToken);
-            List<FacebookService.FacebookPage> pages = facebookService.getPagesFromUser(longLivedToken.accessToken());
+            // Get short-lived token from Facebook service
+            Map<String, Object> shortLivedRequest = Map.of("code", code);
+            ResponseEntity<Map<String, Object>> shortLivedResponse = restTemplate.exchange(
+                facebookServiceUrl + "/api/facebook/oauth/token",
+                HttpMethod.POST,
+                new HttpEntity<>(shortLivedRequest),
+                MAP_TYPE
+            );
+
+            if (!shortLivedResponse.getStatusCode().is2xxSuccessful() || shortLivedResponse.getBody() == null) {
+                return ResponseEntity.status(500).body(Map.of("success", false, "error", "Failed to get short-lived token"));
+            }
+
+            String shortLivedToken = (String) shortLivedResponse.getBody().get("access_token");
+
+            // Exchange for long-lived token
+            Map<String, Object> longLivedRequest = Map.of("short_lived_token", shortLivedToken);
+            ResponseEntity<Map<String, Object>> longLivedResponse = restTemplate.exchange(
+                facebookServiceUrl + "/api/facebook/oauth/long-lived-token",
+                HttpMethod.POST,
+                new HttpEntity<>(longLivedRequest),
+                MAP_TYPE
+            );
+
+            if (!longLivedResponse.getStatusCode().is2xxSuccessful() || longLivedResponse.getBody() == null) {
+                return ResponseEntity.status(500).body(Map.of("success", false, "error", "Failed to get long-lived token"));
+            }
+
+            String longLivedToken = (String) longLivedResponse.getBody().get("access_token");
+            Long expiresIn = ((Number) longLivedResponse.getBody().get("expires_in")).longValue();
+            List<Map<String, Object>> pages = (List<Map<String, Object>>) restTemplate.getForObject(
+                facebookServiceUrl + "/api/facebook/user/pages?accessToken=" + longLivedToken,
+                List.class
+            );
 
             if (pages.isEmpty()) {
                 return ResponseEntity.ok(Map.of("success", true, "storedPages", 0, "message", "No pages returned."));
             }
 
             int storedPages = 0;
-            for (FacebookService.FacebookPage fbPage : pages) {
+            for (Map<String, Object> pageData : pages) {
                 try {
-                    secretManagerService.addPageToken(fbPage.id(), fbPage.accessToken(), longLivedToken.expiresIn());
+                    // Store token in Secret Manager service
+                    Map<String, Object> tokenRequest = Map.of(
+                        "token", pageData.get("access_token"),
+                        "expiresIn", expiresIn
+                    );
+                    restTemplate.postForEntity(
+                        coreServiceUrl + "/api/secrets/pages/" + pageData.get("id") + "/token",
+                        tokenRequest,
+                        Map.class
+                    );
 
                     Page page = new Page();
-                    page.setId(fbPage.id());
-                    page.setName(fbPage.name());
+                    page.setId((String) pageData.get("id"));
+                    page.setName((String) pageData.get("name"));
                     page.setActive(true);
-                    page.setUrl("https://facebook.com/" + fbPage.id());
+                    page.setUrl("https://facebook.com/" + pageData.get("id"));
                     page.setConnectedAt(Instant.now());
                     page.setTokenRefreshedAt(Instant.now());
                     page.setTokenStoredAt(Instant.now());
-                    page.setTokenExpiresAt(Instant.now().plusSeconds(longLivedToken.expiresIn()));
-                    page.setTokenExpiresInDays((long) Math.ceil(longLivedToken.expiresIn() / (60.0 * 60 * 24)));
+                    page.setTokenExpiresAt(Instant.now().plusSeconds(expiresIn));
+                    page.setTokenExpiresInDays((long) Math.ceil(expiresIn / (60.0 * 60 * 24)));
                     page.setTokenStatus("valid");
                     page.setLastRefreshSuccess(true);
 
@@ -87,6 +148,7 @@ public class EventController {
     }
 
     @PostMapping("/ingest")
+    @SuppressWarnings("unchecked")
     public ResponseEntity<Map<String, Object>> handleIngest() {
         try {
             List<Page> pages = pageRepository.findAll();
@@ -101,7 +163,19 @@ public class EventController {
             for (Page page : pages) {
                 long pageStartTime = System.currentTimeMillis();
                 try {
-                    String token = secretManagerService.getPageToken(page.getId());
+                    // Get token from Secret Manager service
+                    ResponseEntity<Map<String, Object>> tokenResponse = restTemplate.exchange(
+                        secretManagerServiceUrl + "/api/secrets/pages/" + page.getId() + "/token",
+                        HttpMethod.GET,
+                        null,
+                        MAP_TYPE
+                    );
+
+                    String token = null;
+                    if (tokenResponse.getStatusCode().is2xxSuccessful() && tokenResponse.getBody() != null) {
+                        token = (String) tokenResponse.getBody().get("token");
+                    }
+
                     if (token == null) {
                         pageResults.add(Map.of(
                             "pageId", page.getId(),
@@ -113,7 +187,11 @@ public class EventController {
                         continue;
                     }
 
-                    List<FacebookService.FbEventResponse> events = facebookService.getPageEvents(page.getId(), token);
+                    // Get events from Facebook service
+                    List<Map<String, Object>> events = (List<Map<String, Object>>) restTemplate.getForObject(
+                        facebookServiceUrl + "/api/facebook/pages/" + page.getId() + "/events?accessToken=" + token,
+                        List.class
+                    );
                     if (events.isEmpty()) {
                         pageResults.add(Map.of(
                             "pageId", page.getId(),
@@ -127,53 +205,77 @@ public class EventController {
                     }
 
                     List<Event> eventsData = new ArrayList<>();
-                    for (FacebookService.FbEventResponse fbEvent : events) {
+                    for (Map<String, Object> eventData : events) {
                         try {
                             String coverImageUrl = null;
-                            if (fbEvent.cover() != null && fbEvent.cover().source() != null) {
-                                coverImageUrl = storageService.addImageFromUrl("covers/" + page.getId() + "/" + fbEvent.id(), fbEvent.cover().source().source());
+                            Map<String, Object> cover = (Map<String, Object>) eventData.get("cover");
+                            if (cover != null) {
+                                Map<String, Object> source = (Map<String, Object>) cover.get("source");
+                                if (source != null && source.get("source") != null) {
+                                    // Call Storage service to add image from URL
+                                    Map<String, Object> imageRequest = Map.of(
+                                        "filePath", "covers/" + page.getId() + "/" + eventData.get("id") + ".jpg",
+                                        "sourceUrl", source.get("source")
+                                    );
+                                    ResponseEntity<Map<String, Object>> imageResponse = restTemplate.exchange(
+                                        storageServiceUrl + "/api/storage/images/from-url",
+                                        HttpMethod.POST,
+                                        new HttpEntity<>(imageRequest),
+                                        MAP_TYPE
+                                    );
+                                    if (imageResponse.getStatusCode().is2xxSuccessful()) {
+                                        // For now, we'll skip setting the coverImageUrl since the storage service doesn't fully implement URL downloading
+                                    }
+                                }
                             }
 
                             String placeJson = null;
-                            if (fbEvent.place() != null) {
+                            Map<String, Object> place = (Map<String, Object>) eventData.get("place");
+                            if (place != null) {
                                 try {
-                                    placeJson = objectMapper.writeValueAsString(fbEvent.place());
+                                    placeJson = objectMapper.writeValueAsString(place);
                                 } catch (Exception e) {
                                     // If serialization fails, store as string representation
-                                    placeJson = fbEvent.place().toString();
+                                    placeJson = place.toString();
                                 }
                             }
 
                             Instant eventStartTime = null;
                             Instant eventEndTime = null;
                             try {
-                                eventStartTime = Instant.parse(fbEvent.start_time());
+                                String startTimeStr = (String) eventData.get("start_time");
+                                if (startTimeStr != null) {
+                                    eventStartTime = Instant.parse(startTimeStr);
+                                }
                             } catch (Exception e) {
                                 // If parsing fails, keep as null
                             }
                             try {
-                                eventEndTime = Instant.parse(fbEvent.end_time());
+                                String endTimeStr = (String) eventData.get("end_time");
+                                if (endTimeStr != null) {
+                                    eventEndTime = Instant.parse(endTimeStr);
+                                }
                             } catch (Exception e) {
                                 // If parsing fails, keep as null
                             }
 
                             String rawJson = null;
                             try {
-                                rawJson = objectMapper.writeValueAsString(fbEvent);
+                                rawJson = objectMapper.writeValueAsString(eventData);
                             } catch (Exception e) {
                                 // If serialization fails, skip
                             }
 
                             Event event = new Event();
-                            event.setId(fbEvent.id());
+                            event.setId((String) eventData.get("id"));
                             event.setPageId(page.getId());
-                            event.setTitle(fbEvent.name());
-                            event.setDescription(fbEvent.description());
+                            event.setTitle((String) eventData.get("name"));
+                            event.setDescription((String) eventData.get("description"));
                             event.setStartTime(eventStartTime);
                             event.setEndTime(eventEndTime);
                             event.setPlace(placeJson);
                             event.setCoverImageUrl(coverImageUrl);
-                            event.setEventURL("https://facebook.com/events/" + fbEvent.id());
+                            event.setEventURL("https://facebook.com/events/" + eventData.get("id"));
                             event.setCreatedAt(Instant.now());
                             event.setUpdatedAt(Instant.now());
                             event.setRaw(rawJson);
@@ -216,6 +318,7 @@ public class EventController {
     }
 
     @PostMapping("/refresh-tokens")
+    @SuppressWarnings("unchecked")
     public ResponseEntity<Map<String, Object>> handleRefreshTokens() {
         try {
             List<Page> pages = pageRepository.findAll();
@@ -229,13 +332,48 @@ public class EventController {
 
             for (Page page : pages) {
                 try {
-                    String currentToken = secretManagerService.getPageToken(page.getId());
+                    // Get current token from Secret Manager service
+                    ResponseEntity<Map<String, Object>> tokenResponse = restTemplate.exchange(
+                        secretManagerServiceUrl + "/api/secrets/pages/" + page.getId() + "/token",
+                        HttpMethod.GET,
+                        null,
+                        MAP_TYPE
+                    );
+
+                    String currentToken = null;
+                    if (tokenResponse.getStatusCode().is2xxSuccessful() && tokenResponse.getBody() != null) {
+                        currentToken = (String) tokenResponse.getBody().get("token");
+                    }
+
                     if (currentToken == null) {
                         throw new RuntimeException("No token found");
                     }
 
-                    FacebookService.LongLivedToken refreshedToken = facebookService.refreshPageToken(currentToken);
-                    secretManagerService.updatePageToken(page.getId(), refreshedToken.accessToken(), refreshedToken.expiresIn());
+                    // Refresh token using Facebook service
+                    Map<String, Object> refreshRequest = Map.of("page_token", currentToken);
+                    ResponseEntity<Map<String, Object>> refreshResponse = restTemplate.exchange(
+                        facebookServiceUrl + "/api/facebook/oauth/refresh",
+                        HttpMethod.POST,
+                        new HttpEntity<>(refreshRequest),
+                        MAP_TYPE
+                    );
+
+                    if (!refreshResponse.getStatusCode().is2xxSuccessful() || refreshResponse.getBody() == null) {
+                        throw new RuntimeException("Failed to refresh token");
+                    }
+
+                    String newToken = (String) refreshResponse.getBody().get("access_token");
+                    Long expiresIn = ((Number) refreshResponse.getBody().get("expires_in")).longValue();
+
+                    // Update token in Secret Manager service
+                    Map<String, Object> updateRequest = Map.of(
+                        "token", newToken,
+                        "expiresIn", expiresIn
+                    );
+                    restTemplate.put(
+                        secretManagerServiceUrl + "/api/secrets/pages/" + page.getId() + "/token",
+                        updateRequest
+                    );
 
                     page.setTokenRefreshedAt(Instant.now());
                     page.setLastRefreshSuccess(true);

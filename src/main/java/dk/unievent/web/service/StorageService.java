@@ -8,7 +8,6 @@ import java.io.IOException;
 import java.net.URL;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
-import java.util.concurrent.TimeUnit;
 
 @Service
 public class StorageService {
@@ -25,9 +24,10 @@ public class StorageService {
         return blob.getMediaLink();
     }
 
+    @SuppressWarnings("deprecation")
     public String addImageFromUrl(String filePath, String sourceUrl) throws IOException {
         URL url = new URL(sourceUrl);
-        ReadableByteChannel readableByteChannel = Channels.newChannel(url.openStream());
+        // ReadableByteChannel readableByteChannel = Channels.newChannel(url.openStream());
         // Simplified: in real implementation, read the content type and data
         // For now, assume JPEG
         byte[] data = new byte[0]; // Read from channel

@@ -31,3 +31,11 @@ gcp:
     id: ${GCP_PROJECT_ID}
   storage:
     bucket: ${GCP_STORAGE_BUCKET:unievent-images}
+
+services:
+  facebook:
+    url: ${FACEBOOK_SERVICE_URL:http://localhost:8081}
+  secret-manager:
+    url: ${SECRET_MANAGER_SERVICE_URL:http://localhost:8082}
+  storage:
+    url: ${STORAGE_SERVICE_URL:http://localhost:8083}
