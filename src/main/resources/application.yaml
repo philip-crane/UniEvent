@@ -1,13 +1,13 @@
 spring:
   application:
     name: web
-  
+
   datasource:
-    url: jdbc:mysql://localhost:3306/unievent?useSSL=false&serverTimezone=UTC
+    url: jdbc:mysql://localhost:3306/unievent?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
     username: root
     password: root
     driver-class-name: com.mysql.cj.jdbc.Driver
-  
+
   jpa:
     hibernate:
       ddl-auto: update
@@ -16,3 +16,18 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.MySQLDialect
         format_sql: true
+
+facebook:
+  app:
+    id: ${FACEBOOK_APP_ID}
+    secret: ${FACEBOOK_APP_SECRET}
+  api:
+    version: v23.0
+  redirect:
+    uri: ${FB_REDIRECT_URI:http://localhost:8080/callback}
+
+gcp:
+  project:
+    id: ${GCP_PROJECT_ID}
+  storage:
+    bucket: ${GCP_STORAGE_BUCKET:unievent-images}
