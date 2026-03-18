@@ -20,8 +20,7 @@ jobs:
           mkdir -p ~/.ssh
           printf '%s\n' "${{ secrets.LIVE_DEPLOY_SSH_KEY }}" | tr -d '\r' > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          eval "$(ssh-agent -s)"
-          ssh-add ~/.ssh/deploy_key
+          ssh-keygen -y -f ~/.ssh/deploy_key >/dev/null
 
       - name: Add known hosts
         run: |
@@ -35,7 +34,7 @@ jobs:
           DEPLOY_USER: ${{ secrets.LIVE_DEPLOY_USER }}
           DEPLOY_PATH: ${{ secrets.LIVE_DEPLOY_PATH }}
         run: |
-          ssh -o StrictHostKeyChecking=yes "${DEPLOY_USER}@${DEPLOY_HOST}" "DEPLOY_PATH='${DEPLOY_PATH}' bash -s" <<'EOF'
+          ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes -o BatchMode=yes -o ConnectTimeout=20 -o StrictHostKeyChecking=yes "${DEPLOY_USER}@${DEPLOY_HOST}" "DEPLOY_PATH='${DEPLOY_PATH}' bash -s" <<'EOF'
           set -euo pipefail
 
           cd "${DEPLOY_PATH}"
