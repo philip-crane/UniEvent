@@ -2,8 +2,8 @@ package dk.unievent.web.mapper;
 
 import dk.unievent.web.dto.PageDTO;
 import dk.unievent.web.model.PageEntity;
-import dk.unievent.web.media.MediaFile;
-import dk.unievent.web.media.MediaFileRepository;
+import dk.unievent.web.model.MediaEntity;
+import dk.unievent.web.repository.MediaRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
 public class PageMapper {
     
     @Autowired
-    private MediaFileRepository mediaFileRepository;
+    private MediaRepository mediaRepository;
     
     public PageDTO toDTO(PageEntity entity) {
         if (entity == null) {
@@ -41,7 +41,7 @@ public class PageMapper {
         
         // Load picture if ID provided
         if (dto.getPictureId() != null) {
-            MediaFile picture = mediaFileRepository.findById(dto.getPictureId()).orElse(null);
+            MediaEntity picture = mediaRepository.findById(dto.getPictureId()).orElse(null);
             entity.setPicture(picture);
         }
         

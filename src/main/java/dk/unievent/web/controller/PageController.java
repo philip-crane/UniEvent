@@ -2,9 +2,9 @@ package dk.unievent.web.controller;
 
 import dk.unievent.web.dto.PageDTO;
 import dk.unievent.web.service.PageService;
-import dk.unievent.web.media.MediaFile;
-import dk.unievent.web.media.StorageService;
-import dk.unievent.web.media.MediaFileRepository;
+import dk.unievent.web.model.MediaEntity;
+import dk.unievent.web.service.MediaService;
+import dk.unievent.web.repository.MediaRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -39,10 +39,10 @@ public class PageController {
     private PageService pageService;
     
     @Autowired
-    private StorageService storageService;
+    private MediaService mediaService;
     
     @Autowired
-    private MediaFileRepository mediaFileRepository;
+    private MediaRepository mediaRepository;
     
     /**
      * GET /api/pages
@@ -202,9 +202,9 @@ public class PageController {
         }
         
         // Store the file
-        String storedFilename = storageService.store(file);
-        MediaFile mediaFile = new MediaFile(file.getOriginalFilename(), file.getContentType(), storedFilename);
-        MediaFile saved = mediaFileRepository.save(mediaFile);
+        String storedFilename = mediaService.store(file);
+        MediaEntity mediaEntity = new MediaEntity(file.getOriginalFilename(), file.getContentType(), storedFilename);
+        MediaEntity saved = mediaRepository.save(mediaEntity);
         
         // Update page with picture
         pageDTO.setPictureId(saved.getId());

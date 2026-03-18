@@ -3,8 +3,8 @@ package dk.unievent.web.mapper;
 import dk.unievent.web.dto.EventDTO;
 import dk.unievent.web.model.EventEntity;
 import dk.unievent.web.model.PageEntity;
-import dk.unievent.web.media.MediaFile;
-import dk.unievent.web.media.MediaFileRepository;
+import dk.unievent.web.model.MediaEntity;
+import dk.unievent.web.repository.MediaRepository;
 import dk.unievent.web.repository.PageRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -19,7 +19,7 @@ public class EventMapper {
     private PageRepository pageRepository;
     
     @Autowired
-    private MediaFileRepository mediaFileRepository;
+    private MediaRepository mediaRepository;
     
     public EventDTO toDTO(EventEntity entity) {
         if (entity == null) {
@@ -58,7 +58,7 @@ public class EventMapper {
         
         // Load cover image if ID provided
         if (dto.getCoverImageId() != null) {
-            MediaFile coverImage = mediaFileRepository.findById(dto.getCoverImageId()).orElse(null);
+            MediaEntity coverImage = mediaRepository.findById(dto.getCoverImageId()).orElse(null);
             entity.setCoverImage(coverImage);
         }
         

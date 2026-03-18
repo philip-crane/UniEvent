@@ -2,9 +2,9 @@ package dk.unievent.web.controller;
 
 import dk.unievent.web.dto.EventDTO;
 import dk.unievent.web.service.EventService;
-import dk.unievent.web.media.MediaFile;
-import dk.unievent.web.media.StorageService;
-import dk.unievent.web.media.MediaFileRepository;
+import dk.unievent.web.model.MediaEntity;
+import dk.unievent.web.service.MediaService;
+import dk.unievent.web.repository.MediaRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -40,10 +40,10 @@ public class EventController {
     private EventService eventService;
     
     @Autowired
-    private StorageService storageService;
+    private MediaService mediaService;
     
     @Autowired
-    private MediaFileRepository mediaFileRepository;
+    private MediaRepository mediaRepository;
     
     /**
      * GET /api/events
@@ -233,9 +233,9 @@ public class EventController {
         }
         
         // Store the file
-        String storedFilename = storageService.store(file);
-        MediaFile mediaFile = new MediaFile(file.getOriginalFilename(), file.getContentType(), storedFilename);
-        MediaFile saved = mediaFileRepository.save(mediaFile);
+        String storedFilename = mediaService.store(file);
+        MediaEntity mediaEntity = new MediaEntity(file.getOriginalFilename(), file.getContentType(), storedFilename);
+        MediaEntity saved = mediaRepository.save(mediaEntity);
         
         // Update event with cover image
         eventDTO.setCoverImageId(saved.getId());
