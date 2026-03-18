@@ -15,14 +15,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Configure SSH key
-        uses: webfactory/ssh-agent@v0.9.0
-        with:
-          ssh-private-key: ${{ secrets.LIVE_DEPLOY_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          # Accept both real multiline keys and single-line keys containing literal \n.
+          printf '%s' "${{ secrets.LIVE_DEPLOY_SSH_KEY }}" | perl -pe 's/\\n/\n/g' | tr -d '\r' > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keygen -y -f ~/.ssh/deploy_key >/dev/null
+          eval "$(ssh-agent -s)"
+          ssh-add ~/.ssh/deploy_key
 
       - name: Add known hosts
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.LIVE_DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          printf '%s\n' "${{ secrets.LIVE_DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
           chmod 644 ~/.ssh/known_hosts
 
       - name: Deploy on remote host
