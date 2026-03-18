@@ -3,14 +3,12 @@ package dk.unievent.web.media;
 import jakarta.persistence.*;
 import java.time.Instant;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
 @Table(name = "media_files")
 @Getter
 @Setter
-@NoArgsConstructor
 public class MediaFile {
 
     @Id
