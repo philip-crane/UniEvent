@@ -11,6 +11,9 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/storage")
+/**
+ * Handles image storage operations backed by Google Cloud Storage.
+ */
 public class StorageController {
 
     private final Bucket bucket;
@@ -19,6 +22,9 @@ public class StorageController {
         this.bucket = storage.get(bucketName);
     }
 
+    /**
+     * Stores raw image bytes at the provided object path.
+     */
     @PostMapping("/images")
     public ResponseEntity<Map<String, Object>> addImage(
             @RequestParam String filePath,
@@ -39,6 +45,9 @@ public class StorageController {
         }
     }
 
+    /**
+     * Stores a multipart file upload at the provided object path.
+     */
     @PostMapping("/images/upload")
     public ResponseEntity<Map<String, Object>> uploadImage(
             @RequestParam("file") MultipartFile file,
@@ -62,6 +71,10 @@ public class StorageController {
         }
     }
 
+    /**
+     * Placeholder endpoint for URL-based ingestion.
+     * Current implementation validates request shape and returns an acknowledgement.
+     */
     @PostMapping("/images/from-url")
     public ResponseEntity<Map<String, Object>> addImageFromUrl(@RequestBody Map<String, String> request) {
         try {
@@ -85,6 +98,9 @@ public class StorageController {
         }
     }
 
+    /**
+     * Returns metadata for a stored image object.
+     */
     @GetMapping("/images/{filePath}")
     public ResponseEntity<?> getImage(@PathVariable String filePath) {
         try {
@@ -104,6 +120,9 @@ public class StorageController {
         }
     }
 
+    /**
+     * Deletes an image object from the configured bucket.
+     */
     @DeleteMapping("/images/{filePath}")
     public ResponseEntity<Map<String, Object>> removeImage(@PathVariable String filePath) {
         try {

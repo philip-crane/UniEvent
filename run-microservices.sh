@@ -33,6 +33,14 @@ cd ..
 
 sleep 5
 
+echo "Starting Core Service on port 8084..."
+cd core-service
+mvn spring-boot:run -Dspring-boot.run.arguments=--server.port=8084 &
+CORE_PID=$!
+cd ..
+
+sleep 5
+
 echo "Starting Main Service on port 8080..."
 mvn spring-boot:run
 
@@ -42,6 +50,7 @@ cleanup() {
     kill $FACEBOOK_PID 2>/dev/null
     kill $SECRET_MANAGER_PID 2>/dev/null
     kill $STORAGE_PID 2>/dev/null
+    kill $CORE_PID 2>/dev/null
     exit 0
 }
 

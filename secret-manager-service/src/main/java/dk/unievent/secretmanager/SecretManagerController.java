@@ -11,6 +11,9 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/secrets")
+/**
+ * Manages page access tokens in Google Secret Manager.
+ */
 public class SecretManagerController {
 
     private final SecretManagerServiceClient client;
@@ -22,6 +25,9 @@ public class SecretManagerController {
         this.client = SecretManagerServiceClient.create();
     }
 
+    /**
+     * Creates or updates the latest token version for a page.
+     */
     @PostMapping("/pages/{pageId}/token")
     public ResponseEntity<Map<String, Object>> addPageToken(
             @PathVariable String pageId,
@@ -58,6 +64,9 @@ public class SecretManagerController {
         }
     }
 
+    /**
+     * Alias for token upsert to keep write semantics explicit for clients.
+     */
     @PutMapping("/pages/{pageId}/token")
     public ResponseEntity<Map<String, Object>> updatePageToken(
             @PathVariable String pageId,
@@ -66,6 +75,9 @@ public class SecretManagerController {
         return addPageToken(pageId, request);
     }
 
+    /**
+     * Reads the latest token value for a page.
+     */
     @GetMapping("/pages/{pageId}/token")
     public ResponseEntity<?> getPageToken(@PathVariable String pageId) {
         try {
@@ -84,6 +96,9 @@ public class SecretManagerController {
         }
     }
 
+    /**
+     * Placeholder for expiry-check semantics.
+     */
     @GetMapping("/pages/{pageId}/token/status")
     public ResponseEntity<Map<String, Object>> checkTokenExpiry(@PathVariable String pageId) {
         // Simplified implementation - in a real scenario, you'd check expiry

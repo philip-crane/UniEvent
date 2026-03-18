@@ -20,6 +20,10 @@ import java.util.*;
 
 @RestController
 @RequestMapping("/api")
+/**
+ * Orchestrates end-to-end event ingestion by coordinating Facebook, Secret Manager,
+ * and Storage microservices while persisting normalized data in MySQL.
+ */
 public class EventController {
 
     private static final ParameterizedTypeReference<Map<String, Object>> MAP_TYPE =
@@ -34,13 +38,11 @@ public class EventController {
     @Value("${services.facebook.url:http://localhost:8081}")
     private String facebookServiceUrl;
 
-    @Value("${services.core.url:http://localhost:8082}")
-    private String coreServiceUrl;
+    @Value("${services.secret-manager.url:http://localhost:8082}")
+    private String secretManagerServiceUrl;
 
     @Value("${services.storage.url:http://localhost:8083}")
     private String storageServiceUrl;
-
-    private String secretManagerServiceUrl;
 
     public EventController(PageRepository pageRepository,
                           EventRepository eventRepository,
@@ -52,18 +54,20 @@ public class EventController {
                           EventRepository eventRepository,
                           ObjectMapper objectMapper,
                           String facebookServiceUrl,
-                          String coreServiceUrl,
+                          String secretManagerServiceUrl,
                           String storageServiceUrl) {
         this.pageRepository = pageRepository;
         this.eventRepository = eventRepository;
         this.restTemplate = new RestTemplate();
         this.objectMapper = objectMapper;
         this.facebookServiceUrl = facebookServiceUrl;
-        this.coreServiceUrl = coreServiceUrl;
+        this.secretManagerServiceUrl = secretManagerServiceUrl;
         this.storageServiceUrl = storageServiceUrl;
-        this.secretManagerServiceUrl = coreServiceUrl;
     }
 
+    /**
+     * Completes OAuth callback processing, stores page tokens, and registers pages locally.
+     */
     @PostMapping("/callback")
     @SuppressWarnings("unchecked")
     public ResponseEntity<Map<String, Object>> handleCallback(@RequestBody Map<String, String> input) {
@@ -123,7 +127,7 @@ public class EventController {
                         "expiresIn", expiresIn
                     );
                     restTemplate.postForEntity(
-                        coreServiceUrl + "/api/secrets/pages/" + pageData.get("id") + "/token",
+                        secretManagerServiceUrl + "/api/secrets/pages/" + pageData.get("id") + "/token",
                         tokenRequest,
                         Map.class
                     );
@@ -155,6 +159,9 @@ public class EventController {
         }
     }
 
+    /**
+     * Pulls events for all connected pages and upserts them into the local event store.
+     */
     @PostMapping("/ingest")
     @SuppressWarnings("unchecked")
     public ResponseEntity<Map<String, Object>> handleIngest() {
@@ -325,6 +332,9 @@ public class EventController {
         }
     }
 
+    /**
+     * Refreshes all stored page tokens and updates refresh metadata on each page.
+     */
     @PostMapping("/refresh-tokens")
     @SuppressWarnings("unchecked")
     public ResponseEntity<Map<String, Object>> handleRefreshTokens() {

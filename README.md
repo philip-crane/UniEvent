@@ -1,15 +1,16 @@
 # UniEventServer - Microservices Architecture
 
-This project has been refactored into independent microservices that can run separately for better scalability and maintainability.
+This project is structured as independent Spring Boot microservices that can run separately for better scalability and maintainability.
 
 ## Architecture Overview
 
-The application is now split into four independent services:
+The application is split into five independent services:
 
 1. **Main Service** (Port 8080) - Event management and orchestration
 2. **Facebook Service** (Port 8081) - Facebook API integration
 3. **Secret Manager Service** (Port 8082) - GCP Secret Manager operations
 4. **Storage Service** (Port 8083) - GCP Cloud Storage operations
+5. **Core Service** (Port 8084) - Core metadata and service discovery
 
 ## Service Descriptions
 
@@ -43,9 +44,15 @@ The application is now split into four independent services:
 - **Endpoints**:
   - `POST /api/storage/images` - Upload image data
   - `POST /api/storage/images/upload` - Upload multipart file
-  - `POST /api/storage/images/from-url` - Download and store image from URL
+  - `POST /api/storage/images/from-url` - Placeholder acknowledgement endpoint for URL ingestion
   - `GET /api/storage/images/{filePath}` - Get image info
   - `DELETE /api/storage/images/{filePath}` - Delete image
+
+### Core Service (Port 8084)
+- **Purpose**: Expose orchestration metadata and service discovery
+- **Endpoints**:
+  - `GET /api/core/health` - Core service health snapshot
+  - `GET /api/core/capabilities` - Current downstream service URL contract
 
 ## Prerequisites
 
@@ -75,6 +82,7 @@ export GCP_STORAGE_BUCKET=your_storage_bucket_name
 export FACEBOOK_SERVICE_URL=http://localhost:8081
 export SECRET_MANAGER_SERVICE_URL=http://localhost:8082
 export STORAGE_SERVICE_URL=http://localhost:8083
+export CORE_SERVICE_URL=http://localhost:8084
 ```
 
 ## Running the Services
@@ -108,7 +116,11 @@ mvn spring-boot:run
 cd storage-service
 mvn spring-boot:run
 
-# Terminal 4: Main Service
+# Terminal 4: Core Service
+cd ../core-service
+mvn spring-boot:run
+
+# Terminal 5: Main Service
 cd ..
 mvn spring-boot:run
 ```
@@ -126,7 +138,14 @@ Services communicate via HTTP REST APIs:
 - Main Service → Facebook Service: OAuth and event data
 - Main Service → Secret Manager Service: Token storage/retrieval
 - Main Service → Storage Service: Image upload/download
+- Core Service → exposes central capability metadata for ops and integrations
 - All services are stateless and independently scalable
+
+## Project Documentation
+
+- Architecture details: `docs/ARCHITECTURE.md`
+- Endpoint inventory: `docs/API.md`
+- Environment template: `.env.example`
 
 ## Database Setup
 
@@ -223,7 +242,7 @@ Each service includes Spring Boot Actuator for monitoring:
 1. **Service Unavailable**: Check if all services are running and accessible
 2. **Database Connection**: Verify MySQL is running and credentials are correct
 3. **GCP Permissions**: Ensure service account has required GCP permissions
-4. **Port Conflicts**: Verify no other applications are using ports 8080-8083
+4. **Port Conflicts**: Verify no other applications are using ports 8080-8084
 
 ### Logs
 

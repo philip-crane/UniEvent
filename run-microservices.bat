@@ -23,6 +23,11 @@ start "Storage Service" cmd /c "cd storage-service && mvn spring-boot:run -Dspri
 
 timeout /t 5 /nobreak > nul
 
+echo Starting Core Service on port 8084...
+start "Core Service" cmd /c "cd core-service && mvn spring-boot:run -Dspring-boot.run.arguments=--server.port=8084"
+
+timeout /t 5 /nobreak > nul
+
 echo Starting Main Service on port 8080...
 mvn spring-boot:run
 
