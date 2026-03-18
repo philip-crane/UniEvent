@@ -8,6 +8,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 import java.util.List;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.Parameter;
 
 /**
  * REST Controller for Page endpoints (Organizers/Facebook Pages)
@@ -23,6 +27,7 @@ import java.util.List;
  */
 @RestController
 @RequestMapping("/api/pages")
+@Tag(name = "Pages", description = "Manage event organizer pages (Facebook pages)")
 public class PageController {
     
     @Autowired
@@ -40,6 +45,8 @@ public class PageController {
      * ]
      */
     @GetMapping
+    @Operation(summary = "Get all pages", description = "Retrieve all event organizer pages ordered by name")
+    @ApiResponse(responseCode = "200", description = "List of pages")
     public ResponseEntity<List<PageDTO>> getAllPages() {
         List<PageDTO> pages = pageService.getAllPages();
         return ResponseEntity.ok(pages);
@@ -56,6 +63,8 @@ public class PageController {
      * Example response: Smaller list of PageDTO with active: true
      */
     @GetMapping("/active")
+    @Operation(summary = "Get active pages", description = "Retrieve only pages with valid Facebook tokens")
+    @ApiResponse(responseCode = "200", description = "List of active pages")
     public ResponseEntity<List<PageDTO>> getActivePages() {
         List<PageDTO> pages = pageService.getActivePages();
         return ResponseEntity.ok(pages);
@@ -72,7 +81,10 @@ public class PageController {
      * Returns 404 if page doesn't exist
      */
     @GetMapping("/{id}")
-    public ResponseEntity<PageDTO> getPageById(@PathVariable String id) {
+    @Operation(summary = "Get page by ID", description = "Retrieve a single page by its Facebook ID")
+    @ApiResponse(responseCode = "200", description = "Page found")
+    @ApiResponse(responseCode = "404", description = "Page not found")
+    public ResponseEntity<PageDTO> getPageById(@PathVariable @Parameter(description = "Facebook page ID") String id) {
         PageDTO page = pageService.getPageById(id);
         
         if (page == null) {
@@ -93,8 +105,10 @@ public class PageController {
      * Useful for: Autocomplete/search feature
      */
     @GetMapping("/search")
+    @Operation(summary = "Search pages by name", description = "Search for pages using a partial name match (case-insensitive)")
+    @ApiResponse(responseCode = "200", description = "List of matching pages")
     public ResponseEntity<List<PageDTO>> searchPages(
-            @RequestParam(name = "name") String name) {
+            @RequestParam(name = "name") @Parameter(description = "Partial page name to search for") String name) {
         List<PageDTO> pages = pageService.searchPagesByName(name);
         return ResponseEntity.ok(pages);
     }
@@ -118,6 +132,8 @@ public class PageController {
      * Note: Internal fields (tokens, refresh status) are NOT in the response
      */
     @PostMapping
+    @Operation(summary = "Create a new page", description = "Create a new event organizer page")
+    @ApiResponse(responseCode = "201", description = "Page created successfully")
     public ResponseEntity<PageDTO> createPage(@Valid @RequestBody PageDTO pageDTO) {
         PageDTO created = pageService.savePage(pageDTO);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
@@ -138,8 +154,11 @@ public class PageController {
      * Use case: Update page name/picture when Facebook page changes
      */
     @PutMapping("/{id}")
+    @Operation(summary = "Update a page", description = "Update page information")
+    @ApiResponse(responseCode = "200", description = "Page updated successfully")
+    @ApiResponse(responseCode = "404", description = "Page not found")
     public ResponseEntity<PageDTO> updatePage(
-            @PathVariable String id,
+            @PathVariable @Parameter(description = "Facebook page ID") String id,
             @Valid @RequestBody PageDTO pageDTO) {
         pageDTO.setId(id);  // Ensure we're updating the right page
         PageDTO updated = pageService.savePage(pageDTO);
@@ -162,7 +181,10 @@ public class PageController {
      *          HTTP 404 Not Found (page doesn't exist)
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deletePage(@PathVariable String id) {
+    @Operation(summary = "Delete a page", description = "Delete a page and all its events (cascading delete)")
+    @ApiResponse(responseCode = "204", description = "Page deleted successfully")
+    @ApiResponse(responseCode = "404", description = "Page not found")
+    public ResponseEntity<Void> deletePage(@PathVariable @Parameter(description = "Facebook page ID") String id) {
         boolean deleted = pageService.deletePage(id);
         
         if (!deleted) {
