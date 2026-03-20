@@ -38,7 +38,7 @@ services:
       UNIEVENT_MEDIA_LOCATION: /app/media
 
     ports:
-      - "127.0.0.1:8080:8080"
+      - "8080:8080"
     volumes:
       - media-data:/app/media
     networks:
