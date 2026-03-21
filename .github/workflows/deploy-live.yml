@@ -85,7 +85,7 @@ jobs:
             ${COMPOSE_CMD} -f docker-compose.yml -f "${BOOTSTRAP_OVERRIDE}" up -d nginx certbot app mysql vault
 
             # Request initial certificate.
-            if ! ${COMPOSE_CMD} run --rm certbot certonly --webroot -w /var/www/certbot -d "${TLS_DOMAIN}" --agree-tos --no-eff-email -m "${LETSENCRYPT_EMAIL}"; then
+            if ! ${COMPOSE_CMD} run --rm --entrypoint certbot certbot certonly --webroot -w /var/www/certbot -d "${TLS_DOMAIN}" --agree-tos --no-eff-email -m "${LETSENCRYPT_EMAIL}"; then
               echo 'Certificate bootstrap failed. Debug logs:'
               ${COMPOSE_CMD} -f docker-compose.yml -f "${BOOTSTRAP_OVERRIDE}" logs --no-color --tail=120 nginx certbot || true
               ${COMPOSE_CMD} -f docker-compose.yml -f "${BOOTSTRAP_OVERRIDE}" down --remove-orphans || true
