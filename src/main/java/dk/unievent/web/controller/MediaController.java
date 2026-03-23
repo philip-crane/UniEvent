@@ -13,6 +13,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.List;
 
 @RestController
@@ -30,7 +31,12 @@ public class MediaController {
     @PostMapping
     public ResponseEntity<MediaEntity> upload(@RequestParam("file") MultipartFile file) throws IOException {
         String storedFilename = mediaService.store(file);
-        MediaEntity meta = new MediaEntity(file.getOriginalFilename(), file.getContentType(), storedFilename);
+        MediaEntity meta = MediaEntity.builder()
+                .filename(file.getOriginalFilename())
+                .contentType(file.getContentType())
+                .fileId(storedFilename)
+                .uploadedAt(Instant.now())
+                .build();
         repository.save(meta);
         return ResponseEntity.ok(meta);
     }
@@ -39,8 +45,8 @@ public class MediaController {
     public ResponseEntity<Resource> download(@PathVariable Long id) throws IOException {
         MediaEntity media = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Media not found: " + id));
-        // path stored in DB is the filename relative to storage root
-        Resource resource = mediaService.loadAsResource(media.getPath());
+        // fileId stored in DB is the SeaweedFS file ID
+        Resource resource = mediaService.loadAsResource(media.getFileId());
         String encoded = URLEncoder.encode(media.getFilename(), StandardCharsets.UTF_8);
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(media.getContentType()))

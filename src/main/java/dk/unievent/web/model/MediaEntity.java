@@ -2,6 +2,9 @@ package dk.unievent.web.model;
 
 import jakarta.persistence.*;
 import java.time.Instant;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -11,6 +14,8 @@ import lombok.Setter;
 @Getter
 @Setter
 @NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class MediaEntity {
 
     @Id
@@ -21,14 +26,10 @@ public class MediaEntity {
 
     private String contentType;
 
-    private String path;
+    /**
+     * SeaweedFS file ID (fid) for storage retrieval
+     */
+    private String fileId;
 
     private Instant uploadedAt;
-
-    public MediaEntity(String filename, String contentType, String path) {
-        this.filename = filename;
-        this.contentType = contentType;
-        this.path = path;
-        this.uploadedAt = Instant.now();
-    }
 }

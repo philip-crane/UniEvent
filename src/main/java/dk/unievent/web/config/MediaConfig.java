@@ -4,18 +4,44 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
 @Component
-@ConfigurationProperties(prefix = "unievent.media")
+@ConfigurationProperties(prefix = "unievent.media.seaweedfs")
 public class MediaConfig {
     /**
-     * Folder location for storing media files
+     * SeaweedFS Master URL (e.g., "localhost:9333")
      */
-    private String location = "media";
+    private String masterUrl = "localhost:9333";
 
-    public String getLocation() {
-        return location;
+    /**
+     * SeaweedFS Volume URL (e.g., "http://localhost:8080")
+     */
+    private String volumeUrl = "http://localhost:8080";
+
+    /**
+     * Replication factor for stored files
+     */
+    private int replicationFactor = 1;
+
+    public String getMasterUrl() {
+        return masterUrl;
     }
 
-    public void setLocation(String location) {
-        this.location = location;
+    public void setMasterUrl(String masterUrl) {
+        this.masterUrl = masterUrl;
+    }
+
+    public String getVolumeUrl() {
+        return volumeUrl;
+    }
+
+    public void setVolumeUrl(String volumeUrl) {
+        this.volumeUrl = volumeUrl;
+    }
+
+    public int getReplicationFactor() {
+        return replicationFactor;
+    }
+
+    public void setReplicationFactor(int replicationFactor) {
+        this.replicationFactor = replicationFactor;
     }
 }

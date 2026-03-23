@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import jakarta.validation.Valid;
 import java.io.IOException;
+import java.time.Instant;
 import java.util.List;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -234,7 +235,12 @@ public class EventController {
         
         // Store the file
         String storedFilename = mediaService.store(file);
-        MediaEntity mediaEntity = new MediaEntity(file.getOriginalFilename(), file.getContentType(), storedFilename);
+        MediaEntity mediaEntity = MediaEntity.builder()
+                .filename(file.getOriginalFilename())
+                .contentType(file.getContentType())
+                .fileId(storedFilename)
+                .uploadedAt(Instant.now())
+                .build();
         MediaEntity saved = mediaRepository.save(mediaEntity);
         
         // Update event with cover image

@@ -20,6 +20,32 @@ services:
       timeout: 5s
       retries: 5
 
+  weed-master:
+    image: chrislusf/seaweedfs:latest
+    container_name: unievent-weed-master
+    command: master -ip=weed-master
+    ports:
+      - "127.0.0.1:9333:9333"
+    networks:
+      - unievent-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9333/dir/status || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  weed-volume:
+    image: chrislusf/seaweedfs:latest
+    container_name: unievent-weed-volume
+    command: volume -master weed-master:9333 -port 8080 -ip=weed-volume
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      weed-master:
+        condition: service_healthy
+    networks:
+      - unievent-network
+
   app:
     build:
       context: .
@@ -31,15 +57,16 @@ services:
         condition: service_healthy
       vault:
         condition: service_healthy
+      weed-master:
+        condition: service_healthy
     environment:
       SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL:-jdbc:mysql://mysql:3306/unievent?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true}
       SPRING_DATASOURCE_USERNAME: ${MYSQL_USER}
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD}
-      UNIEVENT_MEDIA_LOCATION: /app/media
+      UNIEVENT_MEDIA_SEAWEEDFS_MASTER_URL: ${SEAWEEDFS_MASTER_URL:-weed-master:9333}
+      UNIEVENT_MEDIA_SEAWEEDFS_VOLUME_URL: ${SEAWEEDFS_VOLUME_URL:-http://weed-volume:8080}
     expose:
       - "8080"
-    volumes:
-      - media-data:/app/media
     networks:
       - unievent-network
 
@@ -110,7 +137,6 @@ services:
 
 volumes:
   mysql-data:
-  media-data:
   vault-data:
   letsencrypt:
   certbot-www:
