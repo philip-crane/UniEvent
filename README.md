@@ -37,3 +37,6 @@ TODO Database
 * Add Springdoc/Swagger API documentation // DONE
 * Remove unused dependency: spring-boot-starter-webflux // DONE
 * Add @Valid/@NotNull/@NotBlank validation annotations to DTOs // DONE
+
+TODO MEDIA
+* WHEN DOCKER DOWNED AND DOCKER UPPED IT FORGETS OLD MEDIA?????
