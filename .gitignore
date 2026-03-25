@@ -40,3 +40,7 @@ build/
 vault-init.json
 .env
 vault-init.json
+
+### LOCAL DEV ###
+certs/
+docker-compose.override.yml

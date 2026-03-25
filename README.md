@@ -1,6 +1,12 @@
 # UniEventServer
 
-Migration Strategy Checklist:
+## Local Dev Setup
+
+1. Copy the override file: `cp docker-compose.override.yml.example docker-compose.override.yml`
+2. Generate a self-signed cert: `mkdir -p certs && openssl req -x509 -nodes -days 3650 -newkey rsa:2048 -keyout certs/privkey.pem -out certs/fullchain.pem -subj "/CN=localhost"`
+3. Start the stack: `docker compose up -d`
+
+## Migration Strategy Checklist:
 
 Backend:
 - [x] Define endpoints
