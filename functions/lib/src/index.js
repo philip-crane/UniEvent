@@ -18,11 +18,19 @@ const express_1 = __importDefault(require("express"));
 const handlers_1 = require("./handlers");
 const endpoints_1 = require("./endpoints");
 const services_1 = require("./services");
+const utils_1 = require("./utils");
 // Helper: build dependencies for handlers. We set runtime env vars consumed by utils/services
 function buildDepsFromParams() {
-    const facebookService = new services_1.FacebookService();
-    const secretManagerService = new services_1.SecretManagerService();
-    const storageService = new services_1.StorageService();
+    const useMicroserviceDal = utils_1.config.integration.useMicroserviceDal;
+    const facebookService = useMicroserviceDal
+        ? new services_1.RemoteFacebookService()
+        : new services_1.FacebookService();
+    const secretManagerService = useMicroserviceDal
+        ? new services_1.RemoteSecretManagerService()
+        : new services_1.SecretManagerService();
+    const storageService = useMicroserviceDal
+        ? new services_1.RemoteStorageService()
+        : new services_1.StorageService();
     const dataStoreService = new services_1.DataStoreService();
     return { facebookService, secretManagerService, storageService, dataStoreService };
 }

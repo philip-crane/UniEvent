@@ -20,3 +20,7 @@ __exportStar(require("./FacebookService"), exports);
 __exportStar(require("./DataStoreService"), exports);
 __exportStar(require("./SecretManagerService"), exports);
 __exportStar(require("./StorageService"), exports);
+__exportStar(require("./RemoteFacebookService"), exports);
+__exportStar(require("./RemoteSecretManagerService"), exports);
+__exportStar(require("./RemoteStorageService"), exports);
+__exportStar(require("./contracts"), exports);

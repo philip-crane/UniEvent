@@ -17,5 +17,14 @@ exports.config = {
     },
     gcloud: {
         projectId: process.env.GCP_PROJECT_ID || process.env.GOOGLE_CLOUD_PROJECT,
+    },
+    integration: {
+        // When enabled, functions delegates Facebook/Secret/Storage calls to UniEventServer microservices.
+        useMicroserviceDal: String(process.env.FUNCTIONS_USE_MICROSERVICE_DAL || '').toLowerCase() === 'true',
+    },
+    services: {
+        facebookUrl: process.env.FACEBOOK_SERVICE_URL || 'http://localhost:8081',
+        secretManagerUrl: process.env.SECRET_MANAGER_SERVICE_URL || 'http://localhost:8082',
+        storageUrl: process.env.STORAGE_SERVICE_URL || 'http://localhost:8083',
     }
 };

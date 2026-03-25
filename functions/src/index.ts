@@ -14,16 +14,28 @@ import {
 import { bindEndpoints, withActiveHandlers } from './endpoints';
 import {
 	FacebookService,
+	RemoteFacebookService,
+	RemoteSecretManagerService,
+	RemoteStorageService,
 	SecretManagerService,
 	StorageService,
 	DataStoreService,
 } from './services';
+import { config } from './utils';
 
 // Helper: build dependencies for handlers. We set runtime env vars consumed by utils/services
 function buildDepsFromParams() {
-	const facebookService = new FacebookService();
-	const secretManagerService = new SecretManagerService();
-	const storageService = new StorageService();
+	const useMicroserviceDal = config.integration.useMicroserviceDal;
+
+	const facebookService = useMicroserviceDal
+		? new RemoteFacebookService()
+		: new FacebookService();
+	const secretManagerService = useMicroserviceDal
+		? new RemoteSecretManagerService()
+		: new SecretManagerService();
+	const storageService = useMicroserviceDal
+		? new RemoteStorageService()
+		: new StorageService();
 	const dataStoreService = new DataStoreService();
 
 	return { facebookService, secretManagerService, storageService, dataStoreService } as const;
