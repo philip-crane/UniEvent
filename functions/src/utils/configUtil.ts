@@ -24,5 +24,11 @@ export const config = {
         facebookUrl: process.env.FACEBOOK_SERVICE_URL || 'http://localhost:8081',
         secretManagerUrl: process.env.SECRET_MANAGER_SERVICE_URL || 'http://localhost:8082',
         storageUrl: process.env.STORAGE_SERVICE_URL || 'http://localhost:8083',
+    },
+    cors: {
+        allowedOrigins: String(process.env.CORS_ALLOWED_ORIGINS || process.env.CLIENT_ORIGIN || '')
+            .split(',')
+            .map(origin => origin.trim())
+            .filter(Boolean),
     }
 };

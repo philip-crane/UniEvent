@@ -143,6 +143,29 @@ export async function handleScheduleIngest(event?: any) {
 }
 
 export const app = express();
+app.use((req, res, next) => {
+	const requestOrigin = req.headers.origin;
+	const allowedOrigins = config.cors.allowedOrigins;
+
+	if (!requestOrigin) {
+		next();
+		return;
+	}
+
+	if (allowedOrigins.length === 0 || allowedOrigins.includes(requestOrigin)) {
+		res.header('Access-Control-Allow-Origin', requestOrigin);
+		res.header('Vary', 'Origin');
+		res.header('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+		res.header('Access-Control-Allow-Headers', 'Content-Type,Authorization');
+	}
+
+	if (req.method === 'OPTIONS') {
+		res.status(204).send();
+		return;
+	}
+
+	next();
+});
 // JSON parsing is required for POST /events/manual and keeps future POST endpoints consistent.
 app.use(express.json());
 bindEndpoints(
