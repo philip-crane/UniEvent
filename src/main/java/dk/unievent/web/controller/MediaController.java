@@ -3,6 +3,13 @@ package dk.unievent.web.controller;
 import dk.unievent.web.model.MediaEntity;
 import dk.unievent.web.repository.MediaRepository;
 import dk.unievent.web.service.MediaService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -18,6 +25,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/media")
+@Tag(name = "Media Management", description = "APIs for uploading, downloading, and managing media files")
 public class MediaController {
 
     private final MediaService mediaService;
@@ -29,7 +37,19 @@ public class MediaController {
     }
 
     @PostMapping
-    public ResponseEntity<MediaEntity> upload(@RequestParam("file") MultipartFile file) throws IOException {
+    @Operation(
+        summary = "Upload a media file",
+        description = "Upload a file to SeaweedFS and store metadata in the database. Returns the created media record with ID and file ID."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "File uploaded successfully",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = MediaEntity.class))),
+        @ApiResponse(responseCode = "400", description = "Invalid or empty file"),
+        @ApiResponse(responseCode = "500", description = "Server error during file storage")
+    })
+    public ResponseEntity<MediaEntity> upload(
+        @Parameter(description = "File to upload", required = true)
+        @RequestParam("file") MultipartFile file) throws IOException {
         String storedFilename = mediaService.store(file);
         MediaEntity meta = MediaEntity.builder()
                 .filename(file.getOriginalFilename())
@@ -42,7 +62,19 @@ public class MediaController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Resource> download(@PathVariable Long id) throws IOException {
+    @Operation(
+        summary = "Download a media file",
+        description = "Download a media file by its ID. Retrieves the file from SeaweedFS and returns it with appropriate content type."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "File downloaded successfully",
+            content = @Content(mediaType = "application/octet-stream")),
+        @ApiResponse(responseCode = "404", description = "Media not found"),
+        @ApiResponse(responseCode = "500", description = "Error retrieving file from storage")
+    })
+    public ResponseEntity<Resource> download(
+        @Parameter(description = "Media file ID", required = true, example = "1")
+        @PathVariable Long id) throws IOException {
         MediaEntity media = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Media not found: " + id));
         // fileId stored in DB is the SeaweedFS file ID
@@ -55,6 +87,12 @@ public class MediaController {
     }
 
     @GetMapping
+    @Operation(
+        summary = "List all media files",
+        description = "Retrieve a list of all uploaded media files with their metadata."
+    )
+    @ApiResponse(responseCode = "200", description = "List of media files",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = MediaEntity.class)))
     public List<MediaEntity> list() {
         return repository.findAll();
     }
