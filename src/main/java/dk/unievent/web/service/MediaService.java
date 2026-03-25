@@ -18,13 +18,11 @@ import java.nio.file.Path;
 public class MediaService {
 
     private final String masterUrl;
-    private final String volumeUrl;
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
 
     public MediaService(MediaConfig config) {
         this.masterUrl = config.getMasterUrl();
-        this.volumeUrl = config.getVolumeUrl();
         this.restTemplate = new RestTemplate();
         this.objectMapper = new ObjectMapper();
     }
