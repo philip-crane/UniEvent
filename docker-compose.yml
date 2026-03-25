@@ -1,6 +1,6 @@
 services:
   mysql:
-    image: mysql:8.4
+    image: mysql:lts
     container_name: unievent-mysql
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
@@ -83,7 +83,7 @@ services:
     restart: unless-stopped
 
   nginx:
-    image: nginx:1.28.2-alpine
+    image: nginx:stable-alpine
     container_name: unievent-nginx
     restart: unless-stopped
     depends_on:
@@ -113,7 +113,7 @@ services:
       - unievent-network
 
   vault:
-    image: hashicorp/vault:1.21
+    image: hashicorp/vault:latest
     container_name: unievent-vault
     command: vault server -config=/vault/config/vault.hcl
     environment:
