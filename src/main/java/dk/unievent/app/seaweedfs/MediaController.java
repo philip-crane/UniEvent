@@ -16,7 +16,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 import dk.unievent.app.mysql.model.MediaEntity;
 import dk.unievent.app.mysql.repository.MediaRepository;
-import dk.unievent.app.seaweedfs.MediaService;
 
 import java.io.IOException;
 import java.net.URLEncoder;

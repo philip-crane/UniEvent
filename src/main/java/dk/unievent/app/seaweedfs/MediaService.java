@@ -3,8 +3,6 @@ package dk.unievent.app.seaweedfs;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import dk.unievent.app.seaweedfs.MediaConfig;
-
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.*;
