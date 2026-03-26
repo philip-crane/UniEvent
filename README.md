@@ -120,7 +120,7 @@ UniEventServer/
 - [ ] Implement pagination for large result sets
 - [ ] Add cascade delete / orphan removal for page deletion
 - [ ] Disable `show-sql` in production profile
-- [ ] SeaweedFS media volume is lost when Docker is downed, so...
+- [x] SeaweedFS media volume is lost when Docker is downed, so...
 
 ### API
 - [ ] Add missing HTTP methods: `updateEvent`, `deleteEvent`, etc.

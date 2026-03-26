@@ -41,6 +41,8 @@ services:
     depends_on:
       weed-master:
         condition: service_healthy
+    volumes:
+      - seaweedfs-data:/data
     networks:
       - unievent-network
 
@@ -135,6 +137,7 @@ services:
 
 volumes:
   mysql-data:
+  seaweedfs-data:
   vault-data:
   letsencrypt:
   certbot-www:
