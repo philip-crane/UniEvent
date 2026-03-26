@@ -28,6 +28,19 @@ jobs:
           echo "${{ secrets.LIVE_DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
           chmod 644 ~/.ssh/known_hosts
 
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: '25'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Run Maven tests
+        run: mvn test
+
       - name: Deploy on remote host
         env:
           DEPLOY_HOST: ${{ secrets.LIVE_DEPLOY_HOST }}
