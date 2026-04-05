@@ -1,147 +1,59 @@
-# UniEventServer    
+# UniEventServer
 
-## Local Dev Setup
+This document is the **non-technical** part of DTU Event documentation, for general users. For developer and contributor documentation, see [CONTRIBUTING.md](./CONTRIBUTING.md).
 
-1. Copy the override file: `cp docker-compose.override.yml.example docker-compose.override.yml`
-2. Generate a self-signed cert: `mkdir -p certs && openssl req -x509 -nodes -days 3650 -newkey rsa:2048 -keyout certs/privkey.pem -out certs/fullchain.pem -subj "/CN=localhost"`
-3. Start the stack: `docker compose up -d`
+This website will be a central registry for Technical University of Denmark (DTU)'s campus events from bars and cafes. It's called UniEvent rather than DTUEvent because DTU is trademarked. JS/Node/REACT frontend; Java/SpringBoot/MySQL backend. The site pulls through facebook's Graph API from a number of DTU Campus bars and nearby dorm bars. Note that we do not discriminate between Lyngby Campus and Ballerup Campus.
 
-## Project Structure
+DTU student events are currently fragmented across many Facebook pages (student orgs, bars, dorms, ad‑hoc groups). New and international students especially struggle to discover what is happening without already following 10-20 pages or relying on friends’ “Interested” notifs. UniEvent then provides a single neutral, lightweight, mobile‑friendly web feed aggregating events (initially via mock data + pages where we have admin tokens). A web app (instead of native) keeps scope realistic and instantly accessible.
 
-```
-UniEventServer/
-├── .github/workflows/
-│   └── deploy-live.yml          # CI/CD: SSH deploy to production on push to `live`
-├── deploy/
-│   ├── nginx.conf               # Nginx: production HTTP (ACME challenge support)
-│   ├── nginx-https.conf         # Nginx: production HTTPS (TLS 1.2+, HSTS, security headers)
-│   └── nginx-dev.conf           # Nginx: local dev HTTPS with self-signed cert
-├── vault/
-│   └── config/
-│       ├── vault.hcl            # HashiCorp Vault server config (file storage, TCP listener)
-│       └── policies/
-│           └── unievent-app.hcl # Vault policy: read-only access to secret/data/unievent
-├── certs/                       # Local dev self-signed TLS certs (gitignored)
-│   ├── fullchain.pem
-│   └── privkey.pem
-├── src/
-│   ├── main/
-│   │   ├── java/dk/unievent/app/
-│   │   │   ├── WebApplication.java            # Spring Boot entry point
-│   │   │   ├── core/
-│   │   │   │   ├── config/
-│   │   │   │   │   └── OpenApiConfig.java     # Swagger / SpringDoc setup
-│   │   │   │   ├── controller/
-│   │   │   │   │   ├── EventController.java
-│   │   │   │   │   ├── PageController.java
-│   │   │   │   │   └── PlaceController.java
-│   │   │   │   ├── dto/
-│   │   │   │   │   ├── EventDTO.java
-│   │   │   │   │   ├── LocationDTO.java
-│   │   │   │   │   ├── PageDTO.java
-│   │   │   │   │   └── PlaceDTO.java
-│   │   │   │   ├── handler/
-│   │   │   │   │   └── GlobalExceptionHandler.java
-│   │   │   │   ├── mapper/
-│   │   │   │   │   ├── EventMapper.java
-│   │   │   │   │   ├── PageMapper.java
-│   │   │   │   │   └── PlaceMapper.java
-│   │   │   │   └── service/
-│   │   │   │       ├── EventService.java
-│   │   │   │       ├── PageService.java
-│   │   │   │       └── PlaceService.java
-│   │   │   ├── facebook/
-│   │   │   │   └── SecurityConfig.java        # OAuth2/Facebook config (not yet active)
-│   │   │   ├── mysql/
-│   │   │   │   ├── model/
-│   │   │   │   │   ├── EventEntity.java
-│   │   │   │   │   ├── MediaEntity.java
-│   │   │   │   │   ├── PageEntity.java
-│   │   │   │   │   └── PlaceEntity.java
-│   │   │   │   └── repository/
-│   │   │   │       ├── EventRepository.java
-│   │   │   │       ├── MediaRepository.java
-│   │   │   │       ├── PageRepository.java
-│   │   │   │       └── PlaceRepository.java
-│   │   │   ├── seaweedfs/
-│   │   │   │   ├── MediaConfig.java
-│   │   │   │   ├── MediaController.java
-│   │   │   │   └── MediaService.java
-│   │   │   └── vault/
-│   │   │       ├── VaultClient.java           # HashiCorp Vault HTTP client
-│   │   │       └── VaultProperties.java
-│   │   └── resources/
-│   │       ├── application.yaml              # Root config (imports the below)
-│   │       ├── mysql.yaml                    # Datasource + JPA settings
-│   │       ├── vault.yaml                    # Vault connection settings
-│   │       ├── seaweedfs.yaml                # SeaweedFS master/volume URLs
-│   │       └── facebook.yaml                 # OAuth2 config (not yet active)
-│   └── test/
-│       ├── java/dk/unievent/app/
-│       │   ├── WebApplicationTests.java
-│       │   ├── dto/                           # DTO validation unit tests
-│       │   ├── integration/                   # Full API integration tests
-│       │   ├── mapper/                        # Mapper unit tests
-│       │   ├── repository/                    # Repository query tests
-│       │   ├── service/                       # Service unit tests
-│       │   └── vault/                         # Vault client tests
-│       └── resources/
-│           ├── application-test.yaml         # Test root config
-│           ├── mysql-test.yaml               # H2 in-memory DB (MySQL mode)
-│           └── vault-test.yaml               # Vault disabled for tests
-├── docker-compose.yml                        # Full stack: app, mysql, vault, seaweedfs, nginx, certbot
-├── docker-compose.override.yml               # Local dev overrides (gitignored)
-├── docker-compose.override.yml.example       # Template for the above
-├── Dockerfile                                # Multi-stage build: JDK build → JRE runtime
-├── .env                                      # Local env vars / DB credentials (gitignored)
-└── pom.xml                                   # Maven build, Java 25, Spring Boot 4.x
-```
+## Stakeholders
 
-## TODO
+- Students (primary) - need a simple, reliable overview of upcoming social and academic events.
+- Organizers (secondary: PF, bars, dorm committees, study orgs) - want increased, predictable reach and less manual promotion overhead.
+- DTU administration (tertiary) - benefits from stronger social cohesion & inclusion.
 
-### Big Tasks
-- [ ] Port /web frontend to backend
-- [ ] Facebook Page Organizer Onboarding Flow
-- [ ] Fix (auto) token refresh if possible lol
+## Team
 
-### Serverless Functions
-- [ ] FB Callback
-- [ ] FB -> DB Ingest
-- [ ] Tokens
+Or "TonkaProductions". Note that all contribute code.
 
-### Security
-- [ ] Add authentication & authorization - all API endpoints are currently public lol
-- [ ] Configure CORS
-- [ ] Restrict `/actuator/health` details (currently exposes DB/memory info publicly lol)
+- Christian, Phillip - Technical Leads, Backend
+- Espen (joined later) - Backend
+- Akkash, Hannah, Lilian - Frontend
+- Ollie (former) - Backend, testing
+- Linh (former) - Frontend
 
-### Database
-- [ ] Replace `ddl-auto: update` with Flyway or Liquibase migrations
-- [ ] Fix N+1 query problem with JOIN FETCH in repositories
-- [ ] Implement pagination for large result sets
-- [ ] Add cascade delete / orphan removal for page deletion
-- [ ] Disable `show-sql` in production profile
-- [x] SeaweedFS media volume is lost when Docker is downed, so...
+## List
 
-### API
-- [ ] Add missing HTTP methods: `updateEvent`, `deleteEvent`, etc.
-- [ ] Add SLF4J logging throughout services (im not sure what this is lol but claude suggested it)
+Below are the pages for bars at DTU. Note well that some events are not listed through these pages, but those dedicated to social gatherings.
 
-### Testing
-- [ ] Add Testcontainers for integration tests (currently uses H2, not real MySQL)
-- [ ] Add `mvn test` step to CI pipeline before deploying
-- [ ] Add rollback mechanism to deploy script
+### Bars
 
-### Frontend
-- [ ] User favorites and personalization
-- [ ] FB authentication (Facebook OAuth)
-- [ ] Business Manager integration for stable API access
-- [ ] Page admin dashboard for managing event sync
+- Diagonalen (The Diagonal): <https://www.facebook.com/DiagonalenDTU>
+- Diamanten (The Diamond): <https://www.facebook.com/DiamantenDTU>
+- Etheren (The Ether): <https://www.facebook.com/EtherenDTU>
+- Hegnet (The Fence): <https://www.facebook.com/hegnetdtu>
+- S-Huset (S-House): <https://www.facebook.com/shuset.dk>
+- Verners Kælder (Verner's Cellar), Ballerup: <https://www.facebook.com/vernerskaelder>
 
-### Nice-To-Have
-- [ ] Make more mobile-friendly
-- [ ] Location mapping
-- [ ] Manual event submission (fallback for pages without dedicated event)
-- [ ] Event categorization (academic, social, etc.)
-- [ ] Event moderation and approval system
-- [ ] Analytics dashboard for event engagement
-- [ ] Notification system for page admins (event sync status, token expiration)
+### Dorm Bars Near Lyngby Campus
+
+- Nakkeosten (The Neck Cheese), Ostenfeld Dorm: <https://www.facebook.com/Nakkeosten>
+- Saxen (The Sax), Kampsax Dorm: <https://www.facebook.com/kampsax/?locale=da_DK>
+
+### Dorms Further Away From Lyngby Campus
+
+- Række 0 (Row 0), Trørød Dorm, 11 km: <https://www.facebook.com/profile.php?id=100073724250125>
+- Falladen (The Fail), P.O: Pedersen Dorm, 5 km: <https://www.facebook.com/POPSARRANGEMENTER/>
+- Pauls Ølstue (Paul's Beer Room), Paul Bergsøe Dorm, 5 km: <https://www.facebook.com/p/Pauls-%C3%98lstue-100057429738696/>
+
+### Event Pages
+
+- SenSommerFest (Latesummer Party): <https://www.facebook.com/SenSommerfest>
+- Egmont Kollegiets Festival (Egmont Dorm Festival): <https://www.facebook.com/profile.php?id=100063867437478>
+
+### Missing
+
+The dorms below have no dedicated bars, but still have parties over the summer.
+
+- William Demant Dorm, 2 km
+- Villum Kann Rasmussen Dorm, 1 km
