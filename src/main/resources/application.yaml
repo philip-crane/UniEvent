@@ -15,4 +15,9 @@ management:
         include: health,info,metrics
   endpoint:
     health:
-      show-details: always
+      show-details: when_authorized
+      show-components: when_authorized
+
+unievent:
+  security:
+    allowed-origins: ${UNIEVENT_SECURITY_ALLOWED_ORIGINS:http://localhost:3000,http://127.0.0.1:3000}
