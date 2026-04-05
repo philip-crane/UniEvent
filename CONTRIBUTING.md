@@ -4,6 +4,25 @@ This document is the **technical** part of DTU Event documentation, for general 
 
 We had previously created a version of UniEvent called DTUEvent hosted on Google Cloud and Firebase. Now, we wish to rename the site (to avoid trademark violations) and host it on our own remote hosted server backend, plus add features, e.g. login. 
 
+## Tech Stack
+
+UniEventServer currently runs as a Java/Spring backend with Dockerized infrastructure services.
+
+- Java (Language, Runtime)
+- Maven (Build Tool)
+- Spring Boot (Application Development Framework)
+    - Spring Web (REST API)
+	- Spring Data JPA (database access)
+	- Spring Validation (DTO validation)
+	- Spring OAuth2 Client (Facebook auth flow groundwork)
+	- Spring Actuator (health/ops endpoints)
+    - Lombok (Boilerplate reduction:)
+- MySQL (MySQL)
+- ORM: JPA/Hibernate (ORM)
+- H2 (Test)
+- SeaweedFS (Media Storage)
+- HashiCorp Vault (Secret Storage)
+
 ## Setup
 
 1. Get .env file and place in root
