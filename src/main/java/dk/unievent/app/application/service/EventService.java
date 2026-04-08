@@ -90,9 +90,7 @@ public class EventService {
         EventEntity entity = eventMapper.toEntity(eventDTO);
 
         if (eventDTO.getPageId() != null) {
-            PageEntity page = pageRepository.findById(eventDTO.getPageId())
-                    .orElseThrow(() -> new NoSuchElementException("Page not found: " + eventDTO.getPageId()));
-            entity.setPage(page);
+            entity.setPage(getPageOrThrow(eventDTO.getPageId()));
         }
 
         if (eventDTO.getCoverImageId() != null) {
@@ -122,9 +120,7 @@ public class EventService {
         }
 
         if (eventDTO.getPageId() != null) {
-            PageEntity page = pageRepository.findById(eventDTO.getPageId())
-                    .orElseThrow(() -> new NoSuchElementException("Page not found: " + eventDTO.getPageId()));
-            entity.setPage(page);
+            entity.setPage(getPageOrThrow(eventDTO.getPageId()));
         }
 
         if (eventDTO.getCoverImageId() != null) {
@@ -163,5 +159,10 @@ public class EventService {
             return true;
         }
         return false;
+    }
+
+    private PageEntity getPageOrThrow(String pageId) {
+        return pageRepository.findById(pageId)
+                .orElseThrow(() -> new NoSuchElementException("Page not found: " + pageId));
     }
 }
