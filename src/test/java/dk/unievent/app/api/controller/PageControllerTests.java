@@ -11,6 +11,11 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableHandlerMethodArgumentResolver;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
@@ -49,6 +54,7 @@ class PageControllerTests {
         mockMvc = MockMvcBuilders
             .standaloneSetup(pageController)
             .setControllerAdvice(new GlobalExceptionHandler())
+            .setCustomArgumentResolvers(new PageableHandlerMethodArgumentResolver())
             .build();
         objectMapper = new ObjectMapper().findAndRegisterModules();
     }
@@ -75,13 +81,15 @@ class PageControllerTests {
 
     @Test
     void searchPagesShouldUseNameParameter() throws Exception {
-        when(pageService.searchPagesByName("uni")).thenReturn(List.of(samplePage("page-1", "UniEvent")));
+        PageDTO page = samplePage("page-1", "UniEvent");
+        Page<PageDTO> pageResult = new PageImpl<>(List.of(page), PageRequest.of(0, 20), 1);
+        when(pageService.searchPagesByName(eq("uni"), any(Pageable.class))).thenReturn(pageResult);
 
-        mockMvc.perform(get("/api/pages/search").param("name", "uni"))
+        mockMvc.perform(get("/api/pages/search").param("name", "uni").param("page", "0").param("size", "20"))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$[0].id").value("page-1"));
+            .andExpect(jsonPath("$.content[0].id").value("page-1"));
 
-        verify(pageService).searchPagesByName("uni");
+        verify(pageService).searchPagesByName(eq("uni"), any(Pageable.class));
     }
 
     @Test

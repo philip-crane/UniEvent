@@ -1,5 +1,7 @@
 package dk.unievent.app.application.service;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -13,9 +15,7 @@ import dk.unievent.app.db.repository.PageRepository;
 import java.io.IOException;
 import java.time.Instant;
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 @Service
 public class PageService {
@@ -36,11 +36,9 @@ public class PageService {
         this.mediaRepository = mediaRepository;
     }
 
-    public List<PageDTO> getAllPages() {
-        return pageRepository.findAllByOrderByNameAsc()
-            .stream()
-            .map(pageMapper::toDTO)
-            .collect(Collectors.toList());
+    public Page<PageDTO> getAllPages(Pageable pageable) {
+        return pageRepository.findAllByOrderByNameAsc(pageable)
+            .map(pageMapper::toDTO);
     }
 
     public PageDTO getPageById(String id) {
@@ -48,29 +46,23 @@ public class PageService {
         return entity.map(pageMapper::toDTO).orElse(null);
     }
 
-    public List<PageDTO> getActivePages() {
-        return pageRepository.findByTokenStatusOrderByNameAsc("valid")
-            .stream()
-            .map(pageMapper::toDTO)
-            .collect(Collectors.toList());
+    public Page<PageDTO> getActivePages(Pageable pageable) {
+        return pageRepository.findByTokenStatusOrderByNameAsc("valid", pageable)
+            .map(pageMapper::toDTO);
     }
 
-    public List<PageEntity> getPagesToRefresh() {
-        return pageRepository.findPagesToRefresh(LocalDateTime.now());
+    public Page<PageEntity> getPagesToRefresh(Pageable pageable) {
+        return pageRepository.findPagesToRefresh(LocalDateTime.now(), pageable);
     }
 
-    public List<PageDTO> getExpiredPages() {
-        return pageRepository.findByTokenExpiresAtLessThanOrderByTokenExpiresAtAsc(LocalDateTime.now())
-            .stream()
-            .map(pageMapper::toDTO)
-            .collect(Collectors.toList());
+    public Page<PageDTO> getExpiredPages(Pageable pageable) {
+        return pageRepository.findByTokenExpiresAtLessThanOrderByTokenExpiresAtAsc(LocalDateTime.now(), pageable)
+            .map(pageMapper::toDTO);
     }
 
-    public List<PageDTO> searchPagesByName(String name) {
-        return pageRepository.findByNameIgnoreCase(name)
-            .stream()
-            .map(pageMapper::toDTO)
-            .collect(Collectors.toList());
+    public Page<PageDTO> searchPagesByName(String name, Pageable pageable) {
+        return pageRepository.findByNameIgnoreCase(name, pageable)
+            .map(pageMapper::toDTO);
     }
 
     public PageDTO savePage(PageDTO pageDTO) {

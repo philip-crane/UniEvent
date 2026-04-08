@@ -3,6 +3,8 @@ package dk.unievent.app.integration;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -12,7 +14,6 @@ import dk.unievent.app.db.model.PageEntity;
 import dk.unievent.app.db.repository.PageRepository;
 
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -70,12 +71,12 @@ class PageIntegrationTests {
         createTestPage("page-2", "Page Two");
         createTestPage("page-3", "Page Three");
         
-        List<PageDTO> allPages = pageService.getAllPages();
+        Page<PageDTO> allPages = pageService.getAllPages(PageRequest.of(0, 20));
         
-        assertEquals(3, allPages.size());
-        assertTrue(allPages.stream().anyMatch(p -> "Page One".equals(p.getName())));
-        assertTrue(allPages.stream().anyMatch(p -> "Page Two".equals(p.getName())));
-        assertTrue(allPages.stream().anyMatch(p -> "Page Three".equals(p.getName())));
+        assertEquals(3, allPages.getContent().size());
+        assertTrue(allPages.getContent().stream().anyMatch(p -> "Page One".equals(p.getName())));
+        assertTrue(allPages.getContent().stream().anyMatch(p -> "Page Two".equals(p.getName())));
+        assertTrue(allPages.getContent().stream().anyMatch(p -> "Page Three".equals(p.getName())));
     }
     
     @Test
@@ -84,10 +85,10 @@ class PageIntegrationTests {
         createDatabasePage("page-2", "Inactive Page", "expired");
         createDatabasePage("page-3", "Another Active", "valid");
         
-        List<PageDTO> activePages = pageService.getActivePages();
+        Page<PageDTO> activePages = pageService.getActivePages(PageRequest.of(0, 20));
         
-        assertEquals(2, activePages.size());
-        assertTrue(activePages.stream().allMatch(PageDTO::getActive));
+        assertEquals(2, activePages.getContent().size());
+        assertTrue(activePages.getContent().stream().allMatch(PageDTO::getActive));
     }
     
     @Test
@@ -113,10 +114,10 @@ class PageIntegrationTests {
         createTestPage("page-2", "Pumpehuset");
         createTestPage("page-3", "Slotsholmen");
         
-        List<PageDTO> searchResults = pageService.searchPagesByName("s-huset");
+        Page<PageDTO> searchResults = pageService.searchPagesByName("s-huset", PageRequest.of(0, 20));
         
-        assertEquals(1, searchResults.size());
-        assertEquals("S-huset", searchResults.get(0).getName());
+        assertEquals(1, searchResults.getContent().size());
+        assertEquals("S-huset", searchResults.getContent().get(0).getName());
     }
     
     @Test
@@ -125,9 +126,9 @@ class PageIntegrationTests {
         createTestPage("page-2", "S-huset");
         createTestPage("page-3", "Pumpehuset");
         
-        List<PageDTO> searchResults = pageService.searchPagesByName("S-huset");
+        Page<PageDTO> searchResults = pageService.searchPagesByName("S-huset", PageRequest.of(0, 20));
         
-        assertEquals(2, searchResults.size());
+        assertEquals(2, searchResults.getContent().size());
     }
     
     // ============= Update Tests =============

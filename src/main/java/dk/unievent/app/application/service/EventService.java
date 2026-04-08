@@ -1,5 +1,7 @@
 package dk.unievent.app.application.service;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -16,10 +18,8 @@ import dk.unievent.app.db.repository.PageRepository;
 import java.io.IOException;
 import java.time.Instant;
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 @Service
 public class EventService {
@@ -46,18 +46,14 @@ public class EventService {
         this.mediaService = mediaService;
     }
 
-    public List<EventDTO> getAllEvents() {
-        return eventRepository.findAllByOrderByStartTimeAsc()
-                .stream()
-                .map(eventMapper::toDTO)
-                .collect(Collectors.toList());
+    public Page<EventDTO> getAllEvents(Pageable pageable) {
+        return eventRepository.findAllByOrderByStartTimeAsc(pageable)
+                .map(eventMapper::toDTO);
     }
 
-    public List<EventDTO> getFutureEvents() {
-        return eventRepository.findByStartTimeGreaterThanEqualOrderByStartTimeAsc(LocalDateTime.now())
-                .stream()
-                .map(eventMapper::toDTO)
-                .collect(Collectors.toList());
+    public Page<EventDTO> getFutureEvents(Pageable pageable) {
+        return eventRepository.findByStartTimeGreaterThanEqualOrderByStartTimeAsc(LocalDateTime.now(), pageable)
+                .map(eventMapper::toDTO);
     }
 
     public EventDTO getEventById(String id) {
@@ -65,25 +61,19 @@ public class EventService {
         return entity.map(eventMapper::toDTO).orElse(null);
     }
 
-    public List<EventDTO> getEventsByPageId(String pageId) {
-        return eventRepository.findByPageIdOrderByStartTimeAsc(pageId)
-                .stream()
-                .map(eventMapper::toDTO)
-                .collect(Collectors.toList());
+    public Page<EventDTO> getEventsByPageId(String pageId, Pageable pageable) {
+        return eventRepository.findByPageIdOrderByStartTimeAsc(pageId, pageable)
+                .map(eventMapper::toDTO);
     }
 
-    public List<EventDTO> getFutureEventsByPageId(String pageId) {
-        return eventRepository.findByPageIdAndStartTimeGreaterThanEqualOrderByStartTimeAsc(pageId, LocalDateTime.now())
-                .stream()
-                .map(eventMapper::toDTO)
-                .collect(Collectors.toList());
+    public Page<EventDTO> getFutureEventsByPageId(String pageId, Pageable pageable) {
+        return eventRepository.findByPageIdAndStartTimeGreaterThanEqualOrderByStartTimeAsc(pageId, LocalDateTime.now(), pageable)
+                .map(eventMapper::toDTO);
     }
 
-    public List<EventDTO> getEventsByPlaceId(String placeId) {
-        return eventRepository.findByPlaceIdOrderByStartTimeAsc(placeId)
-                .stream()
-                .map(eventMapper::toDTO)
-                .collect(Collectors.toList());
+    public Page<EventDTO> getEventsByPlaceId(String placeId, Pageable pageable) {
+        return eventRepository.findByPlaceIdOrderByStartTimeAsc(placeId, pageable)
+                .map(eventMapper::toDTO);
     }
 
     public EventDTO createEvent(EventDTO eventDTO) {

@@ -3,6 +3,8 @@ package dk.unievent.app.integration;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -12,7 +14,6 @@ import dk.unievent.app.application.service.PlaceService;
 import dk.unievent.app.db.model.PlaceEntity;
 import dk.unievent.app.db.repository.PlaceRepository;
 
-import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -86,12 +87,12 @@ class PlaceIntegrationTests {
         createTestPlace("place-cph-2", "Venue CPH 2", "Street 2", "Copenhagen");
         createTestPlace("place-aarhus", "Venue Aarhus", "Street 3", "Aarhus");
         
-        List<PlaceDTO> cphPlaces = placeService.getPlacesByCity("Copenhagen");
-        List<PlaceDTO> aarhusPlaces = placeService.getPlacesByCity("Aarhus");
+        Page<PlaceDTO> cphPlaces = placeService.getPlacesByCity("Copenhagen", PageRequest.of(0, 20));
+        Page<PlaceDTO> aarhusPlaces = placeService.getPlacesByCity("Aarhus", PageRequest.of(0, 20));
         
-        assertEquals(2, cphPlaces.size());
-        assertEquals(1, aarhusPlaces.size());
-        assertTrue(cphPlaces.stream().allMatch(p -> "Copenhagen".equals(p.getLocation().getCity())));
+        assertEquals(2, cphPlaces.getContent().size());
+        assertEquals(1, aarhusPlaces.getContent().size());
+        assertTrue(cphPlaces.getContent().stream().allMatch(p -> "Copenhagen".equals(p.getLocation().getCity())));
     }
     
     @Test
@@ -100,12 +101,12 @@ class PlaceIntegrationTests {
         createTestPlace("place-dk-2", "Venue Denmark 2", "Street 2", "Aarhus", "Denmark");
         createTestPlace("place-se", "Venue Sweden", "Street 3", "Stockholm", "Sweden");
         
-        List<PlaceDTO> danishPlaces = placeService.getPlacesByCountry("Denmark");
-        List<PlaceDTO> swedishPlaces = placeService.getPlacesByCountry("Sweden");
+        Page<PlaceDTO> danishPlaces = placeService.getPlacesByCountry("Denmark", PageRequest.of(0, 20));
+        Page<PlaceDTO> swedishPlaces = placeService.getPlacesByCountry("Sweden", PageRequest.of(0, 20));
         
-        assertEquals(2, danishPlaces.size());
-        assertEquals(1, swedishPlaces.size());
-        assertTrue(danishPlaces.stream().allMatch(p -> "Denmark".equals(p.getLocation().getCountry())));
+        assertEquals(2, danishPlaces.getContent().size());
+        assertEquals(1, swedishPlaces.getContent().size());
+        assertTrue(danishPlaces.getContent().stream().allMatch(p -> "Denmark".equals(p.getLocation().getCountry())));
     }
     
     @Test
@@ -113,13 +114,13 @@ class PlaceIntegrationTests {
         createTestPlace("place-cph-dk", "Venue Copenhagen", "Street 1", "Copenhagen", "Denmark");
         createTestPlace("place-cph-se", "Venue Stockholm", "Street 2", "Stockholm", "Sweden");
         
-        List<PlaceDTO> cphDkPlaces = placeService.getPlacesByCityAndCountry("Copenhagen", "Denmark");
-        List<PlaceDTO> stockholmPlaces = placeService.getPlacesByCityAndCountry("Stockholm", "Sweden");
-        List<PlaceDTO> noMatch = placeService.getPlacesByCityAndCountry("Paris", "France");
+        Page<PlaceDTO> cphDkPlaces = placeService.getPlacesByCityAndCountry("Copenhagen", "Denmark", PageRequest.of(0, 20));
+        Page<PlaceDTO> stockholmPlaces = placeService.getPlacesByCityAndCountry("Stockholm", "Sweden", PageRequest.of(0, 20));
+        Page<PlaceDTO> noMatch = placeService.getPlacesByCityAndCountry("Paris", "France", PageRequest.of(0, 20));
         
-        assertEquals(1, cphDkPlaces.size());
-        assertEquals(1, stockholmPlaces.size());
-        assertEquals(0, noMatch.size());
+        assertEquals(1, cphDkPlaces.getContent().size());
+        assertEquals(1, stockholmPlaces.getContent().size());
+        assertEquals(0, noMatch.getContent().size());
     }
     
     @Test
@@ -128,10 +129,10 @@ class PlaceIntegrationTests {
         createTestPlace("place-2", "Slotsholmen", "Street 2", "Copenhagen");
         createTestPlace("place-3", "Pumpehuset", "Street 3", "Copenhagen");
         
-        List<PlaceDTO> searchResults = placeService.searchByName("s-huset");
+        Page<PlaceDTO> searchResults = placeService.searchByName("s-huset", PageRequest.of(0, 20));
         
-        assertEquals(1, searchResults.size());
-        assertEquals("S-huset", searchResults.get(0).getName());
+        assertEquals(1, searchResults.getContent().size());
+        assertEquals("S-huset", searchResults.getContent().get(0).getName());
     }
     
     @Test
@@ -140,9 +141,9 @@ class PlaceIntegrationTests {
         createTestPlace("place-2", "S-huset", "Street 2", "Copenhagen");
         createTestPlace("place-3", "Pumpehuset", "Street 3", "Copenhagen");
         
-        List<PlaceDTO> searchResults = placeService.searchByName("S-huset");
+        Page<PlaceDTO> searchResults = placeService.searchByName("S-huset", PageRequest.of(0, 20));
         
-        assertEquals(2, searchResults.size());
+        assertEquals(2, searchResults.getContent().size());
     }
     
     // ============= Update Tests =============

@@ -6,10 +6,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -18,6 +20,8 @@ import static org.junit.jupiter.api.Assertions.*;
 @ActiveProfiles("test")
 @Transactional
 class SecretRepositoryTests {
+
+    private static final Pageable DEFAULT_PAGEABLE = PageRequest.of(0, 20);
 
     @Autowired
     private SecretRepository secretRepository;
@@ -71,26 +75,26 @@ class SecretRepositoryTests {
 
     @Test
     void testFindBySecretTypeOrderByNameAsc() {
-        List<SecretEntity> apiSecrets = secretRepository.findBySecretTypeOrderByNameAsc("api");
+        Page<SecretEntity> apiSecrets = secretRepository.findBySecretTypeOrderByNameAsc("api", DEFAULT_PAGEABLE);
 
-        assertEquals(2, apiSecrets.size());
-        assertEquals("api-token", apiSecrets.get(0).getName());
-        assertEquals("legacy-key", apiSecrets.get(1).getName());
+        assertEquals(2, apiSecrets.getContent().size());
+        assertEquals("api-token", apiSecrets.getContent().get(0).getName());
+        assertEquals("legacy-key", apiSecrets.getContent().get(1).getName());
     }
 
     @Test
     void testFindByStatusOrderByNameAsc() {
-        List<SecretEntity> activeSecrets = secretRepository.findByStatusOrderByNameAsc("active");
+        Page<SecretEntity> activeSecrets = secretRepository.findByStatusOrderByNameAsc("active", DEFAULT_PAGEABLE);
 
-        assertEquals(2, activeSecrets.size());
-        assertEquals("api-token", activeSecrets.get(0).getName());
-        assertEquals("database-password", activeSecrets.get(1).getName());
+        assertEquals(2, activeSecrets.getContent().size());
+        assertEquals("api-token", activeSecrets.getContent().get(0).getName());
+        assertEquals("database-password", activeSecrets.getContent().get(1).getName());
     }
 
     @Test
     void testFindByStatusOrderByNameAscNoResults() {
-        List<SecretEntity> rotatedSecrets = secretRepository.findByStatusOrderByNameAsc("rotated");
+        Page<SecretEntity> rotatedSecrets = secretRepository.findByStatusOrderByNameAsc("rotated", DEFAULT_PAGEABLE);
 
-        assertTrue(rotatedSecrets.isEmpty());
+        assertTrue(rotatedSecrets.getContent().isEmpty());
     }
 }

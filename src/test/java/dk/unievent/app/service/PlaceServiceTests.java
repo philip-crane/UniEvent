@@ -5,6 +5,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import dk.unievent.app.application.dto.LocationDTO;
 import dk.unievent.app.application.dto.PlaceDTO;
@@ -18,6 +22,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -86,90 +91,98 @@ class PlaceServiceTests {
     @Test
     void testGetPlacesByCity() {
         List<PlaceEntity> cityPlaces = List.of(testPlaceEntity);
-        when(placeRepository.findByCity("Test City")).thenReturn(cityPlaces);
+        Page<PlaceEntity> cityPlacesPage = new PageImpl<>(cityPlaces, PageRequest.of(0, 20), 1);
+        when(placeRepository.findByCity(eq("Test City"), any(Pageable.class))).thenReturn(cityPlacesPage);
         when(placeMapper.toDTO(testPlaceEntity)).thenReturn(testPlaceDTO);
         
-        List<PlaceDTO> result = placeService.getPlacesByCity("Test City");
+        Page<PlaceDTO> result = placeService.getPlacesByCity("Test City", PageRequest.of(0, 20));
         
-        assertEquals(1, result.size());
-        assertEquals("place-1", result.get(0).getId());
-        verify(placeRepository, times(1)).findByCity("Test City");
+        assertEquals(1, result.getContent().size());
+        assertEquals("place-1", result.getContent().get(0).getId());
+        verify(placeRepository, times(1)).findByCity(eq("Test City"), any(Pageable.class));
     }
     
     @Test
     void testGetPlacesByCityEmpty() {
-        when(placeRepository.findByCity("Unknown City")).thenReturn(List.of());
+        Page<PlaceEntity> emptyPage = new PageImpl<>(List.of(), PageRequest.of(0, 20), 0);
+        when(placeRepository.findByCity(eq("Unknown City"), any(Pageable.class))).thenReturn(emptyPage);
         
-        List<PlaceDTO> result = placeService.getPlacesByCity("Unknown City");
+        Page<PlaceDTO> result = placeService.getPlacesByCity("Unknown City", PageRequest.of(0, 20));
         
-        assertTrue(result.isEmpty());
+        assertTrue(result.getContent().isEmpty());
     }
     
     @Test
     void testGetPlacesByCountry() {
         List<PlaceEntity> countryPlaces = List.of(testPlaceEntity);
-        when(placeRepository.findByCountry("Test Country")).thenReturn(countryPlaces);
+        Page<PlaceEntity> countryPlacesPage = new PageImpl<>(countryPlaces, PageRequest.of(0, 20), 1);
+        when(placeRepository.findByCountry(eq("Test Country"), any(Pageable.class))).thenReturn(countryPlacesPage);
         when(placeMapper.toDTO(testPlaceEntity)).thenReturn(testPlaceDTO);
         
-        List<PlaceDTO> result = placeService.getPlacesByCountry("Test Country");
+        Page<PlaceDTO> result = placeService.getPlacesByCountry("Test Country", PageRequest.of(0, 20));
         
-        assertEquals(1, result.size());
-        verify(placeRepository, times(1)).findByCountry("Test Country");
+        assertEquals(1, result.getContent().size());
+        verify(placeRepository, times(1)).findByCountry(eq("Test Country"), any(Pageable.class));
     }
     
     @Test
     void testGetPlacesByCountryEmpty() {
-        when(placeRepository.findByCountry("Unknown Country")).thenReturn(List.of());
+        Page<PlaceEntity> emptyPage = new PageImpl<>(List.of(), PageRequest.of(0, 20), 0);
+        when(placeRepository.findByCountry(eq("Unknown Country"), any(Pageable.class))).thenReturn(emptyPage);
         
-        List<PlaceDTO> result = placeService.getPlacesByCountry("Unknown Country");
+        Page<PlaceDTO> result = placeService.getPlacesByCountry("Unknown Country", PageRequest.of(0, 20));
         
-        assertTrue(result.isEmpty());
+        assertTrue(result.getContent().isEmpty());
     }
     
     @Test
     void testGetPlacesByCityAndCountry() {
         List<PlaceEntity> places = List.of(testPlaceEntity);
-        when(placeRepository.findByCityAndCountry("Test City", "Test Country"))
-            .thenReturn(places);
+        Page<PlaceEntity> placesPage = new PageImpl<>(places, PageRequest.of(0, 20), 1);
+        when(placeRepository.findByCityAndCountry(eq("Test City"), eq("Test Country"), any(Pageable.class)))
+            .thenReturn(placesPage);
         when(placeMapper.toDTO(testPlaceEntity)).thenReturn(testPlaceDTO);
         
-        List<PlaceDTO> result = placeService.getPlacesByCityAndCountry("Test City", "Test Country");
+        Page<PlaceDTO> result = placeService.getPlacesByCityAndCountry("Test City", "Test Country", PageRequest.of(0, 20));
         
-        assertEquals(1, result.size());
-        verify(placeRepository, times(1)).findByCityAndCountry("Test City", "Test Country");
+        assertEquals(1, result.getContent().size());
+        verify(placeRepository, times(1)).findByCityAndCountry(eq("Test City"), eq("Test Country"), any(Pageable.class));
     }
     
     @Test
     void testGetPlacesByCityAndCountryEmpty() {
-        when(placeRepository.findByCityAndCountry("Unknown", "Unknown"))
-            .thenReturn(List.of());
+        Page<PlaceEntity> emptyPage = new PageImpl<>(List.of(), PageRequest.of(0, 20), 0);
+        when(placeRepository.findByCityAndCountry(eq("Unknown"), eq("Unknown"), any(Pageable.class)))
+            .thenReturn(emptyPage);
         
-        List<PlaceDTO> result = placeService.getPlacesByCityAndCountry("Unknown", "Unknown");
+        Page<PlaceDTO> result = placeService.getPlacesByCityAndCountry("Unknown", "Unknown", PageRequest.of(0, 20));
         
-        assertTrue(result.isEmpty());
+        assertTrue(result.getContent().isEmpty());
     }
     
     @Test
     void testSearchByName() {
         List<PlaceEntity> searchResults = List.of(testPlaceEntity);
-        when(placeRepository.findByNameIgnoreCase("test place"))
-            .thenReturn(searchResults);
+        Page<PlaceEntity> searchResultsPage = new PageImpl<>(searchResults, PageRequest.of(0, 20), 1);
+        when(placeRepository.findByNameIgnoreCase(eq("test place"), any(Pageable.class)))
+            .thenReturn(searchResultsPage);
         when(placeMapper.toDTO(testPlaceEntity)).thenReturn(testPlaceDTO);
         
-        List<PlaceDTO> result = placeService.searchByName("test place");
+        Page<PlaceDTO> result = placeService.searchByName("test place", PageRequest.of(0, 20));
         
-        assertEquals(1, result.size());
-        verify(placeRepository, times(1)).findByNameIgnoreCase("test place");
+        assertEquals(1, result.getContent().size());
+        verify(placeRepository, times(1)).findByNameIgnoreCase(eq("test place"), any(Pageable.class));
     }
     
     @Test
     void testSearchByNameEmpty() {
-        when(placeRepository.findByNameIgnoreCase("not-found"))
-            .thenReturn(List.of());
+        Page<PlaceEntity> emptyPage = new PageImpl<>(List.of(), PageRequest.of(0, 20), 0);
+        when(placeRepository.findByNameIgnoreCase(eq("not-found"), any(Pageable.class)))
+            .thenReturn(emptyPage);
         
-        List<PlaceDTO> result = placeService.searchByName("not-found");
+        Page<PlaceDTO> result = placeService.searchByName("not-found", PageRequest.of(0, 20));
         
-        assertTrue(result.isEmpty());
+        assertTrue(result.getContent().isEmpty());
     }
     
     @Test

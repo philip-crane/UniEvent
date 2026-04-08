@@ -1,6 +1,8 @@
 package dk.unievent.app.api.controller;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -8,7 +10,6 @@ import org.springframework.web.bind.annotation.*;
 import dk.unievent.app.application.dto.PlaceDTO;
 import dk.unievent.app.application.service.PlaceService;
 import jakarta.validation.Valid;
-import java.util.List;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -75,15 +76,15 @@ public class PlaceController {
      * 
      * Parameter: city = city name
      * Example: GET /api/places/city/Copenhagen
-     * Returns: List of PlaceDTO for all venues in Copenhagen
+     * Returns: Page of PlaceDTO for all venues in Copenhagen
      * 
      * Useful for: Map view - show all venues in a city
      */
     @GetMapping("/city/{city}")
     @Operation(summary = "Get places by city", description = "Find all venues in a specific city")
-    @ApiResponse(responseCode = "200", description = "List of places in the city")
-    public ResponseEntity<List<PlaceDTO>> getPlacesByCity(@PathVariable @Parameter(description = "City name") String city) {
-        List<PlaceDTO> places = placeService.getPlacesByCity(city);
+    @ApiResponse(responseCode = "200", description = "Page of places in the city")
+    public ResponseEntity<Page<PlaceDTO>> getPlacesByCity(@PathVariable @Parameter(description = "City name") String city, Pageable pageable) {
+        Page<PlaceDTO> places = placeService.getPlacesByCity(city, pageable);
         return ResponseEntity.ok(places);
     }
     
@@ -93,15 +94,15 @@ public class PlaceController {
      * 
      * Parameter: country = country name
      * Example: GET /api/places/country/Denmark
-     * Returns: List of PlaceDTO for all venues in Denmark
+     * Returns: Page of PlaceDTO for all venues in Denmark
      * 
      * Use case: Country-level event discovery
      */
     @GetMapping("/country/{country}")
     @Operation(summary = "Get places by country", description = "Find all venues in a specific country")
-    @ApiResponse(responseCode = "200", description = "List of places in the country")
-    public ResponseEntity<List<PlaceDTO>> getPlacesByCountry(@PathVariable @Parameter(description = "Country name") String country) {
-        List<PlaceDTO> places = placeService.getPlacesByCountry(country);
+    @ApiResponse(responseCode = "200", description = "Page of places in the country")
+    public ResponseEntity<Page<PlaceDTO>> getPlacesByCountry(@PathVariable @Parameter(description = "Country name") String country, Pageable pageable) {
+        Page<PlaceDTO> places = placeService.getPlacesByCountry(country, pageable);
         return ResponseEntity.ok(places);
     }
     
@@ -111,17 +112,18 @@ public class PlaceController {
      * 
      * Parameters: city, country
      * Example: GET /api/places/location/Copenhagen/Denmark
-     * Returns: List of PlaceDTO for venues in that city/country combo
+     * Returns: Page of PlaceDTO for venues in that city/country combo
      * 
      * More precise than just city (useful if city names repeat across countries)
      */
     @GetMapping("/location/{city}/{country}")
     @Operation(summary = "Get places by location", description = "Find venues in a specific city and country combination")
-    @ApiResponse(responseCode = "200", description = "List of places in the location")
-    public ResponseEntity<List<PlaceDTO>> getPlacesByLocation(
+    @ApiResponse(responseCode = "200", description = "Page of places in the location")
+    public ResponseEntity<Page<PlaceDTO>> getPlacesByLocation(
             @PathVariable @Parameter(description = "City name") String city,
-            @PathVariable @Parameter(description = "Country name") String country) {
-        List<PlaceDTO> places = placeService.getPlacesByCityAndCountry(city, country);
+            @PathVariable @Parameter(description = "Country name") String country,
+            Pageable pageable) {
+        Page<PlaceDTO> places = placeService.getPlacesByCityAndCountry(city, country, pageable);
         return ResponseEntity.ok(places);
     }
     
@@ -131,16 +133,17 @@ public class PlaceController {
      * 
      * Parameter: name (query param) = partial name to search
      * Example: GET /api/places/search?name=s-huset
-     * Returns: List of PlaceDTO matching that name
+     * Returns: Page of PlaceDTO matching that name
      * 
      * Useful for: Autocomplete when user selects a venue for an event
      */
     @GetMapping("/search")
     @Operation(summary = "Search places by name", description = "Search for venues using a partial name match (case-insensitive)")
-    @ApiResponse(responseCode = "200", description = "List of matching places")
-    public ResponseEntity<List<PlaceDTO>> searchPlaces(
-            @RequestParam(name = "name") @Parameter(description = "Partial place name to search for") String name) {
-        List<PlaceDTO> places = placeService.searchByName(name);
+    @ApiResponse(responseCode = "200", description = "Page of matching places")
+    public ResponseEntity<Page<PlaceDTO>> searchPlaces(
+            @RequestParam(name = "name") @Parameter(description = "Partial place name to search for") String name,
+            Pageable pageable) {
+        Page<PlaceDTO> places = placeService.searchByName(name, pageable);
         return ResponseEntity.ok(places);
     }
     

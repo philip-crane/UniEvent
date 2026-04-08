@@ -1,6 +1,7 @@
 package dk.unievent.app.api.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dk.unievent.app.api.handler.GlobalExceptionHandler;
 import dk.unievent.app.application.dto.LocationDTO;
 import dk.unievent.app.application.dto.PlaceDTO;
 import dk.unievent.app.application.service.PlaceService;
@@ -11,6 +12,11 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableHandlerMethodArgumentResolver;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -43,7 +49,11 @@ class PlaceControllerTests {
 
     @BeforeEach
     void setUp() {
-        mockMvc = MockMvcBuilders.standaloneSetup(placeController).build();
+        mockMvc = MockMvcBuilders
+            .standaloneSetup(placeController)
+            .setControllerAdvice(new GlobalExceptionHandler())
+            .setCustomArgumentResolvers(new PageableHandlerMethodArgumentResolver())
+            .build();
         objectMapper = new ObjectMapper().findAndRegisterModules();
     }
 
@@ -69,11 +79,13 @@ class PlaceControllerTests {
 
     @Test
     void getPlacesByCityShouldReturnList() throws Exception {
-        when(placeService.getPlacesByCity("Copenhagen")).thenReturn(List.of(samplePlace("place-1", "Venue")));
+        PlaceDTO place = samplePlace("place-1", "Venue");
+        Page<PlaceDTO> pageResult = new PageImpl<>(List.of(place), PageRequest.of(0, 20), 1);
+        when(placeService.getPlacesByCity(eq("Copenhagen"), any(Pageable.class))).thenReturn(pageResult);
 
-        mockMvc.perform(get("/api/places/city/Copenhagen"))
+        mockMvc.perform(get("/api/places/city/Copenhagen").param("page", "0").param("size", "20"))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$[0].id").value("place-1"));
+            .andExpect(jsonPath("$.content[0].id").value("place-1"));
     }
 
     @Test

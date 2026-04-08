@@ -4,6 +4,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,6 +23,8 @@ import static org.junit.jupiter.api.Assertions.*;
 @ActiveProfiles("test")
 @Transactional
 class PageRepositoryTests {
+
+    private static final Pageable DEFAULT_PAGEABLE = PageRequest.of(0, 20);
 
     @Autowired
     private PageRepository pageRepository;
@@ -103,12 +108,12 @@ class PageRepositoryTests {
         pageRepository.save(page3);
 
         
-        List<PageEntity> pages = pageRepository.findAllByOrderByNameAsc();
+        Page<PageEntity> pages = pageRepository.findAllByOrderByNameAsc(DEFAULT_PAGEABLE);
         
-        assertEquals(3, pages.size());
-        assertEquals("Alpha Page", pages.get(0).getName());
-        assertEquals("Test Page", pages.get(1).getName());
-        assertEquals("Zebra Page", pages.get(2).getName());
+        assertEquals(3, pages.getContent().size());
+        assertEquals("Alpha Page", pages.getContent().get(0).getName());
+        assertEquals("Test Page", pages.getContent().get(1).getName());
+        assertEquals("Zebra Page", pages.getContent().get(2).getName());
     }
     
     @Test
@@ -126,12 +131,12 @@ class PageRepositoryTests {
         pageRepository.save(validPage);
 
         
-        List<PageEntity> validPages = pageRepository.findByTokenStatusOrderByNameAsc("valid");
+        Page<PageEntity> validPages = pageRepository.findByTokenStatusOrderByNameAsc("valid", DEFAULT_PAGEABLE);
         
-        assertEquals(2, validPages.size());
-        assertTrue(validPages.stream().allMatch(p -> "valid".equals(p.getTokenStatus())));
-        assertEquals("Another Valid", validPages.get(0).getName());
-        assertEquals("Test Page", validPages.get(1).getName());
+        assertEquals(2, validPages.getContent().size());
+        assertTrue(validPages.getContent().stream().allMatch(p -> "valid".equals(p.getTokenStatus())));
+        assertEquals("Another Valid", validPages.getContent().get(0).getName());
+        assertEquals("Test Page", validPages.getContent().get(1).getName());
     }
     
     @Test
@@ -151,10 +156,29 @@ class PageRepositoryTests {
         pageRepository.save(futureExpirePage);
 
         
-        List<PageEntity> expiredPages = pageRepository.findByTokenExpiresAtLessThanOrderByTokenExpiresAtAsc(now);
+        Page<PageEntity> expiredPages = pageRepository.findByTokenExpiresAtLessThanOrderByTokenExpiresAtAsc(
+            now, DEFAULT_PAGEABLE);
         
-        assertEquals(1, expiredPages.size());
-        assertEquals("page-expired", expiredPages.get(0).getId());
+        assertEquals(1, expiredPages.getContent().size());
+        assertEquals("page-expired", expiredPages.getContent().get(0).getId());
+
+    }
+
+    @Test
+    void testFindPagesToRefresh() {
+        LocalDateTime now = LocalDateTime.now();
+
+        PageEntity expiredPage = new PageEntity();
+        expiredPage.setId("page-expired-refresh");
+        expiredPage.setName("Expired Refresh");
+        expiredPage.setTokenStatus("valid");
+        expiredPage.setTokenExpiresAt(now.minusDays(1));
+        pageRepository.save(expiredPage);
+
+        Page<PageEntity> pagesToRefresh = pageRepository.findPagesToRefresh(now, DEFAULT_PAGEABLE);
+
+        assertEquals(1, pagesToRefresh.getContent().size());
+        assertEquals("page-expired-refresh", pagesToRefresh.getContent().get(0).getId());
     }
     
     @Test

@@ -4,6 +4,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,6 +27,8 @@ import static org.junit.jupiter.api.Assertions.*;
 @ActiveProfiles("test")
 @Transactional
 class EventRepositoryTests {
+
+    private static final Pageable DEFAULT_PAGEABLE = PageRequest.of(0, 20);
 
     @Autowired
     private EventRepository eventRepository;
@@ -144,11 +149,11 @@ class EventRepositoryTests {
         eventRepository.save(event3);
 
         
-        List<EventEntity> events = eventRepository.findAllByOrderByStartTimeAsc();
+        Page<EventEntity> events = eventRepository.findAllByOrderByStartTimeAsc(DEFAULT_PAGEABLE);
         
-        assertEquals(3, events.size());
-        assertTrue(events.get(0).getStartTime().isBefore(events.get(1).getStartTime()));
-        assertTrue(events.get(1).getStartTime().isBefore(events.get(2).getStartTime()));
+        assertEquals(3, events.getContent().size());
+        assertTrue(events.getContent().get(0).getStartTime().isBefore(events.getContent().get(1).getStartTime()));
+        assertTrue(events.getContent().get(1).getStartTime().isBefore(events.getContent().get(2).getStartTime()));
     }
     
     @Test
@@ -173,10 +178,11 @@ class EventRepositoryTests {
         eventRepository.save(futureEvent);
 
         
-        List<EventEntity> futureEvents = eventRepository.findByStartTimeGreaterThanEqualOrderByStartTimeAsc(futureTime);
+        Page<EventEntity> futureEvents = eventRepository.findByStartTimeGreaterThanEqualOrderByStartTimeAsc(
+            futureTime, DEFAULT_PAGEABLE);
         
-        assertEquals(1, futureEvents.size());
-        assertTrue(futureEvents.stream().allMatch(e -> !e.getStartTime().isBefore(futureTime)));
+        assertEquals(1, futureEvents.getContent().size());
+        assertTrue(futureEvents.getContent().stream().allMatch(e -> !e.getStartTime().isBefore(futureTime)));
     }
     
     @Test
@@ -196,10 +202,10 @@ class EventRepositoryTests {
         eventRepository.save(event2);
 
         
-        List<EventEntity> pageEvents = eventRepository.findByPageIdOrderByStartTimeAsc("page-1");
+        Page<EventEntity> pageEvents = eventRepository.findByPageIdOrderByStartTimeAsc("page-1", DEFAULT_PAGEABLE);
         
-        assertEquals(1, pageEvents.size());
-        assertEquals("event-1", pageEvents.get(0).getId());
+        assertEquals(1, pageEvents.getContent().size());
+        assertEquals("event-1", pageEvents.getContent().get(0).getId());
     }
     
     @Test
@@ -215,11 +221,11 @@ class EventRepositoryTests {
         eventRepository.save(futureEvent);
 
         
-        List<EventEntity> pageEvents = eventRepository.findByPageIdAndStartTimeGreaterThanEqualOrderByStartTimeAsc(
-            "page-1", futureTime);
+        Page<EventEntity> pageEvents = eventRepository.findByPageIdAndStartTimeGreaterThanEqualOrderByStartTimeAsc(
+            "page-1", futureTime, DEFAULT_PAGEABLE);
         
-        assertEquals(1, pageEvents.size());
-        assertEquals("event-future", pageEvents.get(0).getId());
+        assertEquals(1, pageEvents.getContent().size());
+        assertEquals("event-future", pageEvents.getContent().get(0).getId());
     }
     
     @Test
@@ -238,10 +244,10 @@ class EventRepositoryTests {
         eventRepository.save(event2);
 
         
-        List<EventEntity> placeEvents = eventRepository.findByPlaceIdOrderByStartTimeAsc("place-1");
+        Page<EventEntity> placeEvents = eventRepository.findByPlaceIdOrderByStartTimeAsc("place-1", DEFAULT_PAGEABLE);
         
-        assertEquals(1, placeEvents.size());
-        assertEquals("event-1", placeEvents.get(0).getId());
+        assertEquals(1, placeEvents.getContent().size());
+        assertEquals("event-1", placeEvents.getContent().get(0).getId());
     }
     
     @Test

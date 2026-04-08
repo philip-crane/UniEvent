@@ -4,6 +4,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,7 +20,6 @@ import dk.unievent.app.db.repository.PageRepository;
 import dk.unievent.app.db.repository.PlaceRepository;
 
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -114,13 +115,13 @@ class EventIntegrationTests {
         EventDTO event2 = createTestEvent("Event 2", LocalDateTime.of(2026, 3, 25, 14, 0), testPage.getId());
         EventDTO event3 = createTestEvent("Event 3", LocalDateTime.of(2026, 3, 15, 18, 0), testPage.getId());
         
-        List<EventDTO> allEvents = eventService.getAllEvents();
+        Page<EventDTO> allEvents = eventService.getAllEvents(PageRequest.of(0, 20));
         
-        assertEquals(3, allEvents.size());
+        assertEquals(3, allEvents.getContent().size());
         // Verify ordering by startTime
-        assertEquals(event3.getId(), allEvents.get(0).getId()); // 15th
-        assertEquals(event1.getId(), allEvents.get(1).getId()); // 20th
-        assertEquals(event2.getId(), allEvents.get(2).getId()); // 25th
+        assertEquals(event3.getId(), allEvents.getContent().get(0).getId()); // 15th
+        assertEquals(event1.getId(), allEvents.getContent().get(1).getId()); // 20th
+        assertEquals(event2.getId(), allEvents.getContent().get(2).getId()); // 25th
     }
     
     @Test
@@ -132,10 +133,10 @@ class EventIntegrationTests {
         createTestEvent("Future Event 1", now.plusDays(3), testPage.getId());
         createTestEvent("Future Event 2", now.plusDays(7), testPage.getId());
         
-        List<EventDTO> futureEvents = eventService.getFutureEvents();
+        Page<EventDTO> futureEvents = eventService.getFutureEvents(PageRequest.of(0, 20));
         
-        assertEquals(2, futureEvents.size());
-        assertTrue(futureEvents.stream().allMatch(e -> e.getStartTime().isAfter(now)));
+        assertEquals(2, futureEvents.getContent().size());
+        assertTrue(futureEvents.getContent().stream().allMatch(e -> e.getStartTime().isAfter(now)));
     }
     
     @Test
@@ -170,13 +171,13 @@ class EventIntegrationTests {
         createTestEvent("Event Page1-2", LocalDateTime.now().plusDays(2), testPage.getId());
         createTestEvent("Event Page2-1", LocalDateTime.now().plusDays(3), page2.getId());
         
-        List<EventDTO> page1Events = eventService.getEventsByPageId(testPage.getId());
-        List<EventDTO> page2Events = eventService.getEventsByPageId(page2.getId());
+        Page<EventDTO> page1Events = eventService.getEventsByPageId(testPage.getId(), PageRequest.of(0, 20));
+        Page<EventDTO> page2Events = eventService.getEventsByPageId(page2.getId(), PageRequest.of(0, 20));
         
-        assertEquals(2, page1Events.size());
-        assertEquals(1, page2Events.size());
-        assertTrue(page1Events.stream().allMatch(e -> e.getPageId().equals(testPage.getId())));
-        assertTrue(page2Events.stream().allMatch(e -> e.getPageId().equals(page2.getId())));
+        assertEquals(2, page1Events.getContent().size());
+        assertEquals(1, page2Events.getContent().size());
+        assertTrue(page1Events.getContent().stream().allMatch(e -> e.getPageId().equals(testPage.getId())));
+        assertTrue(page2Events.getContent().stream().allMatch(e -> e.getPageId().equals(page2.getId())));
     }
     
     @Test
@@ -194,11 +195,11 @@ class EventIntegrationTests {
         createTestEventWithPlace("Event Place1", LocalDateTime.now().plusDays(1), testPlace.getId());
         createTestEventWithPlace("Event Place2", LocalDateTime.now().plusDays(2), place2.getId());
         
-        List<EventDTO> place1Events = eventService.getEventsByPlaceId(testPlace.getId());
-        List<EventDTO> place2Events = eventService.getEventsByPlaceId(place2.getId());
+        Page<EventDTO> place1Events = eventService.getEventsByPlaceId(testPlace.getId(), PageRequest.of(0, 20));
+        Page<EventDTO> place2Events = eventService.getEventsByPlaceId(place2.getId(), PageRequest.of(0, 20));
         
-        assertEquals(1, place1Events.size());
-        assertEquals(1, place2Events.size());
+        assertEquals(1, place1Events.getContent().size());
+        assertEquals(1, place2Events.getContent().size());
     }
     
     // ============= Update Tests =============

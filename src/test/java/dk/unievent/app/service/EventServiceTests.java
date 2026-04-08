@@ -5,6 +5,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import dk.unievent.app.application.dto.EventDTO;
 import dk.unievent.app.application.mapper.EventMapper;
@@ -77,7 +81,8 @@ class EventServiceTests {
                 .build();
         
         List<EventEntity> eventEntities = List.of(testEventEntity, event2);
-        when(eventRepository.findAllByOrderByStartTimeAsc()).thenReturn(eventEntities);
+        Page<EventEntity> eventPage = new PageImpl<>(eventEntities, PageRequest.of(0, 20), 2);
+        when(eventRepository.findAllByOrderByStartTimeAsc(any(Pageable.class))).thenReturn(eventPage);
         
         EventDTO dto2 = new EventDTO();
         dto2.setId("event-2");
@@ -86,38 +91,40 @@ class EventServiceTests {
         when(eventMapper.toDTO(testEventEntity)).thenReturn(testEventDTO);
         when(eventMapper.toDTO(event2)).thenReturn(dto2);
         
-        List<EventDTO> result = eventService.getAllEvents();
+        Page<EventDTO> result = eventService.getAllEvents(PageRequest.of(0, 20));
         
-        assertEquals(2, result.size());
-        assertEquals("event-1", result.get(0).getId());
-        assertEquals("event-2", result.get(1).getId());
-        verify(eventRepository, times(1)).findAllByOrderByStartTimeAsc();
+        assertEquals(2, result.getContent().size());
+        assertEquals("event-1", result.getContent().get(0).getId());
+        assertEquals("event-2", result.getContent().get(1).getId());
+        verify(eventRepository, times(1)).findAllByOrderByStartTimeAsc(any(Pageable.class));
         verify(eventMapper, times(2)).toDTO(any());
     }
     
     @Test
     void testGetAllEventsEmpty() {
-        when(eventRepository.findAllByOrderByStartTimeAsc()).thenReturn(List.of());
+        Page<EventEntity> emptyPage = new PageImpl<>(List.of(), PageRequest.of(0, 20), 0);
+        when(eventRepository.findAllByOrderByStartTimeAsc(any(Pageable.class))).thenReturn(emptyPage);
         
-        List<EventDTO> result = eventService.getAllEvents();
+        Page<EventDTO> result = eventService.getAllEvents(PageRequest.of(0, 20));
         
-        assertTrue(result.isEmpty());
-        verify(eventRepository, times(1)).findAllByOrderByStartTimeAsc();
+        assertTrue(result.getContent().isEmpty());
+        verify(eventRepository, times(1)).findAllByOrderByStartTimeAsc(any(Pageable.class));
     }
     
     @Test
     void testGetFutureEvents() {
         List<EventEntity> futureEvents = List.of(testEventEntity);
-        when(eventRepository.findByStartTimeGreaterThanEqualOrderByStartTimeAsc(any(LocalDateTime.class)))
-            .thenReturn(futureEvents);
+        Page<EventEntity> futurePage = new PageImpl<>(futureEvents, PageRequest.of(0, 20), 1);
+        when(eventRepository.findByStartTimeGreaterThanEqualOrderByStartTimeAsc(any(LocalDateTime.class), any(Pageable.class)))
+            .thenReturn(futurePage);
         when(eventMapper.toDTO(testEventEntity)).thenReturn(testEventDTO);
         
-        List<EventDTO> result = eventService.getFutureEvents();
+        Page<EventDTO> result = eventService.getFutureEvents(PageRequest.of(0, 20));
         
-        assertEquals(1, result.size());
-        assertEquals("event-1", result.get(0).getId());
+        assertEquals(1, result.getContent().size());
+        assertEquals("event-1", result.getContent().get(0).getId());
         verify(eventRepository, times(1))
-            .findByStartTimeGreaterThanEqualOrderByStartTimeAsc(any(LocalDateTime.class));
+            .findByStartTimeGreaterThanEqualOrderByStartTimeAsc(any(LocalDateTime.class), any(Pageable.class));
     }
     
     @Test
@@ -147,54 +154,58 @@ class EventServiceTests {
     @Test
     void testGetEventsByPageId() {
         List<EventEntity> pageEvents = List.of(testEventEntity);
-        when(eventRepository.findByPageIdOrderByStartTimeAsc("page-1"))
-            .thenReturn(pageEvents);
+        Page<EventEntity> pageEventPage = new PageImpl<>(pageEvents, PageRequest.of(0, 20), 1);
+        when(eventRepository.findByPageIdOrderByStartTimeAsc(eq("page-1"), any(Pageable.class)))
+            .thenReturn(pageEventPage);
         when(eventMapper.toDTO(testEventEntity)).thenReturn(testEventDTO);
         
-        List<EventDTO> result = eventService.getEventsByPageId("page-1");
+        Page<EventDTO> result = eventService.getEventsByPageId("page-1", PageRequest.of(0, 20));
         
-        assertEquals(1, result.size());
-        assertEquals("event-1", result.get(0).getId());
-        verify(eventRepository, times(1)).findByPageIdOrderByStartTimeAsc("page-1");
+        assertEquals(1, result.getContent().size());
+        assertEquals("event-1", result.getContent().get(0).getId());
+        verify(eventRepository, times(1)).findByPageIdOrderByStartTimeAsc(eq("page-1"), any(Pageable.class));
     }
     
     @Test
     void testGetEventsByPageIdEmpty() {
-        when(eventRepository.findByPageIdOrderByStartTimeAsc("page-2"))
-            .thenReturn(List.of());
+        Page<EventEntity> emptyPage = new PageImpl<>(List.of(), PageRequest.of(0, 20), 0);
+        when(eventRepository.findByPageIdOrderByStartTimeAsc(eq("page-2"), any(Pageable.class)))
+            .thenReturn(emptyPage);
         
-        List<EventDTO> result = eventService.getEventsByPageId("page-2");
+        Page<EventDTO> result = eventService.getEventsByPageId("page-2", PageRequest.of(0, 20));
         
-        assertTrue(result.isEmpty());
+        assertTrue(result.getContent().isEmpty());
     }
     
     @Test
     void testGetFutureEventsByPageId() {
         List<EventEntity> futurePageEvents = List.of(testEventEntity);
+        Page<EventEntity> futurePageEventPage = new PageImpl<>(futurePageEvents, PageRequest.of(0, 20), 1);
         when(eventRepository.findByPageIdAndStartTimeGreaterThanEqualOrderByStartTimeAsc(
-            eq("page-1"), any(LocalDateTime.class)))
-            .thenReturn(futurePageEvents);
+            eq("page-1"), any(LocalDateTime.class), any(Pageable.class)))
+            .thenReturn(futurePageEventPage);
         when(eventMapper.toDTO(testEventEntity)).thenReturn(testEventDTO);
         
-        List<EventDTO> result = eventService.getFutureEventsByPageId("page-1");
+        Page<EventDTO> result = eventService.getFutureEventsByPageId("page-1", PageRequest.of(0, 20));
         
-        assertEquals(1, result.size());
+        assertEquals(1, result.getContent().size());
         verify(eventRepository, times(1))
             .findByPageIdAndStartTimeGreaterThanEqualOrderByStartTimeAsc(
-                eq("page-1"), any(LocalDateTime.class));
+                eq("page-1"), any(LocalDateTime.class), any(Pageable.class));
     }
     
     @Test
     void testGetEventsByPlaceId() {
         List<EventEntity> placeEvents = List.of(testEventEntity);
-        when(eventRepository.findByPlaceIdOrderByStartTimeAsc("place-1"))
-            .thenReturn(placeEvents);
+        Page<EventEntity> placeEventPage = new PageImpl<>(placeEvents, PageRequest.of(0, 20), 1);
+        when(eventRepository.findByPlaceIdOrderByStartTimeAsc(eq("place-1"), any(Pageable.class)))
+            .thenReturn(placeEventPage);
         when(eventMapper.toDTO(testEventEntity)).thenReturn(testEventDTO);
         
-        List<EventDTO> result = eventService.getEventsByPlaceId("place-1");
+        Page<EventDTO> result = eventService.getEventsByPlaceId("place-1", PageRequest.of(0, 20));
         
-        assertEquals(1, result.size());
-        verify(eventRepository, times(1)).findByPlaceIdOrderByStartTimeAsc("place-1");
+        assertEquals(1, result.getContent().size());
+        verify(eventRepository, times(1)).findByPlaceIdOrderByStartTimeAsc(eq("place-1"), any(Pageable.class));
         verify(eventMapper, times(1)).toDTO(testEventEntity);
     }
     

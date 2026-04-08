@@ -11,6 +11,11 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableHandlerMethodArgumentResolver;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
@@ -50,6 +55,7 @@ class EventControllerTests {
         mockMvc = MockMvcBuilders
             .standaloneSetup(eventController)
             .setControllerAdvice(new GlobalExceptionHandler())
+            .setCustomArgumentResolvers(new PageableHandlerMethodArgumentResolver())
             .build();
         objectMapper = new ObjectMapper().findAndRegisterModules();
     }
@@ -57,11 +63,12 @@ class EventControllerTests {
     @Test
     void getAllEventsShouldReturnOk() throws Exception {
         EventDTO event = sampleEvent("event-1");
-        when(eventService.getAllEvents()).thenReturn(List.of(event));
+        Page<EventDTO> page = new PageImpl<>(List.of(event), PageRequest.of(0, 20), 1);
+        when(eventService.getAllEvents(any(Pageable.class))).thenReturn(page);
 
-        mockMvc.perform(get("/api/events"))
+        mockMvc.perform(get("/api/events").param("page", "0").param("size", "20"))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$[0].id").value("event-1"));
+            .andExpect(jsonPath("$.content[0].id").value("event-1"));
     }
 
     @Test

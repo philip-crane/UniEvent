@@ -1,5 +1,7 @@
 package dk.unievent.app.api.controller;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -9,7 +11,6 @@ import dk.unievent.app.application.dto.PageDTO;
 import dk.unievent.app.application.service.PageService;
 import jakarta.validation.Valid;
 import java.io.IOException;
-import java.util.List;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -28,17 +29,17 @@ public class PageController {
 
     @GetMapping
     @Operation(summary = "Get all pages", description = "Retrieve all event organizer pages ordered by name")
-    @ApiResponse(responseCode = "200", description = "List of pages")
-    public ResponseEntity<List<PageDTO>> getAllPages() {
-        List<PageDTO> pages = pageService.getAllPages();
+    @ApiResponse(responseCode = "200", description = "Page of pages")
+    public ResponseEntity<Page<PageDTO>> getAllPages(Pageable pageable) {
+        Page<PageDTO> pages = pageService.getAllPages(pageable);
         return ResponseEntity.ok(pages);
     }
 
     @GetMapping("/active")
     @Operation(summary = "Get active pages", description = "Retrieve only pages with valid Facebook tokens")
-    @ApiResponse(responseCode = "200", description = "List of active pages")
-    public ResponseEntity<List<PageDTO>> getActivePages() {
-        List<PageDTO> pages = pageService.getActivePages();
+    @ApiResponse(responseCode = "200", description = "Page of active pages")
+    public ResponseEntity<Page<PageDTO>> getActivePages(Pageable pageable) {
+        Page<PageDTO> pages = pageService.getActivePages(pageable);
         return ResponseEntity.ok(pages);
     }
 
@@ -58,10 +59,11 @@ public class PageController {
 
     @GetMapping("/search")
     @Operation(summary = "Search pages by name", description = "Search for pages using a partial name match (case-insensitive)")
-    @ApiResponse(responseCode = "200", description = "List of matching pages")
-    public ResponseEntity<List<PageDTO>> searchPages(
-            @RequestParam(name = "name") @Parameter(description = "Partial page name to search for") String name) {
-        List<PageDTO> pages = pageService.searchPagesByName(name);
+    @ApiResponse(responseCode = "200", description = "Page of matching pages")
+    public ResponseEntity<Page<PageDTO>> searchPages(
+            @RequestParam(name = "name") @Parameter(description = "Partial page name to search for") String name,
+            Pageable pageable) {
+        Page<PageDTO> pages = pageService.searchPagesByName(name, pageable);
         return ResponseEntity.ok(pages);
     }
 

@@ -1,11 +1,11 @@
 package dk.unievent.app.db.repository;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import dk.unievent.app.db.model.PlaceEntity;
-
-import java.util.List;
 
 @Repository
 public interface PlaceRepository extends JpaRepository<PlaceEntity, String> {
@@ -13,20 +13,20 @@ public interface PlaceRepository extends JpaRepository<PlaceEntity, String> {
     /**
      * Find places by city
      */
-    List<PlaceEntity> findByCity(String city);
+    Page<PlaceEntity> findByCity(String city, Pageable pageable);
     
     /**
      * Find places by country
      */
-    List<PlaceEntity> findByCountry(String country);
+    Page<PlaceEntity> findByCountry(String country, Pageable pageable);
     
     /**
      * Find places by city and country
      */
-    List<PlaceEntity> findByCityAndCountry(String city, String country);
+    Page<PlaceEntity> findByCityAndCountry(String city, String country, Pageable pageable);
     
     /**
      * Find places by name (case-insensitive)
      */
-    List<PlaceEntity> findByNameIgnoreCase(String name);
+    Page<PlaceEntity> findByNameIgnoreCase(String name, Pageable pageable);
 }

@@ -5,6 +5,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import dk.unievent.app.application.dto.PageDTO;
 import dk.unievent.app.application.mapper.PageMapper;
@@ -63,7 +67,8 @@ class PageServiceTests {
                 .build();
         
         List<PageEntity> pageEntities = List.of(testPageEntity, page2);
-        when(pageRepository.findAllByOrderByNameAsc()).thenReturn(pageEntities);
+        Page<PageEntity> pageResultPage = new PageImpl<>(pageEntities, PageRequest.of(0, 20), 2);
+        when(pageRepository.findAllByOrderByNameAsc(any(Pageable.class))).thenReturn(pageResultPage);
         
         PageDTO dto2 = new PageDTO();
         dto2.setId("page-2");
@@ -72,21 +77,22 @@ class PageServiceTests {
         when(pageMapper.toDTO(testPageEntity)).thenReturn(testPageDTO);
         when(pageMapper.toDTO(page2)).thenReturn(dto2);
         
-        List<PageDTO> result = pageService.getAllPages();
+        Page<PageDTO> result = pageService.getAllPages(PageRequest.of(0, 20));
         
-        assertEquals(2, result.size());
-        assertEquals("page-1", result.get(0).getId());
-        verify(pageRepository, times(1)).findAllByOrderByNameAsc();
+        assertEquals(2, result.getContent().size());
+        assertEquals("page-1", result.getContent().get(0).getId());
+        verify(pageRepository, times(1)).findAllByOrderByNameAsc(any(Pageable.class));
         verify(pageMapper, times(2)).toDTO(any());
     }
     
     @Test
     void testGetAllPagesEmpty() {
-        when(pageRepository.findAllByOrderByNameAsc()).thenReturn(List.of());
+        Page<PageEntity> emptyPage = new PageImpl<>(List.of(), PageRequest.of(0, 20), 0);
+        when(pageRepository.findAllByOrderByNameAsc(any(Pageable.class))).thenReturn(emptyPage);
         
-        List<PageDTO> result = pageService.getAllPages();
+        Page<PageDTO> result = pageService.getAllPages(PageRequest.of(0, 20));
         
-        assertTrue(result.isEmpty());
+        assertTrue(result.getContent().isEmpty());
     }
     
     @Test
@@ -115,25 +121,27 @@ class PageServiceTests {
     @Test
     void testGetActivePages() {
         List<PageEntity> activePages = List.of(testPageEntity);
-        when(pageRepository.findByTokenStatusOrderByNameAsc("valid"))
-            .thenReturn(activePages);
+        Page<PageEntity> activePagesPage = new PageImpl<>(activePages, PageRequest.of(0, 20), 1);
+        when(pageRepository.findByTokenStatusOrderByNameAsc(eq("valid"), any(Pageable.class)))
+            .thenReturn(activePagesPage);
         when(pageMapper.toDTO(testPageEntity)).thenReturn(testPageDTO);
         
-        List<PageDTO> result = pageService.getActivePages();
+        Page<PageDTO> result = pageService.getActivePages(PageRequest.of(0, 20));
         
-        assertEquals(1, result.size());
-        assertEquals("page-1", result.get(0).getId());
-        verify(pageRepository, times(1)).findByTokenStatusOrderByNameAsc("valid");
+        assertEquals(1, result.getContent().size());
+        assertEquals("page-1", result.getContent().get(0).getId());
+        verify(pageRepository, times(1)).findByTokenStatusOrderByNameAsc(eq("valid"), any(Pageable.class));
     }
     
     @Test
     void testGetActivePagesEmpty() {
-        when(pageRepository.findByTokenStatusOrderByNameAsc("valid"))
-            .thenReturn(List.of());
+        Page<PageEntity> emptyPage = new PageImpl<>(List.of(), PageRequest.of(0, 20), 0);
+        when(pageRepository.findByTokenStatusOrderByNameAsc(eq("valid"), any(Pageable.class)))
+            .thenReturn(emptyPage);
         
-        List<PageDTO> result = pageService.getActivePages();
+        Page<PageDTO> result = pageService.getActivePages(PageRequest.of(0, 20));
         
-        assertTrue(result.isEmpty());
+        assertTrue(result.getContent().isEmpty());
     }
     
     @Test
@@ -144,42 +152,45 @@ class PageServiceTests {
         expiredPage.setTokenExpiresAt(LocalDateTime.now().minusDays(1));
         
         List<PageEntity> expiredPages = List.of(expiredPage);
-        when(pageRepository.findByTokenExpiresAtLessThanOrderByTokenExpiresAtAsc(any(LocalDateTime.class)))
-            .thenReturn(expiredPages);
+        Page<PageEntity> expiredPagesPage = new PageImpl<>(expiredPages, PageRequest.of(0, 20), 1);
+        when(pageRepository.findByTokenExpiresAtLessThanOrderByTokenExpiresAtAsc(any(LocalDateTime.class), any(Pageable.class)))
+            .thenReturn(expiredPagesPage);
         
         PageDTO expiredDTO = new PageDTO();
         expiredDTO.setId("page-expired");
         expiredDTO.setName("Expired");
         when(pageMapper.toDTO(expiredPage)).thenReturn(expiredDTO);
         
-        List<PageDTO> result = pageService.getExpiredPages();
+        Page<PageDTO> result = pageService.getExpiredPages(PageRequest.of(0, 20));
         
-        assertEquals(1, result.size());
+        assertEquals(1, result.getContent().size());
         verify(pageRepository, times(1))
-            .findByTokenExpiresAtLessThanOrderByTokenExpiresAtAsc(any(LocalDateTime.class));
+            .findByTokenExpiresAtLessThanOrderByTokenExpiresAtAsc(any(LocalDateTime.class), any(Pageable.class));
     }
     
     @Test
     void testSearchPagesByName() {
         List<PageEntity> searchResults = List.of(testPageEntity);
-        when(pageRepository.findByNameIgnoreCase("test page"))
-            .thenReturn(searchResults);
+        Page<PageEntity> searchResultsPage = new PageImpl<>(searchResults, PageRequest.of(0, 20), 1);
+        when(pageRepository.findByNameIgnoreCase(eq("test page"), any(Pageable.class)))
+            .thenReturn(searchResultsPage);
         when(pageMapper.toDTO(testPageEntity)).thenReturn(testPageDTO);
         
-        List<PageDTO> result = pageService.searchPagesByName("test page");
+        Page<PageDTO> result = pageService.searchPagesByName("test page", PageRequest.of(0, 20));
         
-        assertEquals(1, result.size());
-        verify(pageRepository, times(1)).findByNameIgnoreCase("test page");
+        assertEquals(1, result.getContent().size());
+        verify(pageRepository, times(1)).findByNameIgnoreCase(eq("test page"), any(Pageable.class));
     }
     
     @Test
     void testSearchPagesByNameEmpty() {
-        when(pageRepository.findByNameIgnoreCase("not-found"))
-            .thenReturn(List.of());
+        Page<PageEntity> emptyPage = new PageImpl<>(List.of(), PageRequest.of(0, 20), 0);
+        when(pageRepository.findByNameIgnoreCase(eq("not-found"), any(Pageable.class)))
+            .thenReturn(emptyPage);
         
-        List<PageDTO> result = pageService.searchPagesByName("not-found");
+        Page<PageDTO> result = pageService.searchPagesByName("not-found", PageRequest.of(0, 20));
         
-        assertTrue(result.isEmpty());
+        assertTrue(result.getContent().isEmpty());
     }
     
     @Test
@@ -251,12 +262,13 @@ class PageServiceTests {
     @Test
     void testGetPagesToRefresh() {
         List<PageEntity> pagesToRefresh = List.of(testPageEntity);
-        when(pageRepository.findPagesToRefresh(any(LocalDateTime.class)))
-            .thenReturn(pagesToRefresh);
+        Page<PageEntity> pagesToRefreshPage = new PageImpl<>(pagesToRefresh, PageRequest.of(0, 20), 1);
+        when(pageRepository.findPagesToRefresh(any(LocalDateTime.class), any(Pageable.class)))
+            .thenReturn(pagesToRefreshPage);
         
-        List<PageEntity> result = pageService.getPagesToRefresh();
+        Page<PageEntity> result = pageService.getPagesToRefresh(PageRequest.of(0, 20));
         
-        assertEquals(1, result.size());
-        verify(pageRepository, times(1)).findPagesToRefresh(any(LocalDateTime.class));
+        assertEquals(1, result.getContent().size());
+        verify(pageRepository, times(1)).findPagesToRefresh(any(LocalDateTime.class), any(Pageable.class));
     }
 }

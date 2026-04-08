@@ -4,6 +4,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,6 +23,8 @@ import static org.junit.jupiter.api.Assertions.*;
 @ActiveProfiles("test")
 @Transactional
 class PlaceRepositoryTests {
+
+    private static final Pageable DEFAULT_PAGEABLE = PageRequest.of(0, 20);
 
     @Autowired
     private PlaceRepository placeRepository;
@@ -110,10 +115,10 @@ class PlaceRepositoryTests {
         placeRepository.save(place3);
 
         
-        List<PlaceEntity> testCityPlaces = placeRepository.findByCity("Test City");
+        Page<PlaceEntity> testCityPlaces = placeRepository.findByCity("Test City", DEFAULT_PAGEABLE);
         
-        assertEquals(2, testCityPlaces.size());
-        assertTrue(testCityPlaces.stream().allMatch(p -> "Test City".equals(p.getCity())));
+        assertEquals(2, testCityPlaces.getContent().size());
+        assertTrue(testCityPlaces.getContent().stream().allMatch(p -> "Test City".equals(p.getCity())));
     }
     
     @Test
@@ -135,10 +140,10 @@ class PlaceRepositoryTests {
         placeRepository.save(place3);
 
         
-        List<PlaceEntity> testCountryPlaces = placeRepository.findByCountry("Test Country");
+        Page<PlaceEntity> testCountryPlaces = placeRepository.findByCountry("Test Country", DEFAULT_PAGEABLE);
         
-        assertEquals(2, testCountryPlaces.size());
-        assertTrue(testCountryPlaces.stream().allMatch(p -> "Test Country".equals(p.getCountry())));
+        assertEquals(2, testCountryPlaces.getContent().size());
+        assertTrue(testCountryPlaces.getContent().stream().allMatch(p -> "Test Country".equals(p.getCountry())));
     }
     
     @Test
@@ -160,10 +165,10 @@ class PlaceRepositoryTests {
         placeRepository.save(place3);
 
         
-        List<PlaceEntity> places = placeRepository.findByCityAndCountry("Test City", "Test Country");
+        Page<PlaceEntity> places = placeRepository.findByCityAndCountry("Test City", "Test Country", DEFAULT_PAGEABLE);
         
-        assertEquals(1, places.size());
-        assertEquals("place-1", places.get(0).getId());
+        assertEquals(1, places.getContent().size());
+        assertEquals("place-1", places.getContent().get(0).getId());
     }
     
     @Test
@@ -183,10 +188,10 @@ class PlaceRepositoryTests {
         placeRepository.save(place3);
 
         
-        List<PlaceEntity> places = placeRepository.findByNameIgnoreCase("test place");
+        Page<PlaceEntity> places = placeRepository.findByNameIgnoreCase("test place", DEFAULT_PAGEABLE);
         
-        assertEquals(3, places.size());
-        assertTrue(places.stream()
+        assertEquals(3, places.getContent().size());
+        assertTrue(places.getContent().stream()
             .allMatch(p -> p.getName().equalsIgnoreCase("test place")));
     }
     
@@ -275,9 +280,9 @@ class PlaceRepositoryTests {
     
     @Test
     void testFindByCityEmptyResult() {
-        List<PlaceEntity> places = placeRepository.findByCity("Non-existent City");
+        Page<PlaceEntity> places = placeRepository.findByCity("Non-existent City", DEFAULT_PAGEABLE);
         
-        assertTrue(places.isEmpty());
+        assertTrue(places.getContent().isEmpty());
     }
 }
 

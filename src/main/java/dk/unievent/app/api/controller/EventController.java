@@ -1,5 +1,7 @@
 package dk.unievent.app.api.controller;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -9,7 +11,6 @@ import dk.unievent.app.application.dto.EventDTO;
 import dk.unievent.app.application.service.EventService;
 import jakarta.validation.Valid;
 import java.io.IOException;
-import java.util.List;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -28,17 +29,17 @@ public class EventController {
 
     @GetMapping
     @Operation(summary = "Get all events", description = "Retrieve all events ordered by start time")
-    @ApiResponse(responseCode = "200", description = "List of all events")
-    public ResponseEntity<List<EventDTO>> getAllEvents() {
-        List<EventDTO> events = eventService.getAllEvents();
+    @ApiResponse(responseCode = "200", description = "Page of all events")
+    public ResponseEntity<Page<EventDTO>> getAllEvents(Pageable pageable) {
+        Page<EventDTO> events = eventService.getAllEvents(pageable);
         return ResponseEntity.ok(events);
     }
 
     @GetMapping("/future")
     @Operation(summary = "Get future events", description = "Retrieve only upcoming events (startTime >= now)")
-    @ApiResponse(responseCode = "200", description = "List of future events")
-    public ResponseEntity<List<EventDTO>> getFutureEvents() {
-        List<EventDTO> events = eventService.getFutureEvents();
+    @ApiResponse(responseCode = "200", description = "Page of future events")
+    public ResponseEntity<Page<EventDTO>> getFutureEvents(Pageable pageable) {
+        Page<EventDTO> events = eventService.getFutureEvents(pageable);
         return ResponseEntity.ok(events);
     }
 
@@ -56,21 +57,21 @@ public class EventController {
 
     @GetMapping("/page/{pageId}")
     @Operation(summary = "Get events by page", description = "Retrieve all events from a specific organizer (page)")
-    @ApiResponse(responseCode = "200", description = "List of events from the page")
-    public ResponseEntity<List<EventDTO>> getEventsByPage(@PathVariable @Parameter(description = "Facebook page ID") String pageId) {
-        List<EventDTO> events = eventService.getEventsByPageId(pageId);
+    @ApiResponse(responseCode = "200", description = "Page of events from the page")
+    public ResponseEntity<Page<EventDTO>> getEventsByPage(@PathVariable @Parameter(description = "Facebook page ID") String pageId, Pageable pageable) {
+        Page<EventDTO> events = eventService.getEventsByPageId(pageId, pageable);
         return ResponseEntity.ok(events);
     }
 
     @GetMapping("/page/{pageId}/future")
-    public ResponseEntity<List<EventDTO>> getFutureEventsByPage(@PathVariable String pageId) {
-        List<EventDTO> events = eventService.getFutureEventsByPageId(pageId);
+    public ResponseEntity<Page<EventDTO>> getFutureEventsByPage(@PathVariable String pageId, Pageable pageable) {
+        Page<EventDTO> events = eventService.getFutureEventsByPageId(pageId, pageable);
         return ResponseEntity.ok(events);
     }
 
     @GetMapping("/place/{placeId}")
-    public ResponseEntity<List<EventDTO>> getEventsByPlace(@PathVariable String placeId) {
-        List<EventDTO> events = eventService.getEventsByPlaceId(placeId);
+    public ResponseEntity<Page<EventDTO>> getEventsByPlace(@PathVariable String placeId, Pageable pageable) {
+        Page<EventDTO> events = eventService.getEventsByPlaceId(placeId, pageable);
         return ResponseEntity.ok(events);
     }
 

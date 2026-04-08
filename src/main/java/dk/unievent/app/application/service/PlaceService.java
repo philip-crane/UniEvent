@@ -1,6 +1,8 @@
 package dk.unievent.app.application.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import dk.unievent.app.application.dto.PlaceDTO;
@@ -8,9 +10,7 @@ import dk.unievent.app.application.mapper.PlaceMapper;
 import dk.unievent.app.db.model.PlaceEntity;
 import dk.unievent.app.db.repository.PlaceRepository;
 
-import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 @Service
 public class PlaceService {
@@ -32,41 +32,33 @@ public class PlaceService {
     /**
      * Find places by city
      */
-    public List<PlaceDTO> getPlacesByCity(String city) {
-        return placeRepository.findByCity(city)
-            .stream()
-            .map(placeMapper::toDTO)
-            .collect(Collectors.toList());
+    public Page<PlaceDTO> getPlacesByCity(String city, Pageable pageable) {
+        return placeRepository.findByCity(city, pageable)
+            .map(placeMapper::toDTO);
     }
     
     /**
      * Find places by country
      */
-    public List<PlaceDTO> getPlacesByCountry(String country) {
-        return placeRepository.findByCountry(country)
-            .stream()
-            .map(placeMapper::toDTO)
-            .collect(Collectors.toList());
+    public Page<PlaceDTO> getPlacesByCountry(String country, Pageable pageable) {
+        return placeRepository.findByCountry(country, pageable)
+            .map(placeMapper::toDTO);
     }
     
     /**
      * Find places by city and country
      */
-    public List<PlaceDTO> getPlacesByCityAndCountry(String city, String country) {
-        return placeRepository.findByCityAndCountry(city, country)
-            .stream()
-            .map(placeMapper::toDTO)
-            .collect(Collectors.toList());
+    public Page<PlaceDTO> getPlacesByCityAndCountry(String city, String country, Pageable pageable) {
+        return placeRepository.findByCityAndCountry(city, country, pageable)
+            .map(placeMapper::toDTO);
     }
     
     /**
      * Search places by name
      */
-    public List<PlaceDTO> searchByName(String name) {
-        return placeRepository.findByNameIgnoreCase(name)
-            .stream()
-            .map(placeMapper::toDTO)
-            .collect(Collectors.toList());
+    public Page<PlaceDTO> searchByName(String name, Pageable pageable) {
+        return placeRepository.findByNameIgnoreCase(name, pageable)
+            .map(placeMapper::toDTO);
     }
     
     /**
