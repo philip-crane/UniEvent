@@ -38,7 +38,7 @@ We had previously created a version of UniEvent called DTUEvent hosted on Google
 ### Nice-To-Have
 - [ ] DB Replace `ddl-auto: update` with Flyway or Liquibase migrations
 - [ ] Make more mobile-friendly
-- [ ] Location mapping
+- [ ] Location mapping (A literal google maps with the events placed)
 - [ ] Manual event submission (fallback for pages without dedicated event)
 - [ ] Event categorization (academic, social, etc.)
 - [ ] Event moderation and approval system
