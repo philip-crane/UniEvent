@@ -221,7 +221,7 @@ class MediaControllerHttpIntegrationTests {
         }
 
         @Override
-        public void uploadFile(String filename, byte[] bytes, String fid, String publicUrl) {
+        public void uploadFile(String publicUrl, String fid, String filename, byte[] bytes) {
             // no-op for tests
         }
 

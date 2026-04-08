@@ -63,7 +63,7 @@ class SeaweedFsClientTests {
             .andRespond(withStatus(HttpStatus.BAD_GATEWAY).body("failed"));
 
         IOException ex = assertThrows(IOException.class,
-                () -> seaweedFsClient.uploadFile("file.txt", "data".getBytes(), "1,abc", "localhost:8080"));
+                () -> seaweedFsClient.uploadFile("localhost:8080", "1,abc", "file.txt", "data".getBytes()));
 
         assertTrue(ex.getMessage().contains("Failed to upload file"));
     }
