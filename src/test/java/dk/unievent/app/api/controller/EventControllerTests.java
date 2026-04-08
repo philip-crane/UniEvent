@@ -1,6 +1,7 @@
 package dk.unievent.app.api.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dk.unievent.app.api.handler.GlobalExceptionHandler;
 import dk.unievent.app.application.dto.EventDTO;
 import dk.unievent.app.application.service.EventService;
 import org.junit.jupiter.api.BeforeEach;
@@ -46,7 +47,10 @@ class EventControllerTests {
 
     @BeforeEach
     void setUp() {
-        mockMvc = MockMvcBuilders.standaloneSetup(eventController).build();
+        mockMvc = MockMvcBuilders
+            .standaloneSetup(eventController)
+            .setControllerAdvice(new GlobalExceptionHandler())
+            .build();
         objectMapper = new ObjectMapper().findAndRegisterModules();
     }
 
@@ -106,7 +110,9 @@ class EventControllerTests {
         when(eventService.uploadCoverImage(eq("evt-1"), any())).thenThrow(new IOException("disk error"));
 
         mockMvc.perform(multipart("/api/events/evt-1/coverImage").file(file))
-            .andExpect(status().isInternalServerError());
+            .andExpect(status().isInternalServerError())
+            .andExpect(jsonPath("$.error").value("Internal Server Error"))
+            .andExpect(jsonPath("$.message").value("I/O operation failed."));
     }
 
     @Test

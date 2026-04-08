@@ -7,26 +7,34 @@ import dk.unievent.app.infrastructure.config.SeaweedConfig;
 
 import org.springframework.http.*;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientException;
 
 import java.io.IOException;
 
 @Component
 public class SeaweedFsClient {
 
-    private final String masterUrl;
-    private final RestTemplate restTemplate;
+    private final RestClient.Builder restClientBuilder;
+    private final RestClient restClient;
     private final ObjectMapper objectMapper;
 
-    public SeaweedFsClient(SeaweedConfig config, RestTemplate restTemplate, ObjectMapper objectMapper) {
-        this.masterUrl = config.getMasterUrl();
-        this.restTemplate = restTemplate;
+    public SeaweedFsClient(SeaweedConfig config, RestClient.Builder restClientBuilder, ObjectMapper objectMapper) {
+        this.restClientBuilder = restClientBuilder;
+        this.restClient = restClientBuilder.baseUrl("http://" + config.getMasterUrl()).build();
         this.objectMapper = objectMapper;
     }
 
     public FileAssignment assignFile() throws IOException {
-        String assignmentUrl = "http://" + masterUrl + "/dir/assign";
-        ResponseEntity<String> assignmentResponse = restTemplate.getForEntity(assignmentUrl, String.class);
+        ResponseEntity<String> assignmentResponse;
+        try {
+            assignmentResponse = restClient.get()
+                .uri("/dir/assign")
+                .retrieve()
+                .toEntity(String.class);
+        } catch (RestClientException e) {
+            throw new IOException("Failed to get file assignment from SeaweedFS master", e);
+        }
 
         if (assignmentResponse.getStatusCode() != HttpStatus.OK || assignmentResponse.getBody() == null) {
             throw new IOException("Failed to get file assignment from SeaweedFS master");
@@ -43,10 +51,7 @@ public class SeaweedFsClient {
     }
 
     public void uploadFile(String publicUrl, String fid, String filename, byte[] bytes) throws IOException {
-        String uploadUrl = "http://" + publicUrl + "/" + fid;
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+        String uploadPath = "/" + fid;
 
         org.springframework.util.LinkedMultiValueMap<String, Object> body =
             new org.springframework.util.LinkedMultiValueMap<>();
@@ -57,15 +62,18 @@ public class SeaweedFsClient {
             }
         });
 
-        HttpEntity<org.springframework.util.LinkedMultiValueMap<String, Object>> requestEntity =
-            new HttpEntity<>(body, headers);
-
-        ResponseEntity<String> uploadResponse = restTemplate.exchange(
-            uploadUrl,
-            HttpMethod.POST,
-            requestEntity,
-            String.class
-        );
+        ResponseEntity<String> uploadResponse;
+        try {
+            RestClient uploadClient = restClientBuilder.baseUrl("http://" + publicUrl).build();
+            uploadResponse = uploadClient.post()
+                .uri(uploadPath)
+                .contentType(MediaType.MULTIPART_FORM_DATA)
+                .body(body)
+                .retrieve()
+                .toEntity(String.class);
+        } catch (RestClientException e) {
+            throw new IOException("Failed to upload file to SeaweedFS volume server", e);
+        }
 
         if (uploadResponse.getStatusCode() != HttpStatus.CREATED && uploadResponse.getStatusCode() != HttpStatus.OK) {
             throw new IOException("Failed to upload file to SeaweedFS volume server");
@@ -73,8 +81,15 @@ public class SeaweedFsClient {
     }
 
     public byte[] downloadFile(String fileId) throws IOException {
-        String lookupUrl = "http://" + masterUrl + "/dir/lookup?volumeId=" + extractVolumeId(fileId);
-        ResponseEntity<String> lookupResponse = restTemplate.getForEntity(lookupUrl, String.class);
+        ResponseEntity<String> lookupResponse;
+        try {
+            lookupResponse = restClient.get()
+                .uri("/dir/lookup?volumeId={volumeId}", extractVolumeId(fileId))
+                .retrieve()
+                .toEntity(String.class);
+        } catch (RestClientException e) {
+            throw new IOException("File not found in SeaweedFS: " + fileId, e);
+        }
 
         if (lookupResponse.getStatusCode() != HttpStatus.OK || lookupResponse.getBody() == null) {
             throw new IOException("File not found in SeaweedFS: " + fileId);
@@ -91,8 +106,18 @@ public class SeaweedFsClient {
             throw new IOException("Invalid SeaweedFS lookup response for file: " + fileId);
         }
 
-        String downloadUrl = "http://" + volumePublicUrl + "/" + fileId;
-        ResponseEntity<byte[]> downloadResponse = restTemplate.getForEntity(downloadUrl, byte[].class);
+        ResponseEntity<byte[]> downloadResponse;
+        try {
+            downloadResponse = restClientBuilder
+                .baseUrl("http://" + volumePublicUrl)
+                .build()
+                .get()
+                .uri("/" + fileId)
+                .retrieve()
+                .toEntity(byte[].class);
+        } catch (RestClientException e) {
+            throw new IOException("Could not read file: " + fileId, e);
+        }
         if (downloadResponse.getStatusCode() != HttpStatus.OK || downloadResponse.getBody() == null) {
             throw new IOException("Could not read file: " + fileId);
         }
@@ -101,8 +126,15 @@ public class SeaweedFsClient {
     }
 
     public void deleteFile(String fileId) throws IOException {
-        String lookupUrl = "http://" + masterUrl + "/dir/lookup?volumeId=" + extractVolumeId(fileId);
-        ResponseEntity<String> lookupResponse = restTemplate.getForEntity(lookupUrl, String.class);
+        ResponseEntity<String> lookupResponse;
+        try {
+            lookupResponse = restClient.get()
+                .uri("/dir/lookup?volumeId={volumeId}", extractVolumeId(fileId))
+                .retrieve()
+                .toEntity(String.class);
+        } catch (RestClientException e) {
+            throw new IOException("Could not find file to delete: " + fileId, e);
+        }
 
         if (lookupResponse.getStatusCode() != HttpStatus.OK || lookupResponse.getBody() == null) {
             throw new IOException("Could not find file to delete: " + fileId);
@@ -119,8 +151,17 @@ public class SeaweedFsClient {
             throw new IOException("Invalid SeaweedFS lookup response for delete: " + fileId);
         }
 
-        String deleteUrl = "http://" + volumePublicUrl + "/" + fileId;
-        restTemplate.delete(deleteUrl);
+        try {
+            restClientBuilder
+                .baseUrl("http://" + volumePublicUrl)
+                .build()
+                .delete()
+                .uri("/" + fileId)
+                .retrieve()
+                .toBodilessEntity();
+        } catch (RestClientException e) {
+            throw new IOException("Could not delete file: " + fileId, e);
+        }
     }
 
     private String extractVolumeId(String fid) {

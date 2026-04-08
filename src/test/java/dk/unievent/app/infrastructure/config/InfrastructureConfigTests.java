@@ -29,9 +29,5 @@ class InfrastructureConfigTests {
         assertNotNull(openAPI);
         assertNotNull(openAPI.getInfo());
         assertEquals("UniEvent API", openAPI.getInfo().getTitle());
-
-        ClientBeansConfig config = new ClientBeansConfig();
-        assertNotNull(config.restTemplate());
-        assertNotNull(config.objectMapper());
     }
 }

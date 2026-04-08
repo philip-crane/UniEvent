@@ -1,6 +1,7 @@
 package dk.unievent.app.api.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dk.unievent.app.api.handler.GlobalExceptionHandler;
 import dk.unievent.app.application.dto.PageDTO;
 import dk.unievent.app.application.service.PageService;
 import org.junit.jupiter.api.BeforeEach;
@@ -45,7 +46,10 @@ class PageControllerTests {
 
     @BeforeEach
     void setUp() {
-        mockMvc = MockMvcBuilders.standaloneSetup(pageController).build();
+        mockMvc = MockMvcBuilders
+            .standaloneSetup(pageController)
+            .setControllerAdvice(new GlobalExceptionHandler())
+            .build();
         objectMapper = new ObjectMapper().findAndRegisterModules();
     }
 
@@ -101,7 +105,9 @@ class PageControllerTests {
         when(pageService.uploadPicture(eq("page-1"), any())).thenThrow(new IOException("upload failed"));
 
         mockMvc.perform(multipart("/api/pages/page-1/picture").file(file))
-            .andExpect(status().isInternalServerError());
+            .andExpect(status().isInternalServerError())
+            .andExpect(jsonPath("$.error").value("Internal Server Error"))
+            .andExpect(jsonPath("$.message").value("I/O operation failed."));
     }
 
     @Test

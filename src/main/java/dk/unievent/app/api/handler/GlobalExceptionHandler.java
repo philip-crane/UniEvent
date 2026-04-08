@@ -12,6 +12,7 @@ import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import jakarta.validation.ConstraintViolationException;
 
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
@@ -77,6 +78,15 @@ public class GlobalExceptionHandler {
             HttpStatus.CONTENT_TOO_LARGE,
                 "Payload Too Large",
                 "Uploaded file exceeds the maximum allowed size."
+        );
+    }
+
+    @ExceptionHandler(IOException.class)
+    public ResponseEntity<Map<String, Object>> handleIOException(IOException ex) {
+        return buildErrorResponse(
+                HttpStatus.INTERNAL_SERVER_ERROR,
+                "Internal Server Error",
+                "I/O operation failed."
         );
     }
 

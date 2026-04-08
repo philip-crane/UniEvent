@@ -8,7 +8,8 @@ import dk.unievent.app.infrastructure.config.VaultConfig;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.*;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientResponseException;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -19,23 +20,24 @@ import java.util.Map;
 public class VaultClient {
 
     private final VaultConfig config;
-    private final RestTemplate restTemplate;
+    private final RestClient restClient;
     private final ObjectMapper objectMapper;
 
-    public VaultClient(VaultConfig config, RestTemplate restTemplate, ObjectMapper objectMapper) {
+    public VaultClient(VaultConfig config, RestClient.Builder restClientBuilder, ObjectMapper objectMapper) {
         this.config = config;
-        this.restTemplate = restTemplate;
+        this.restClient = restClientBuilder
+            .baseUrl(config.getUri())
+            .defaultHeader("X-Vault-Token", config.getToken())
+            .build();
         this.objectMapper = objectMapper;
     }
 
     public Map<String, String> readSecretData() {
         try {
-            HttpHeaders headers = new HttpHeaders();
-            headers.set("X-Vault-Token", config.getToken());
-            HttpEntity<Void> request = new HttpEntity<>(headers);
-
-            String url = config.getUri() + "/v1/" + config.getSecretPath();
-            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, request, String.class);
+            ResponseEntity<String> response = restClient.get()
+                .uri("/v1/" + config.getSecretPath())
+                .retrieve()
+                .toEntity(String.class);
 
             if (response.getStatusCode() != HttpStatus.OK || response.getBody() == null) {
                 return Collections.emptyMap();
@@ -49,6 +51,11 @@ public class VaultClient {
             Map<String, String> secrets = new HashMap<>();
             data.properties().forEach(e -> secrets.put(e.getKey(), e.getValue().asText()));
             return secrets;
+        } catch (RestClientResponseException e) {
+            throw new RuntimeException(
+                "Failed to read secrets from Vault: " + config.getUri() + " (status: " + e.getStatusCode() + ")",
+                e
+            );
         } catch (Exception e) {
             throw new RuntimeException("Failed to read secrets from Vault: " + config.getUri(), e);
         }

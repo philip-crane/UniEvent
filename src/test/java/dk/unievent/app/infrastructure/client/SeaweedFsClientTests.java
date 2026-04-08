@@ -3,23 +3,20 @@ package dk.unievent.app.infrastructure.client;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.when;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
 import java.io.IOException;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.client.MockRestServiceServer;
+import org.springframework.web.client.RestClient;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -28,22 +25,24 @@ import dk.unievent.app.infrastructure.config.SeaweedConfig;
 @ExtendWith(MockitoExtension.class)
 class SeaweedFsClientTests {
 
-    @Mock
-    private RestTemplate restTemplate;
+    private MockRestServiceServer server;
 
     private SeaweedFsClient seaweedFsClient;
 
     @BeforeEach
     void setUp() {
+        RestClient.Builder restClientBuilder = RestClient.builder();
+        server = MockRestServiceServer.bindTo(restClientBuilder).build();
+
         SeaweedConfig config = new SeaweedConfig();
         config.setMasterUrl("localhost:9333");
-        seaweedFsClient = new SeaweedFsClient(config, restTemplate, new ObjectMapper());
+        seaweedFsClient = new SeaweedFsClient(config, restClientBuilder, new ObjectMapper());
     }
 
     @Test
     void assignFileShouldFailWhenMasterReturnsNonOk() {
-        when(restTemplate.getForEntity("http://localhost:9333/dir/assign", String.class))
-                .thenReturn(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("boom"));
+        server.expect(requestTo("http://localhost:9333/dir/assign"))
+            .andRespond(withStatus(HttpStatus.INTERNAL_SERVER_ERROR).body("boom"));
 
         IOException ex = assertThrows(IOException.class, () -> seaweedFsClient.assignFile());
         assertTrue(ex.getMessage().contains("Failed to get file assignment"));
@@ -51,8 +50,8 @@ class SeaweedFsClientTests {
 
     @Test
     void assignFileShouldFailWhenResponseMissingFields() {
-        when(restTemplate.getForEntity("http://localhost:9333/dir/assign", String.class))
-                .thenReturn(ResponseEntity.ok("{\"publicUrl\":\"localhost:8080\"}"));
+        server.expect(requestTo("http://localhost:9333/dir/assign"))
+            .andRespond(withSuccess("{\"publicUrl\":\"localhost:8080\"}", MediaType.APPLICATION_JSON));
 
         IOException ex = assertThrows(IOException.class, () -> seaweedFsClient.assignFile());
         assertTrue(ex.getMessage().contains("missing fid/publicUrl"));
@@ -60,12 +59,8 @@ class SeaweedFsClientTests {
 
     @Test
     void uploadFileShouldFailWhenVolumeRejectsUpload() {
-        when(restTemplate.exchange(
-                anyString(),
-                eq(HttpMethod.POST),
-                any(HttpEntity.class),
-                eq(String.class)))
-            .thenReturn(ResponseEntity.status(HttpStatus.BAD_GATEWAY).body("failed"));
+        server.expect(requestTo("http://localhost:8080/1,abc"))
+            .andRespond(withStatus(HttpStatus.BAD_GATEWAY).body("failed"));
 
         IOException ex = assertThrows(IOException.class,
                 () -> seaweedFsClient.uploadFile("localhost:8080", "1,abc", "file.txt", "data".getBytes()));
@@ -75,8 +70,8 @@ class SeaweedFsClientTests {
 
     @Test
     void downloadFileShouldFailWhenLookupHasNoLocations() {
-        when(restTemplate.getForEntity("http://localhost:9333/dir/lookup?volumeId=1", String.class))
-                .thenReturn(ResponseEntity.ok("{\"locations\":[]}"));
+        server.expect(requestTo("http://localhost:9333/dir/lookup?volumeId=1"))
+            .andRespond(withSuccess("{\"locations\":[]}", MediaType.APPLICATION_JSON));
 
         IOException ex = assertThrows(IOException.class, () -> seaweedFsClient.downloadFile("1,abc"));
         assertTrue(ex.getMessage().contains("File location not found"));
@@ -84,10 +79,10 @@ class SeaweedFsClientTests {
 
     @Test
     void downloadFileShouldReturnBytesWhenLookupAndDownloadSucceed() throws Exception {
-        when(restTemplate.getForEntity("http://localhost:9333/dir/lookup?volumeId=1", String.class))
-                .thenReturn(ResponseEntity.ok("{\"locations\":[{\"publicUrl\":\"localhost:8080\"}]}"));
-        when(restTemplate.getForEntity("http://localhost:8080/1,abc", byte[].class))
-                .thenReturn(ResponseEntity.ok("payload".getBytes()));
+        server.expect(requestTo("http://localhost:9333/dir/lookup?volumeId=1"))
+            .andRespond(withSuccess("{\"locations\":[{\"publicUrl\":\"localhost:8080\"}]}", MediaType.APPLICATION_JSON));
+        server.expect(requestTo("http://localhost:8080/1,abc"))
+            .andRespond(withSuccess("payload", MediaType.APPLICATION_OCTET_STREAM));
 
         byte[] result = seaweedFsClient.downloadFile("1,abc");
 
@@ -95,9 +90,9 @@ class SeaweedFsClientTests {
     }
 
     @Test
-    void deleteFileShouldFailWhenLookupMissingBody() {
-        when(restTemplate.getForEntity("http://localhost:9333/dir/lookup?volumeId=1", String.class))
-                .thenReturn(ResponseEntity.ok(null));
+    void deleteFileShouldFailWhenLookupReturnsNotFound() {
+        server.expect(requestTo("http://localhost:9333/dir/lookup?volumeId=1"))
+            .andRespond(withStatus(HttpStatus.NOT_FOUND));
 
         IOException ex = assertThrows(IOException.class, () -> seaweedFsClient.deleteFile("1,abc"));
         assertTrue(ex.getMessage().contains("Could not find file to delete"));
