@@ -3,10 +3,10 @@ spring:
     name: web
   config:
     import:
-      - classpath:mysql.yaml
+      - classpath:db.yaml
       - classpath:vault.yaml
-      - classpath:seaweedfs.yaml
-      - classpath:facebook.yaml
+      - classpath:media.yaml
+      - classpath:api.yaml
 
 management:
   endpoints:

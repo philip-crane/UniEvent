@@ -6,11 +6,11 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import dk.unievent.app.core.dto.PageDTO;
-import dk.unievent.app.core.mapper.PageMapper;
-import dk.unievent.app.core.service.PageService;
-import dk.unievent.app.mysql.model.PageEntity;
-import dk.unievent.app.mysql.repository.PageRepository;
+import dk.unievent.app.application.dto.PageDTO;
+import dk.unievent.app.application.mapper.PageMapper;
+import dk.unievent.app.application.service.PageService;
+import dk.unievent.app.db.model.PageEntity;
+import dk.unievent.app.db.repository.PageRepository;
 
 import java.time.LocalDateTime;
 import java.util.List;

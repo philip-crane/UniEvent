@@ -6,12 +6,12 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import dk.unievent.app.core.dto.EventDTO;
-import dk.unievent.app.core.mapper.EventMapper;
-import dk.unievent.app.core.service.EventService;
-import dk.unievent.app.mysql.model.EventEntity;
-import dk.unievent.app.mysql.model.PageEntity;
-import dk.unievent.app.mysql.repository.EventRepository;
+import dk.unievent.app.application.dto.EventDTO;
+import dk.unievent.app.application.mapper.EventMapper;
+import dk.unievent.app.application.service.EventService;
+import dk.unievent.app.db.model.EventEntity;
+import dk.unievent.app.db.model.PageEntity;
+import dk.unievent.app.db.repository.EventRepository;
 
 import java.time.LocalDateTime;
 import java.util.List;
