@@ -21,13 +21,7 @@ We had previously created a version of UniEvent called DTUEvent hosted on Google
 - [ ] Implement pagination for large result sets
 
 ### API
-- [ ] Add missing HTTP methods: `updateEvent`, `deleteEvent`, etc.
 - [ ] Add SLF4J logging throughout services (im not sure what this is lol but claude suggested it)
-
-### Testing
-- [ ] Add Testcontainers for integration tests (currently uses H2, not real MySQL)
-- [x] Add `mvn test` step to CI pipeline before deploying
-- [ ] Add rollback mechanism to deploy script
 
 ### Frontend
 - [ ] User favorites and personalization
