@@ -9,7 +9,7 @@ import org.springframework.mock.web.MockMultipartFile;
 
 import dk.unievent.app.db.model.MediaEntity;
 import dk.unievent.app.application.service.MediaService;
-import dk.unievent.app.infrastructure.client.SeaweedClient;
+import dk.unievent.app.infrastructure.client.SeaweedFsClient;
 
 import java.io.IOException;
 import java.time.Instant;
@@ -20,7 +20,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class MediaIntegrationTests {
 
     @Mock
-    private SeaweedClient seaweedClient;
+    private SeaweedFsClient seaweedClient;
 
     private MediaService mediaService;
     private MockMultipartFile testFile;

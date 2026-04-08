@@ -1,6 +1,6 @@
 package dk.unievent.app.application.service;
 
-import dk.unievent.app.infrastructure.client.SeaweedClient;
+import dk.unievent.app.infrastructure.client.SeaweedFsClient;
 
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
@@ -14,9 +14,9 @@ import java.nio.file.Path;
 @Service
 public class MediaService {
 
-    private final SeaweedClient seaweedClient;
+    private final SeaweedFsClient seaweedClient;
 
-    public MediaService(SeaweedClient seaweedClient) {
+    public MediaService(SeaweedFsClient seaweedClient) {
         this.seaweedClient = seaweedClient;
     }
 
@@ -38,7 +38,7 @@ public class MediaService {
         }
 
         try {
-            SeaweedClient.FileAssignment assignment = seaweedClient.assignFile();
+            SeaweedFsClient.FileAssignment assignment = seaweedClient.assignFile();
             seaweedClient.uploadFile(assignment.publicUrl(), assignment.fid(), filename, file.getBytes());
             return assignment.fid();
         } catch (Exception e) {
@@ -47,7 +47,7 @@ public class MediaService {
     }
 
     /**
-     * Load file ID (not used in current API, kept for potential internal use)
+     * Compatibility helper retained for existing service/integration tests.
      */
     public Path load(String filename) {
         return Path.of(filename);

@@ -41,9 +41,10 @@ public class EventDTO {
     private Long coverImageId;
     
     @Pattern(regexp = "^https?://[\\w\\-]+(\\.[\\w\\-]+)+.*", message = "Event URL must be a valid URL")
-    private String eventURL;
+    private String eventUrl;
     
     private LocalDateTime createdAt;
     
     private LocalDateTime updatedAt;
 }
+

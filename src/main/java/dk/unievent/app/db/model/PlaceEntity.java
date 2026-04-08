@@ -30,10 +30,10 @@ public class PlaceEntity {
     private Double latitude;
     private Double longitude;
 
-    @Column(name = "createdAt", insertable = true, updatable = false)
+    @Column(name = "created_at", insertable = true, updatable = false)
     private LocalDateTime createdAt;
 
-    @Column(name = "updatedAt")
+    @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
     @OneToMany(mappedBy = "place", cascade = CascadeType.ALL)

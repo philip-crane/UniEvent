@@ -24,7 +24,7 @@ public class PageEntity {
     private String name;
 
     @OneToOne(cascade = CascadeType.PERSIST)
-    @JoinColumn(name = "pictureId")
+    @JoinColumn(name = "picture_id")
     private MediaEntity picture;
 
     // Token management fields
@@ -40,13 +40,13 @@ public class PageEntity {
     private LocalDateTime lastRefreshAttempt;
 
     // Metadata
-    @Column(name = "createdAt", insertable = true, updatable = false)
+    @Column(name = "created_at", insertable = true, updatable = false)
     private LocalDateTime createdAt;
 
-    @Column(name = "updatedAt")
+    @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    @Column(name = "connectedAt")
+    @Column(name = "connected_at")
     private LocalDateTime connectedAt;
 
     @OneToMany(mappedBy = "page", cascade = CascadeType.ALL, orphanRemoval = true)

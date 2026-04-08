@@ -10,6 +10,7 @@ import dk.unievent.app.application.dto.PageDTO;
 import dk.unievent.app.application.mapper.PageMapper;
 import dk.unievent.app.application.service.PageService;
 import dk.unievent.app.db.model.PageEntity;
+import dk.unievent.app.db.repository.MediaRepository;
 import dk.unievent.app.db.repository.PageRepository;
 
 import java.time.LocalDateTime;
@@ -29,6 +30,9 @@ class PageServiceTests {
     
     @Mock
     private PageMapper pageMapper;
+
+    @Mock
+    private MediaRepository mediaRepository;
     
     @InjectMocks
     private PageService pageService;

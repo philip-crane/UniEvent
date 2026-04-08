@@ -12,16 +12,16 @@ import org.springframework.web.client.RestTemplate;
 import java.io.IOException;
 
 @Component
-public class SeaweedClient {
+public class SeaweedFsClient {
 
     private final String masterUrl;
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
 
-    public SeaweedClient(SeaweedConfig config) {
+    public SeaweedFsClient(SeaweedConfig config, RestTemplate restTemplate, ObjectMapper objectMapper) {
         this.masterUrl = config.getMasterUrl();
-        this.restTemplate = new RestTemplate();
-        this.objectMapper = new ObjectMapper();
+        this.restTemplate = restTemplate;
+        this.objectMapper = objectMapper;
     }
 
     public FileAssignment assignFile() throws IOException {

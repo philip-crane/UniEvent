@@ -1,18 +1,12 @@
 package dk.unievent.app.application.mapper;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import dk.unievent.app.application.dto.PageDTO;
-import dk.unievent.app.db.model.MediaEntity;
 import dk.unievent.app.db.model.PageEntity;
-import dk.unievent.app.db.repository.MediaRepository;
 
 @Component
 public class PageMapper {
-    
-    @Autowired
-    private MediaRepository mediaRepository;
     
     public PageDTO toDTO(PageEntity entity) {
         if (entity == null) {
@@ -36,17 +30,10 @@ public class PageMapper {
             return null;
         }
         
-        PageEntity.PageEntityBuilder builder = PageEntity.builder()
+        return PageEntity.builder()
                 .id(dto.getId())
-                .name(dto.getName());
-        
-        // Load picture if ID provided
-        if (dto.getPictureId() != null) {
-            MediaEntity picture = mediaRepository.findById(dto.getPictureId()).orElse(null);
-            builder.picture(picture);
-        }
-        
-        return builder.build();
+                .name(dto.getName())
+                .build();
     }
     
     /**

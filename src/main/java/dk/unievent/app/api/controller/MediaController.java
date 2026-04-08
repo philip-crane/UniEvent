@@ -14,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import dk.unievent.app.application.dto.MediaDTO;
 import dk.unievent.app.db.model.MediaEntity;
 import dk.unievent.app.db.repository.MediaRepository;
 import dk.unievent.app.application.service.MediaService;
@@ -23,6 +24,7 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/media")
@@ -44,11 +46,11 @@ public class MediaController {
     )
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "File uploaded successfully",
-            content = @Content(mediaType = "application/json", schema = @Schema(implementation = MediaEntity.class))),
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = MediaDTO.class))),
         @ApiResponse(responseCode = "400", description = "Invalid or empty file"),
         @ApiResponse(responseCode = "500", description = "Server error during file storage")
     })
-    public ResponseEntity<MediaEntity> upload(
+    public ResponseEntity<MediaDTO> upload(
         @Parameter(description = "File to upload", required = true)
         @RequestParam("file") MultipartFile file) throws IOException {
         String storedFilename = mediaService.store(file);
@@ -58,8 +60,8 @@ public class MediaController {
                 .fileId(storedFilename)
                 .uploadedAt(Instant.now())
                 .build();
-        repository.save(meta);
-        return ResponseEntity.ok(meta);
+            MediaEntity saved = repository.save(meta);
+            return ResponseEntity.ok(toDto(saved));
     }
 
     @GetMapping("/{id}")
@@ -93,8 +95,18 @@ public class MediaController {
         description = "Retrieve a list of all uploaded media files with their metadata."
     )
     @ApiResponse(responseCode = "200", description = "List of media files",
-        content = @Content(mediaType = "application/json", schema = @Schema(implementation = MediaEntity.class)))
-    public List<MediaEntity> list() {
-        return repository.findAll();
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = MediaDTO.class)))
+    public List<MediaDTO> list() {
+        return repository.findAll().stream().map(this::toDto).collect(Collectors.toList());
+    }
+
+    private MediaDTO toDto(MediaEntity entity) {
+        return MediaDTO.builder()
+                .id(entity.getId())
+                .filename(entity.getFilename())
+                .contentType(entity.getContentType())
+                .fileId(entity.getFileId())
+                .uploadedAt(entity.getUploadedAt())
+                .build();
     }
 }

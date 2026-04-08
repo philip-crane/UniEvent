@@ -8,7 +8,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
 
 import dk.unievent.app.application.service.MediaService;
-import dk.unievent.app.infrastructure.client.SeaweedClient;
+import dk.unievent.app.infrastructure.client.SeaweedFsClient;
 
 import java.io.IOException;
 
@@ -18,7 +18,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class MediaServiceTests {
     
     @Mock
-    private SeaweedClient seaweedClient;
+    private SeaweedFsClient seaweedClient;
     
     private MediaService mediaService;
     

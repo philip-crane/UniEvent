@@ -22,14 +22,10 @@ public class VaultClient {
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
 
-    public VaultClient(VaultConfig config) {
-        this(config, new RestTemplate());
-    }
-
-    VaultClient(VaultConfig config, RestTemplate restTemplate) {
+    public VaultClient(VaultConfig config, RestTemplate restTemplate, ObjectMapper objectMapper) {
         this.config = config;
         this.restTemplate = restTemplate;
-        this.objectMapper = new ObjectMapper();
+        this.objectMapper = objectMapper;
     }
 
     public Map<String, String> readSecretData() {

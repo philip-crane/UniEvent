@@ -20,7 +20,7 @@ public class EventEntity {
     private String id;
 
     @ManyToOne
-    @JoinColumn(name = "pageId", nullable = false)
+    @JoinColumn(name = "page_id", nullable = false)
     private PageEntity page;
 
     @Column(nullable = false)
@@ -35,19 +35,20 @@ public class EventEntity {
     private LocalDateTime endTime;
 
     @ManyToOne
-    @JoinColumn(name = "placeId")
+    @JoinColumn(name = "place_id")
     private PlaceEntity place;
 
     @OneToOne(cascade = CascadeType.PERSIST)
-    @JoinColumn(name = "coverImageId")
+    @JoinColumn(name = "cover_image_id")
     private MediaEntity coverImage;
     
-    private String eventURL;
+    @Column(name = "event_url")
+    private String eventUrl;
 
-    @Column(name = "createdAt", insertable = true, updatable = false)
+    @Column(name = "created_at", insertable = true, updatable = false)
     private LocalDateTime createdAt;
 
-    @Column(name = "updatedAt")
+    @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
     @PrePersist
@@ -61,3 +62,6 @@ public class EventEntity {
         updatedAt = LocalDateTime.now();
     }
 }
+
+
+
