@@ -23,7 +23,7 @@ We had previously created a version of UniEvent called DTUEvent hosted on Google
 
 ### Database
 
-- [ ] Fix N+1 query problem with JOIN FETCH in repositories
+- [x] Fix N+1 query problem with JOIN FETCH in repositories
 - [ ] Implement pagination for large result sets
 - [ ] Add cascade delete / orphan removal for page deletion
 - [ ] Disable `show-sql` in production profile
