@@ -11,6 +11,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
@@ -59,5 +60,32 @@ class SecurityIntegrationTests {
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
         assertEquals(200, response.statusCode());
         assertEquals("http://localhost:3000", response.headers().firstValue("Access-Control-Allow-Origin").orElse(null));
+    }
+
+    @Test
+    void preflightFromDisallowedOriginShouldBeRejected() throws Exception {
+        HttpRequest request = HttpRequest.newBuilder()
+            .uri(URI.create(url("/api/events")))
+            .method("OPTIONS", HttpRequest.BodyPublishers.noBody())
+            .header("Origin", "http://evil.example")
+            .header("Access-Control-Request-Method", "GET")
+            .build();
+
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        assertEquals(403, response.statusCode());
+        assertTrue(response.headers().firstValue("Access-Control-Allow-Origin").isEmpty());
+    }
+
+    @Test
+    void preflightWithDisallowedMethodShouldBeRejected() throws Exception {
+        HttpRequest request = HttpRequest.newBuilder()
+            .uri(URI.create(url("/api/events")))
+            .method("OPTIONS", HttpRequest.BodyPublishers.noBody())
+            .header("Origin", "http://localhost:3000")
+            .header("Access-Control-Request-Method", "PATCH")
+            .build();
+
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        assertEquals(403, response.statusCode());
     }
 }
