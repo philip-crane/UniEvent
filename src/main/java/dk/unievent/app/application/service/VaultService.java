@@ -36,7 +36,7 @@ public class VaultService {
     }
 
     public String readVaultSecretValue(String key) {
-        log.debug("Reading secret value from Vault for key: {}", key);
+        log.debug("Reading secret value from Vault");
         return vaultClient.readSecretValue(key);
     }
 
@@ -55,28 +55,28 @@ public class VaultService {
     }
 
     public Optional<SecretDTO> getSecretByName(String name) {
-        log.debug("Fetching secret by name: {}", name);
+        log.debug("Looking up secret in repository");
         return secretRepository.findByName(name).map(secretMapper::toDTO);
     }
 
     public SecretDTO saveSecret(SecretDTO secretDTO) {
-        log.info("Saving secret: {}", secretDTO.getName());
+        log.debug("Saving secret to repository");
         SecretEntity entity = secretMapper.toEntity(secretDTO);
         entity.setLastSyncedAt(LocalDateTime.now());
         SecretEntity saved = secretRepository.save(entity);
-        log.info("Secret saved successfully with id: {}", saved.getId());
+        log.info("Secret saved successfully");
         return secretMapper.toDTO(saved);
     }
 
     public boolean deleteSecret(Long id) {
-        log.info("Deleting secret with id: {}", id);
+        log.debug("Deleting secret with id: {}", id);
         if (!secretRepository.existsById(id)) {
-            log.warn("Secret not found for deletion with id: {}", id);
+            log.warn("Secret not found with id: {}", id);
             return false;
         }
 
         secretRepository.deleteById(id);
-        log.info("Secret deleted successfully: {}", id);
+        log.info("Secret deleted successfully with id: {}", id);
         return true;
     }
 }
