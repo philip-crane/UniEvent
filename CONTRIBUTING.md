@@ -16,18 +16,9 @@ We had previously created a version of UniEvent called DTUEvent hosted on Google
 - [ ] FB -> DB Ingest
 - [ ] Tokens
 
-### Security
-- [ ] Add authentication & authorization - all API endpoints are currently public lol
-- [ ] Configure CORS
-- [ ] Restrict `/actuator/health` details (currently exposes DB/memory info publicly lol)
-
 ### Database
 
-- [x] Fix N+1 query problem with JOIN FETCH in repositories
 - [ ] Implement pagination for large result sets
-- [ ] Add cascade delete / orphan removal for page deletion
-- [ ] Disable `show-sql` in production profile
-- [x] SeaweedFS media volume is lost when Docker is downed, so...
 
 ### API
 - [ ] Add missing HTTP methods: `updateEvent`, `deleteEvent`, etc.

@@ -23,7 +23,7 @@ public class PageEntity {
     @Column(nullable = false)
     private String name;
 
-    @OneToOne(cascade = CascadeType.PERSIST)
+    @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "picture_id")
     private MediaEntity picture;
 

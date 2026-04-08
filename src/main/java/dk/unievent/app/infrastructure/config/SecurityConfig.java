@@ -26,7 +26,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(authz -> authz
                 .requestMatchers("/api/**").permitAll()  // All /api/* endpoints are public
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll() // Swagger UI and OpenAPI docs
-                .requestMatchers("/actuator/health", "/actuator/info").permitAll()
+                .requestMatchers("/actuator/health", "/actuator/info").authenticated()  // Require authentication for health/info
                 .requestMatchers("/actuator/**").denyAll()
                 .anyRequest().permitAll()            // Development: allow all other requests
             )

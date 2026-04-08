@@ -27,14 +27,14 @@ class SecurityIntegrationTests {
     }
 
     @Test
-    void healthEndpointShouldStayPublic() throws Exception {
+    void healthEndpointShouldRequireAuthentication() throws Exception {
         HttpRequest request = HttpRequest.newBuilder()
             .uri(URI.create(url("/actuator/health")))
             .GET()
             .build();
 
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-        assertEquals(200, response.statusCode());
+        assertEquals(403, response.statusCode());
     }
 
     @Test

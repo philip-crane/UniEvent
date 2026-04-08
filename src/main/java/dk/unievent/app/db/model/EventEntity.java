@@ -38,7 +38,7 @@ public class EventEntity {
     @JoinColumn(name = "place_id")
     private PlaceEntity place;
 
-    @OneToOne(cascade = CascadeType.PERSIST)
+    @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "cover_image_id")
     private MediaEntity coverImage;
     
