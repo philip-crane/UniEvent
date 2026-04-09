@@ -10,6 +10,7 @@ We had previously created a version of UniEvent called DTUEvent hosted on Google
 - [ ] Port /web directory in old repo to new repo (entire frontend currently missing)
 - [ ] Facebook Page Organizer Onboarding Flow
 - [ ] Fix (auto) token refresh if possible lol
+- [ ] Mount frontend dist as volume to avoid having to --build when changes are made
 
 ### Serverless Functions
 - [ ] FB Callback
