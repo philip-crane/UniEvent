@@ -67,13 +67,70 @@ UniEventServer currently runs as a Java/Spring backend with Dockerized infrastru
 3. Generate a self-signed cert: `mkdir -p certs && openssl req -x509 -nodes -days 3650 -newkey rsa:2048 -keyout certs/privkey.pem -out certs/fullchain.pem -subj "/CN=localhost"`
 4. Start the stack: `docker compose up -d`
 
+## Uploading Test Images
+
+Before seeding test data with images, you need to upload at least one image to get a media file with ID. The first uploaded image will be assigned ID 1, which the seed script uses.
+
+### Upload an Image
+
+**Prepare a test image:**
+- Get any `.jpg`, `.png`, or images file (or create a simple one)
+- Save it locally (e.g., `test-image.jpg`)
+
+**Upload via curl:**
+
+**Windows cmd:**
+```cmd
+curl -X POST -F "file=@path/to/test-image.jpg" http://localhost:8080/media
+```
+
+**Windows PowerShell:**
+```powershell
+curl -X POST -F "file=@path/to/test-image.jpg" http://localhost:8080/media
+```
+
+**Linux/Mac:**
+```bash
+curl -X POST -F "file=@path/to/test-image.jpg" http://localhost:8080/media
+```
+
+**Example response:**
+```json
+{
+  "id": 1,
+  "filename": "test-image.jpg",
+  "contentType": "image/jpeg",
+  "fileId": "1,abc123def456",
+  "uploadedAt": "2026-04-13T15:30:00Z"
+}
+```
+
+The image is now stored in SeaweedFS and accessible at `http://localhost:8080/media/1`.
+
+### Before Seeding
+
+1. Upload your test image (gets ID 1)
+2. Run the seed command — all 10 seeded events will use this image
+3. Visit the frontend and verify all event cards display the image
+
+### Alternative: Use Swagger UI
+
+You can also upload via the interactive API documentation:
+
+1. Open **http://localhost:8080/swagger-ui.html**
+2. Find the **POST /media** endpoint (in "Media" section)
+3. Click **Try it out**
+4. Click **Choose File** and select your image
+5. Click **Execute**
+6. Note the returned media `id` — use this in seed scripts or manual linking
+
 ## Test Data Seeding
 
 For local development and testing, you can seed the database with minimal test data using HTTP endpoints. All seeded records are marked with a `SEED_` prefix for easy identification and cleanup.
 
 ### Seed Test Data
 
-Insert 2 sample pages, 10 events, and 2 places into your local MySQL database:
+Insert 2 sample pages, 10 events, 2 places, and 10 media files (all sharing the same image) into your local MySQL database:
 
 **Windows cmd:**
 ```cmd
@@ -105,6 +162,7 @@ The seeded data includes:
 - **Pages:** "Tech Events", "Culture Events"
 - **Events:** React Workshop, Spring Boot Masterclass, Docker & Kubernetes, Jazz Night, Art Exhibition, Film Festival, etc.
 - **Places:** Copenhagen, Aarhus
+- **Images:** All 10 events have cover images from your existing `/media/1` endpoint
 - **Relationships:** Events linked to pages and places with realistic dates (7-45 days in future)
 
 ### Clear Seeded Data
@@ -136,16 +194,24 @@ docker compose up -d
 
 # Wait ~40s for services to be healthy
 
-# Seed test data
+# Seed test data with images
 curl -X POST http://localhost:8080/admin/seed
 
 # Query the API to verify (e.g., via Swagger UI at http://localhost:8080/swagger-ui.html)
+# All events should now display cover images
 
 # Test your frontend or API endpoints with real data
 
 # Clean up when done
 curl -X DELETE http://localhost:8080/admin/seed
 ```
+
+### How Images Work
+
+- Each seeded event is assigned a **unique media record** in the database
+- All media records point to the **same image file** in SeaweedFS (from your existing `/media/1`)
+- This avoids ID bloat while ensuring each event has its own cover image reference
+- On reseed, new media records are created pointing to the same image
 
 ## Debugging & Logs
 
