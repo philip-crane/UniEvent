@@ -78,21 +78,11 @@ Before seeding test data with images, you need to upload at least one image to g
 - Save it locally (e.g., `test-image.jpg`)
 
 **Upload via curl:**
-
-**Windows cmd:**
-```cmd
+```sh
 curl -X POST -F "file=@path/to/test-image.jpg" http://localhost:8080/media
 ```
 
-**Windows PowerShell:**
-```powershell
-curl -X POST -F "file=@path/to/test-image.jpg" http://localhost:8080/media
-```
-
-**Linux/Mac:**
-```bash
-curl -X POST -F "file=@path/to/test-image.jpg" http://localhost:8080/media
-```
+(Same command for Windows cmd, PowerShell, Linux/Mac)
 
 **Example response:**
 ```json
@@ -128,24 +118,22 @@ You can also upload via the interactive API documentation:
 
 For local development and testing, you can seed the database with minimal test data using HTTP endpoints. All seeded records are marked with a `SEED_` prefix for easy identification and cleanup.
 
+### Installing curl
+
+If you don't have curl installed:
+- **Windows:** It's built-in on Windows 10+ (use `curl` directly in cmd/PowerShell)
+- **Mac:** `brew install curl`
+- **Linux:** `sudo apt install curl` (Ubuntu/Debian) or `sudo yum install curl` (RedHat/CentOS)
+
 ### Seed Test Data
 
 Insert 2 sample pages, 10 events, 2 places, and 10 media files (all sharing the same image) into your local MySQL database:
 
-**Windows cmd:**
-```cmd
+```sh
 curl -X POST http://localhost:8080/admin/seed
 ```
 
-**Windows PowerShell:**
-```powershell
-curl -X POST http://localhost:8080/admin/seed
-```
-
-**Linux/Mac:**
-```bash
-curl -X POST http://localhost:8080/admin/seed
-```
+(Same command for Windows cmd, PowerShell, Linux/Mac)
 
 **Example response:**
 ```json
@@ -169,11 +157,11 @@ The seeded data includes:
 
 Remove all test data marked with `SEED_` prefix:
 
-```cmd
+```sh
 curl -X DELETE http://localhost:8080/admin/seed
 ```
 
-**Example response:**
+(Same command for Windows cmd, PowerShell, Linux/Mac)
 ```json
 {
   "success": true,
