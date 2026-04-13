@@ -67,6 +67,86 @@ UniEventServer currently runs as a Java/Spring backend with Dockerized infrastru
 3. Generate a self-signed cert: `mkdir -p certs && openssl req -x509 -nodes -days 3650 -newkey rsa:2048 -keyout certs/privkey.pem -out certs/fullchain.pem -subj "/CN=localhost"`
 4. Start the stack: `docker compose up -d`
 
+## Test Data Seeding
+
+For local development and testing, you can seed the database with minimal test data using HTTP endpoints. All seeded records are marked with a `SEED_` prefix for easy identification and cleanup.
+
+### Seed Test Data
+
+Insert 2 sample pages, 10 events, and 2 places into your local MySQL database:
+
+**Windows cmd:**
+```cmd
+curl -X POST http://localhost:8080/admin/seed
+```
+
+**Windows PowerShell:**
+```powershell
+curl -X POST http://localhost:8080/admin/seed
+```
+
+**Linux/Mac:**
+```bash
+curl -X POST http://localhost:8080/admin/seed
+```
+
+**Example response:**
+```json
+{
+  "success": true,
+  "message": "Seed data created successfully",
+  "pageCount": 2,
+  "eventCount": 10,
+  "placeCount": 2
+}
+```
+
+The seeded data includes:
+- **Pages:** "Tech Events", "Culture Events"
+- **Events:** React Workshop, Spring Boot Masterclass, Docker & Kubernetes, Jazz Night, Art Exhibition, Film Festival, etc.
+- **Places:** Copenhagen, Aarhus
+- **Relationships:** Events linked to pages and places with realistic dates (7-45 days in future)
+
+### Clear Seeded Data
+
+Remove all test data marked with `SEED_` prefix:
+
+```cmd
+curl -X DELETE http://localhost:8080/admin/seed
+```
+
+**Example response:**
+```json
+{
+  "success": true,
+  "message": "Seed data cleared successfully",
+  "pageCount": 2,
+  "eventCount": 10,
+  "placeCount": 2
+}
+```
+
+**Important:** Only records with the `SEED_` prefix are removed, so your production or manually-created data is safe.
+
+### Workflow Example
+
+```powershell
+# Start the stack
+docker compose up -d
+
+# Wait ~40s for services to be healthy
+
+# Seed test data
+curl -X POST http://localhost:8080/admin/seed
+
+# Query the API to verify (e.g., via Swagger UI at http://localhost:8080/swagger-ui.html)
+
+# Test your frontend or API endpoints with real data
+
+# Clean up when done
+curl -X DELETE http://localhost:8080/admin/seed
+```
+
 ## Debugging & Logs
 
 ### Viewing Application Logs
