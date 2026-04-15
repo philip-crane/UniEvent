@@ -245,14 +245,8 @@ Debug output is controlled by `src/main/resources/application-dev.yaml` and is a
 
 To return to INFO-level logging:
 
-**Windows PowerShell:**
+**Terminal:**
 ```powershell
-docker compose down
-docker compose up -d --build
-```
-
-**Linux/Mac:**
-```bash
 docker compose down
 docker compose up -d --build
 ```
