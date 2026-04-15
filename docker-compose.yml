@@ -66,7 +66,7 @@ services:
       UNIEVENT_MEDIA_SEAWEEDFS_MASTER_URL: ${SEAWEEDFS_MASTER_URL:-weed-master:9333}
       UNIEVENT_MEDIA_SEAWEEDFS_VOLUME_URL: ${SEAWEEDFS_VOLUME_URL:-http://weed-volume:8080}
       VAULT_ENABLED: ${VAULT_ENABLED:-true}
-      VAULT_URI: ${VAULT_URI:-http://vault:8200}
+      VAULT_URI: ${VAULT_URI:-https://vault:8200}
       VAULT_TOKEN: ${VAULT_TOKEN:-}
       VAULT_SECRET_PATH: ${VAULT_SECRET_PATH:-secret/data/unievent}
     ports:
