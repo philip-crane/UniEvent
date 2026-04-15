@@ -7,31 +7,41 @@ We had previously created a version of UniEvent called DTUEvent hosted on Google
 ## TODO
 
 ### Big Tasks
+- [in progress] Implement real JWT auth (signed token, expiry, validation filter) and protect non-public API routes
 - [ ] Port /web directory in old repo to new repo (entire frontend currently missing)
-- [ ] Facebook Page Organizer Onboarding Flow
-- [ ] Fix (auto) token refresh if possible lol
 - [ ] Mount frontend dist as volume to avoid having to --build when changes are made
+- [ ] Create Page functionality. Also Split create/update logic so `PUT /api/pages/{id}` returns `404` when page does not exist. Prevent client-controlled ID abuse on create flows (server-side ID policy and validation)
+- [in progress] Fix (auto) token refresh if possible lol
+- [in progress] Facebook Page Organizer Onboarding Flow
+
+## DB
+- [ ] Align place deletion behavior with docs (nullify place in events OR document cascading delete)
+- [ ] Add deterministic media replacement lifecycle (cleanup old DB record and SeaweedFS file on replace)
 
 ### Serverless Functions
 - [ ] FB Callback
 - [ ] FB -> DB Ingest
 - [ ] Tokens
 
-### Database
-
-- [ ] Implement pagination for large result sets
-
 ### API
-- [x] Add SLF4J logging throughout services
+- [ ] Restrict `/admin/seed` endpoints to local/dev only (profile and/or role guard)
+- [ ] Fix page/place search to do true partial matching (`contains`/`like`) instead of exact match
+- [ ] Add integration tests for auth guardrails, seed endpoint access control, and update-not-found behavior
+- [ ] Make actuator `health/info` access strategy explicit for Docker probes + production security
 
 ### Frontend
-- [ ] User favorites and personalization
 - [ ] FB authentication (Facebook OAuth)
-- [ ] Business Manager integration for stable API access
 - [ ] Page admin dashboard for managing event sync
+- [ ] Create Event Page
+- [ ] Business Manager integration for stable API access
+- [ ] User favorites and personalization
 
 ### Nice-To-Have
 - [ ] DB Replace `ddl-auto: update` with Flyway or Liquibase migrations
+- [ ] Replace field injection with constructor injection for consistency and testability
+- [ ] Pin Docker image versions (avoid `latest` tags for reproducibility)
+- [ ] Resolve PageDTO URL contract mismatch (computed URL vs validated input field)
+- [ ] Harden media download content-type handling with safe fallback on invalid metadata
 - [ ] Make more mobile-friendly
 - [ ] Location mapping (A literal google maps with the events placed)
 - [ ] Manual event submission (fallback for pages without dedicated event)
