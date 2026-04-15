@@ -10,6 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.RequestMethod;
 
 import java.util.List;
 import java.util.Map;
@@ -34,26 +35,27 @@ public class FacebookController {
      * OAuth callback endpoint.
      * Called by Facebook with authorization code after user approves the app.
      * Exchanges code for tokens and stores user's pages.
+     * Accepts both GET (from browser redirect) and POST (from server-to-server).
      *
      * @param code Authorization code from Facebook
      * @param state State parameter for CSRF protection (optional)
-     * @return Redirects to frontend with success/error
+     * @return JSON response with pages stored or error details
      */
-    @PostMapping("/callback")
+    @RequestMapping(value = "/callback", method = {RequestMethod.GET, RequestMethod.POST})
     @Operation(
         summary = "Facebook OAuth callback",
-        description = "Process OAuth authorization code, exchange for tokens, and store pages"
+        description = "Process OAuth authorization code, exchange for tokens, and store pages. Accepts GET from browser or POST from server."
     )
     @ApiResponse(responseCode = "200", description = "OAuth callback processed successfully")
     @ApiResponse(responseCode = "400", description = "Missing authorization code")
     @ApiResponse(responseCode = "500", description = "OAuth flow failed")
     public ResponseEntity<?> handleOAuthCallback(
         @Parameter(description = "Authorization code from Facebook")
-        @RequestParam String code,
+        @RequestParam(required = false) String code,
         @Parameter(description = "State parameter for CSRF protection")
         @RequestParam(required = false) String state
     ) {
-        log.info("Received Facebook OAuth callback");
+        log.info("Received Facebook OAuth callback via GET/POST");
 
         if (code == null || code.isEmpty()) {
             log.error("OAuth callback missing authorization code");
