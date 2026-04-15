@@ -79,4 +79,56 @@ public class VaultService {
         log.info("Secret deleted successfully with id: {}", id);
         return true;
     }
+
+    /**
+     * Store a Facebook page access token in Vault
+     * @param pageId Facebook page ID
+     * @param token Page access token
+     */
+    public void storePageToken(String pageId, String token) {
+        log.debug("Storing Facebook page token for page: {}", pageId);
+        String vaultPath = String.format("unievent/facebook/page_%s", pageId);
+        Map<String, String> tokenData = Map.of(
+            "access_token", token,
+            "stored_at", LocalDateTime.now().toString()
+        );
+        vaultClient.writeSecret(vaultPath, tokenData);
+        log.info("Facebook page token stored successfully for page: {}", pageId);
+    }
+
+    /**
+     * Retrieve a Facebook page access token from Vault
+     * @param pageId Facebook page ID
+     * @return Optional containing the access token if found
+     */
+    public Optional<String> getPageToken(String pageId) {
+        log.debug("Retrieving Facebook page token for page: {}", pageId);
+        try {
+            String vaultPath = String.format("unievent/facebook/page_%s", pageId);
+            Map<String, String> tokenData = vaultClient.readSecretData(vaultPath);
+            if (tokenData != null && tokenData.containsKey("access_token")) {
+                log.debug("Facebook page token retrieved successfully for page: {}", pageId);
+                return Optional.of(tokenData.get("access_token"));
+            }
+        } catch (Exception e) {
+            log.warn("Failed to retrieve Facebook page token for page: {}", pageId, e);
+        }
+        return Optional.empty();
+    }
+
+    /**
+     * Update a Facebook page access token in Vault
+     * @param pageId Facebook page ID
+     * @param newToken New page access token
+     */
+    public void updatePageToken(String pageId, String newToken) {
+        log.debug("Updating Facebook page token for page: {}", pageId);
+        String vaultPath = String.format("unievent/facebook/page_%s", pageId);
+        Map<String, String> tokenData = Map.of(
+            "access_token", newToken,
+            "updated_at", LocalDateTime.now().toString()
+        );
+        vaultClient.writeSecret(vaultPath, tokenData);
+        log.info("Facebook page token updated successfully for page: {}", pageId);
+    }
 }

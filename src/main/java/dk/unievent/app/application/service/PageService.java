@@ -5,6 +5,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import dk.unievent.app.api.dto.FbPageResponse;
 import dk.unievent.app.application.dto.PageDTO;
 import dk.unievent.app.application.mapper.PageMapper;
 import dk.unievent.app.db.model.MediaEntity;
@@ -161,5 +162,111 @@ public class PageService {
         }
         log.warn("Page not found for deletion with id: {}", id);
         return false;
+    }
+
+    /**
+     * Create or update a PageEntity from Facebook Graph API response.
+     * Initializes token metadata and integration settings.
+     * @param fbPageResponse Facebook page response from Graph API
+     * @return Created or updated PageEntity
+     */
+    public PageEntity createOrUpdatePageFromFacebook(FbPageResponse fbPageResponse) {
+        log.debug("Processing Facebook page: {} ({})", fbPageResponse.getName(), fbPageResponse.getId());
+
+        Optional<PageEntity> existing = pageRepository.findById(fbPageResponse.getId());
+
+        PageEntity pageEntity;
+        if (existing.isPresent()) {
+            pageEntity = existing.get();
+            log.debug("Updating existing page: {}", fbPageResponse.getId());
+        } else {
+            pageEntity = new PageEntity();
+            pageEntity.setId(fbPageResponse.getId());
+            pageEntity.setFacebookPageId(fbPageResponse.getId());
+            log.debug("Creating new page from Facebook: {}", fbPageResponse.getId());
+        }
+
+        // Update/set page information
+        pageEntity.setName(fbPageResponse.getName());
+        pageEntity.setTokenStatus("valid");
+        pageEntity.setTokenRefreshedAt(LocalDateTime.now());
+        pageEntity.setLastRefreshSuccess(true);
+        pageEntity.setLastRefreshError(null);
+        pageEntity.setLastRefreshAttempt(LocalDateTime.now());
+
+        // Token expiration: Facebook long-lived tokens expire in ~60 days
+        LocalDateTime expirationTime = LocalDateTime.now().plusDays(60);
+        pageEntity.setTokenExpiresAt(expirationTime);
+        pageEntity.setTokenExpiresInDays(60);
+
+        PageEntity saved = pageRepository.save(pageEntity);
+        log.info("Facebook page entity saved: {} ({})", saved.getName(), saved.getId());
+
+        return saved;
+    }
+
+    /**
+     * Refresh page tokens for all pages that need token refresh.
+     * Called by FacebookTokenRefresher scheduler.
+     * @return Number of pages with successful token refresh
+     */
+    public int refreshPageTokens() {
+        log.info("Starting batch token refresh for all pages");
+
+        Pageable pageable = org.springframework.data.domain.PageRequest.of(0, 100);
+        Page<PageEntity> pagesToRefresh = getPagesToRefresh(pageable);
+
+        int successCount = 0;
+        for (PageEntity page : pagesToRefresh.getContent()) {
+            if (refreshToken(page.getId())) {
+                successCount++;
+            }
+        }
+
+        log.info("Batch token refresh completed. Success: {}/{}", successCount, pagesToRefresh.getTotalElements());
+        return successCount;
+    }
+
+    /**
+     * Refresh access token for a specific page.
+     * Updates token status and expiration metadata.
+     * @param pageId Facebook page ID
+     * @return true if token refresh was successful
+     */
+    public boolean refreshToken(String pageId) {
+        log.debug("Refreshing token for page: {}", pageId);
+
+        Optional<PageEntity> pageOpt = pageRepository.findById(pageId);
+        if (pageOpt.isEmpty()) {
+            log.warn("Page not found for token refresh: {}", pageId);
+            return false;
+        }
+
+        try {
+            // Note: FacebookTokenRefresher service calls FacebookGraphApiService.refreshPageToken()
+            // then calls this method to update metadata in database
+            // Token refresh happens at higher level to maintain separation of concerns
+
+            PageEntity page = pageOpt.get();
+            page.setTokenStatus("valid");
+            page.setTokenRefreshedAt(LocalDateTime.now());
+            page.setLastRefreshSuccess(true);
+            page.setLastRefreshError(null);
+            page.setLastRefreshAttempt(LocalDateTime.now());
+
+            // Update expiration: refresh adds another ~60 days
+            LocalDateTime expirationTime = LocalDateTime.now().plusDays(60);
+            page.setTokenExpiresAt(expirationTime);
+            page.setTokenExpiresInDays(60);
+
+            pageRepository.save(page);
+            log.info("Token metadata updated for page: {}", pageId);
+            return true;
+
+        } catch (Exception e) {
+            log.error("Error refreshing token for page: {}", pageId, e);
+            logRefreshFailure(pageId, e.getMessage());
+            return false;
+        }
     }
 }

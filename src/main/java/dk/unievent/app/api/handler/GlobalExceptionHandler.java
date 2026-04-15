@@ -1,5 +1,6 @@
 package dk.unievent.app.api.handler;
 
+import dk.unievent.app.infrastructure.exception.FacebookApiException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -99,6 +100,22 @@ public class GlobalExceptionHandler {
                 "Internal Server Error",
                 "I/O operation failed."
         );
+    }
+
+    @ExceptionHandler(FacebookApiException.class)
+    public ResponseEntity<Map<String, Object>> handleFacebookApiException(FacebookApiException ex) {
+        log.error("Facebook API error: {} (status: {}, error type: {})",
+            ex.getMessage(), ex.getStatusCode(), ex.getErrorType());
+
+        Map<String, Object> errorResponse = new HashMap<>();
+        errorResponse.put("timestamp", LocalDateTime.now());
+        errorResponse.put("status", HttpStatus.SERVICE_UNAVAILABLE.value());
+        errorResponse.put("error", "Facebook API Error");
+        errorResponse.put("message", ex.getMessage());
+        errorResponse.put("facebook_error_type", ex.getErrorType());
+        errorResponse.put("facebook_status_code", ex.getStatusCode());
+
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(errorResponse);
     }
 
     @ExceptionHandler(Exception.class)
