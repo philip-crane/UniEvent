@@ -145,6 +145,7 @@ public class VaultService {
      * @param pageId Facebook page ID
      * @return Optional containing the access token if found
      */
+    @SuppressWarnings("unchecked")
     public Optional<String> getPageToken(String pageId) {
         try {
             log.debug("Retrieving Facebook page token for page: {}", pageId);

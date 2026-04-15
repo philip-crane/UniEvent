@@ -5,6 +5,7 @@ import dk.unievent.app.infrastructure.config.FacebookConfig;
 import dk.unievent.app.infrastructure.exception.FacebookApiException;
 import dk.unievent.app.infrastructure.util.FacebookAppSecurityUtil;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
@@ -138,21 +139,14 @@ public class FacebookGraphApiService {
                     .uri(uri)
                     .header("Authorization", "Bearer " + userToken)
                     .retrieve()
-                    .body(Object.class);
-            
-            if (response == null) {
-                log.warn("Empty response from Facebook pages endpoint");
+                    .body(new ParameterizedTypeReference<Map<String, List<FbPageResponse>>>() {});
+
+            if (response == null || !response.containsKey("data")) {
+                log.warn("Empty or missing 'data' field in Facebook pages response");
                 return List.of();
             }
-            
-            // Safely cast response
-            Map<String, Object> responseMap = (Map<String, Object>) response;
-            if (!responseMap.containsKey("data")) {
-                log.warn("No 'data' field in Facebook response");
-                return List.of();
-            }
-            
-            List<FbPageResponse> pages = (List<FbPageResponse>) responseMap.get("data");
+
+            List<FbPageResponse> pages = response.get("data");
             log.debug("Retrieved {} pages from user", pages.size());
             return pages;
             
@@ -193,21 +187,14 @@ public class FacebookGraphApiService {
                     .uri(uri)
                     .header("Authorization", "Bearer " + pageToken)
                     .retrieve()
-                    .body(Object.class);
-            
-            if (response == null) {
-                log.warn("Empty response from Facebook events endpoint for page: {}", pageId);
+                    .body(new ParameterizedTypeReference<Map<String, List<FbEventResponse>>>() {});
+
+            if (response == null || !response.containsKey("data")) {
+                log.warn("Empty or missing 'data' field in Facebook events response for page: {}", pageId);
                 return List.of();
             }
-            
-            // Safely cast response
-            Map<String, Object> responseMap = (Map<String, Object>) response;
-            if (!responseMap.containsKey("data")) {
-                log.warn("No 'data' field in Facebook events response for page: {}", pageId);
-                return List.of();
-            }
-            
-            List<FbEventResponse> events = (List<FbEventResponse>) responseMap.get("data");
+
+            List<FbEventResponse> events = response.get("data");
             log.debug("Retrieved {} events for page: {}", events.size(), pageId);
             return events;
             
