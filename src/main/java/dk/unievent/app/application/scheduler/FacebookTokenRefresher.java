@@ -12,7 +12,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import java.time.LocalDateTime;
+
 import java.util.Optional;
 
 /**
@@ -114,7 +114,8 @@ public class FacebookTokenRefresher {
 
             // Step 2: Call Facebook Graph API to refresh token
             try {
-                String newToken = facebookGraphApiService.refreshPageToken(currentToken);
+                var tokenResponse = facebookGraphApiService.refreshPageToken(currentToken);
+                String newToken = tokenResponse.getAccessToken();
                 log.debug("Obtained new token from Facebook for page: {}", pageId);
 
                 // Step 3: Store new token in Vault

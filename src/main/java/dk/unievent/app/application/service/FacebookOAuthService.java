@@ -8,7 +8,7 @@ import dk.unievent.app.infrastructure.exception.FacebookApiException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
+
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -105,7 +105,7 @@ public class FacebookOAuthService {
 
             // Create or update PageEntity
             PageEntity pageEntity = pageService.createOrUpdatePageFromFacebook(fbPage);
-            log.info("Page entity created/updated: {} ({})", pageEntity.getName(), pageEntity.getFacebookPageId());
+            log.info("Page entity created/updated: {} ({})", pageEntity.getName(), pageEntity.getId());
 
             return pageEntity;
 

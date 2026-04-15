@@ -11,7 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.URL;
+import java.net.URI;
 import java.net.URLConnection;
 import java.nio.file.Path;
 
@@ -162,7 +162,7 @@ public class MediaService {
      */
     private byte[] downloadImageBytes(String imageUrl) throws IOException {
         try {
-            URL url = new URL(imageUrl);
+            var url = URI.create(imageUrl).toURL();
             URLConnection conn = url.openConnection();
             
             // Set timeout to 10 seconds

@@ -1,6 +1,6 @@
 unievent:
   vault:
-    enabled: ${VAULT_ENABLED:false}
-    uri: ${VAULT_URI:http://localhost:8200}
+    enabled: ${VAULT_ENABLED:true}
+    uri: ${VAULT_URI:https://localhost:8200}  # Always use HTTPS in production. Local dev may use self-signed certs.
     token: ${VAULT_TOKEN:}
     secret-path: ${VAULT_SECRET_PATH:secret/data/unievent}

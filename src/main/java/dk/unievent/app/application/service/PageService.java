@@ -182,7 +182,6 @@ public class PageService {
         } else {
             pageEntity = new PageEntity();
             pageEntity.setId(fbPageResponse.getId());
-            pageEntity.setFacebookPageId(fbPageResponse.getId());
             log.debug("Creating new page from Facebook: {}", fbPageResponse.getId());
         }
 

@@ -215,9 +215,6 @@ public class EventService {
     public List<EventEntity> ingestFacebookEvents(String pageId) {
         log.info("Starting Facebook event ingestion for page: {}", pageId);
 
-        // Verify page exists
-        PageEntity page = getPageOrThrow(pageId);
-
         try {
             // Retrieve page token from Vault
             Optional<String> pageTokenOpt = vaultService.getPageToken(pageId);

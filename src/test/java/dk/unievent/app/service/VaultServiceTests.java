@@ -6,12 +6,14 @@ import dk.unievent.app.application.service.VaultService;
 import dk.unievent.app.db.model.SecretEntity;
 import dk.unievent.app.db.repository.SecretRepository;
 import dk.unievent.app.infrastructure.client.VaultClient;
+import dk.unievent.app.infrastructure.config.VaultConfig;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.web.client.RestClient;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -33,8 +35,28 @@ class VaultServiceTests {
     @Mock
     private SecretMapper secretMapper;
 
-    @InjectMocks
+    @Mock
+    private RestClient.Builder restClientBuilder;
+
+    @Mock
+    private RestClient restClient;
+
+    @Mock
+    private VaultConfig vaultConfig;
+
     private VaultService vaultService;
+
+    @BeforeEach
+    void setUp() {
+        when(restClientBuilder.baseUrl(anyString())).thenReturn(restClientBuilder);
+        when(restClientBuilder.defaultHeader(anyString(), anyString())).thenReturn(restClientBuilder);
+        when(restClientBuilder.build()).thenReturn(restClient);
+        
+        when(vaultConfig.getUri()).thenReturn("https://localhost:8200");
+        when(vaultConfig.getToken()).thenReturn("test-token");
+        
+        vaultService = new VaultService(vaultClient, secretRepository, secretMapper, restClientBuilder, vaultConfig);
+    }
 
     @Test
     void testReadVaultSecretDataDelegatesToClient() {

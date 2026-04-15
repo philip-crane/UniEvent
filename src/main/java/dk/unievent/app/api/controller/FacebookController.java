@@ -76,8 +76,7 @@ public class FacebookController {
                     "pages", pages.stream()
                         .map(p -> Map.of(
                             "id", p.getId(),
-                            "name", p.getName(),
-                            "facebook_page_id", p.getFacebookPageId()
+                            "name", p.getName()
                         ))
                         .toList()
                 ));

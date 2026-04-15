@@ -5,8 +5,13 @@ import dk.unievent.app.application.mapper.SecretMapper;
 import dk.unievent.app.db.model.SecretEntity;
 import dk.unievent.app.db.repository.SecretRepository;
 import dk.unievent.app.infrastructure.client.VaultClient;
+import dk.unievent.app.infrastructure.util.FacebookAppSecurityUtil;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientResponseException;
 import lombok.extern.slf4j.Slf4j;
 
 import java.time.LocalDateTime;
@@ -23,11 +28,22 @@ public class VaultService {
     private final VaultClient vaultClient;
     private final SecretRepository secretRepository;
     private final SecretMapper secretMapper;
+    private final RestClient restClient;
 
-    public VaultService(VaultClient vaultClient, SecretRepository secretRepository, SecretMapper secretMapper) {
+    public VaultService(
+        VaultClient vaultClient,
+        SecretRepository secretRepository,
+        SecretMapper secretMapper,
+        RestClient.Builder restClientBuilder,
+        dk.unievent.app.infrastructure.config.VaultConfig vaultConfig
+    ) {
         this.vaultClient = vaultClient;
         this.secretRepository = secretRepository;
         this.secretMapper = secretMapper;
+        this.restClient = restClientBuilder
+            .baseUrl(vaultConfig.getUri())
+            .defaultHeader("X-Vault-Token", vaultConfig.getToken())
+            .build();
     }
 
     public Map<String, String> readVaultSecretData() {
@@ -81,54 +97,141 @@ public class VaultService {
     }
 
     /**
-     * Store a Facebook page access token in Vault
+     * Store a Facebook page access token in Vault.
+     * Token stored at: secret/data/unievent/facebook/page_{pageId}
+     * 
      * @param pageId Facebook page ID
-     * @param token Page access token
+     * @param token Page access token to store
      */
     public void storePageToken(String pageId, String token) {
-        log.debug("Storing Facebook page token for page: {}", pageId);
-        String vaultPath = String.format("unievent/facebook/page_%s", pageId);
-        Map<String, String> tokenData = Map.of(
-            "access_token", token,
-            "stored_at", LocalDateTime.now().toString()
-        );
-        vaultClient.writeSecret(vaultPath, tokenData);
-        log.info("Facebook page token stored successfully for page: {}", pageId);
+        try {
+            log.debug("Storing Facebook page token for page: {} (token: {})", pageId, FacebookAppSecurityUtil.maskToken(token));
+            
+            String vaultPath = String.format("/v1/secret/data/unievent/facebook/page_%s", pageId);
+            
+            // Build Vault request body
+            Map<String, Object> vaultData = Map.of(
+                "data", Map.of(
+                    "access_token", token,
+                    "stored_at", LocalDateTime.now().toString()
+                )
+            );
+            
+            var response = restClient.post()
+                    .uri(vaultPath)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(vaultData)
+                    .retrieve()
+                    .toEntity(Object.class);
+            
+            if (response.getStatusCode() == HttpStatus.OK || response.getStatusCode() == HttpStatus.NO_CONTENT) {
+                log.info("Facebook page token stored successfully for page: {}", pageId);
+            } else {
+                log.error("Failed to store token: unexpected status {}", response.getStatusCode());
+            }
+            
+        } catch (RestClientResponseException e) {
+            log.error("Failed to store Facebook page token in Vault for page: {}. Status: {}", pageId, e.getStatusCode(), e);
+            throw new RuntimeException("Failed to store page token in Vault: " + e.getMessage(), e);
+        } catch (Exception e) {
+            log.error("Error storing Facebook page token in Vault for page: {}", pageId, e);
+            throw new RuntimeException("Unexpected error storing page token: " + e.getMessage(), e);
+        }
     }
 
     /**
-     * Retrieve a Facebook page access token from Vault
+     * Retrieve a Facebook page access token from Vault.
+     * 
      * @param pageId Facebook page ID
      * @return Optional containing the access token if found
      */
     public Optional<String> getPageToken(String pageId) {
-        log.debug("Retrieving Facebook page token for page: {}", pageId);
         try {
-            String vaultPath = String.format("unievent/facebook/page_%s", pageId);
-            Map<String, String> tokenData = vaultClient.readSecretData(vaultPath);
-            if (tokenData != null && tokenData.containsKey("access_token")) {
-                log.debug("Facebook page token retrieved successfully for page: {}", pageId);
-                return Optional.of(tokenData.get("access_token"));
+            log.debug("Retrieving Facebook page token for page: {}", pageId);
+            
+            String vaultPath = String.format("/v1/secret/data/unievent/facebook/page_%s", pageId);
+            
+            var response = restClient.get()
+                    .uri(vaultPath)
+                    .retrieve()
+                    .body(Object.class);
+            
+            if (response == null) {
+                log.warn("No token found in Vault for page: {}", pageId);
+                return Optional.empty();
             }
+            
+            // Parse Vault response structure: {data: {data: {access_token: "..."}}}
+            Map<String, Object> responseMap = (Map<String, Object>) response;
+            Map<String, Object> dataMap = (Map<String, Object>) responseMap.get("data");
+            
+            if (dataMap == null) {
+                log.warn("Invalid Vault response structure for page: {}", pageId);
+                return Optional.empty();
+            }
+            
+            Map<String, Object> tokenData = (Map<String, Object>) dataMap.get("data");
+            if (tokenData != null && tokenData.containsKey("access_token")) {
+                String token = (String) tokenData.get("access_token");
+                log.debug("Facebook page token retrieved successfully for page: {} (token: {})", pageId, FacebookAppSecurityUtil.maskToken(token));
+                return Optional.of(token);
+            }
+            
+            log.warn("No access_token in Vault data for page: {}", pageId);
+            return Optional.empty();
+            
+        } catch (RestClientResponseException e) {
+            if (e.getStatusCode().value() == 404) {
+                log.debug("Token not found in Vault for page: {}", pageId);
+                return Optional.empty();
+            }
+            log.warn("Failed to retrieve Facebook page token for page: {}. Status: {}", pageId, e.getStatusCode(), e);
+            return Optional.empty();
         } catch (Exception e) {
-            log.warn("Failed to retrieve Facebook page token for page: {}", pageId, e);
+            log.warn("Error retrieving Facebook page token for page: {}", pageId, e);
+            return Optional.empty();
         }
-        return Optional.empty();
     }
 
     /**
-     * Update a Facebook page access token in Vault
+     * Update a Facebook page access token in Vault.
+     * 
      * @param pageId Facebook page ID
      * @param newToken New page access token
      */
     public void updatePageToken(String pageId, String newToken) {
-        log.debug("Updating Facebook page token for page: {}", pageId);
-        String vaultPath = String.format("unievent/facebook/page_%s", pageId);
-        Map<String, String> tokenData = Map.of(
-            "access_token", newToken,
-            "updated_at", LocalDateTime.now().toString()
-        );
-        vaultClient.writeSecret(vaultPath, tokenData);
-        log.info("Facebook page token updated successfully for page: {}", pageId);
+        try {
+            log.debug("Updating Facebook page token for page: {} (token: {})", pageId, FacebookAppSecurityUtil.maskToken(newToken));
+            
+            String vaultPath = String.format("/v1/secret/data/unievent/facebook/page_%s", pageId);
+            
+            // Build Vault request body
+            Map<String, Object> vaultData = Map.of(
+                "data", Map.of(
+                    "access_token", newToken,
+                    "updated_at", LocalDateTime.now().toString()
+                )
+            );
+            
+            var response = restClient.post()
+                    .uri(vaultPath)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(vaultData)
+                    .retrieve()
+                    .toEntity(Object.class);
+            
+            if (response.getStatusCode() == HttpStatus.OK || response.getStatusCode() == HttpStatus.NO_CONTENT) {
+                log.info("Facebook page token updated successfully for page: {}", pageId);
+            } else {
+                log.error("Failed to update token: unexpected status {}", response.getStatusCode());
+            }
+            
+        } catch (RestClientResponseException e) {
+            log.error("Failed to update Facebook page token in Vault for page: {}. Status: {}", pageId, e.getStatusCode(), e);
+            throw new RuntimeException("Failed to update page token in Vault: " + e.getMessage(), e);
+        } catch (Exception e) {
+            log.error("Error updating Facebook page token in Vault for page: {}", pageId, e);
+            throw new RuntimeException("Unexpected error updating page token: " + e.getMessage(), e);
+        }
     }
 }

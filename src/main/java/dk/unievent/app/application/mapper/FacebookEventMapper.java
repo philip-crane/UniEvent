@@ -7,7 +7,7 @@ import dk.unievent.app.db.model.PlaceEntity;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
-import java.time.LocalDateTime;
+
 
 /**
  * Transforms Facebook event schema to app EventEntity schema

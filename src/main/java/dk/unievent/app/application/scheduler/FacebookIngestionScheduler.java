@@ -2,7 +2,7 @@ package dk.unievent.app.application.scheduler;
 
 import dk.unievent.app.application.service.EventService;
 import dk.unievent.app.application.service.PageService;
-import dk.unievent.app.db.model.PageEntity;
+import dk.unievent.app.application.dto.PageDTO;
 import dk.unievent.app.infrastructure.exception.FacebookApiException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -11,7 +11,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import java.time.LocalDateTime;
+
 
 /**
  * Scheduled task for ingesting Facebook events.
@@ -59,9 +59,9 @@ public class FacebookIngestionScheduler {
 
             while (hasMorePages) {
                 Pageable pageable = PageRequest.of(pageNumber, PAGE_SIZE);
-                Page<PageEntity> activePagesPage = pageService.getActivePages(pageable);
+                Page<PageDTO> activePagesPage = pageService.getActivePages(pageable);
 
-                for (PageEntity page : activePagesPage.getContent()) {
+                for (PageDTO page : activePagesPage.getContent()) {
                     try {
                         log.debug("Ingesting events for page: {} ({})", page.getName(), page.getId());
                         eventService.ingestFacebookEvents(page.getId());
