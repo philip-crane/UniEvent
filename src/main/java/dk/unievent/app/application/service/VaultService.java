@@ -127,7 +127,7 @@ public class VaultService {
             if (response.getStatusCode() == HttpStatus.OK || response.getStatusCode() == HttpStatus.NO_CONTENT) {
                 log.info("Facebook page token stored successfully for page: {}", pageId);
             } else {
-                log.error("Failed to store token: unexpected status {}", response.getStatusCode());
+                throw new RuntimeException("Failed to store page token in Vault: unexpected status " + response.getStatusCode());
             }
             
         } catch (RestClientResponseException e) {
