@@ -6,6 +6,7 @@ import dk.unievent.app.infrastructure.exception.FacebookApiException;
 import dk.unievent.app.infrastructure.util.FacebookAppSecurityUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
@@ -271,9 +272,17 @@ public class FacebookGraphApiService {
                     .retrieve()
                     .body(new ParameterizedTypeReference<Map<String, Object>>() {});
 
-            return response != null && pageId.equals(String.valueOf(response.get("id")));
+            if (response == null) {
+                return false;
+            }
+            Object id = response.get("id");
+            return id instanceof String idValue && pageId.equals(idValue);
 
         } catch (RestClientResponseException e) {
+            if (e.getStatusCode() == HttpStatus.UNAUTHORIZED || e.getStatusCode() == HttpStatus.FORBIDDEN) {
+                log.debug("Page token rejected for page: {}. Status: {}", pageId, e.getStatusCode());
+                return false;
+            }
             log.warn("Page token validation failed for page: {}. Status: {}", pageId, e.getStatusCode());
             throw new FacebookApiException(
                     "Failed to validate page token",
