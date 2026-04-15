@@ -182,15 +182,15 @@ public class VaultService {
             return Optional.empty();
             
         } catch (RestClientResponseException e) {
-            if (e.getStatusCode().value() == 404) {
+            if (e.getStatusCode().value() == HttpStatus.NOT_FOUND.value()) {
                 log.debug("Token not found in Vault for page: {}", pageId);
                 return Optional.empty();
             }
             log.warn("Failed to retrieve Facebook page token for page: {}. Status: {}", pageId, e.getStatusCode(), e);
-            return Optional.empty();
+            throw e;
         } catch (Exception e) {
             log.warn("Error retrieving Facebook page token for page: {}", pageId, e);
-            return Optional.empty();
+            throw new IllegalStateException("Error retrieving Facebook page token for page: " + pageId, e);
         }
     }
 
