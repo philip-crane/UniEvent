@@ -132,4 +132,54 @@ public class PlaceService {
         log.warn("Place not found for deletion with id: {}", id);
         return false;
     }
+
+    /**
+     * Create or find a place by name, city, and country.
+     * Used by Facebook event ingestion to resolve or create venues.
+     * 
+     * @param name Place venue name
+     * @param street Street address (optional)
+     * @param city City name
+     * @param zip Postal code (optional)
+     * @param country Country name
+     * @return Existing or newly created PlaceEntity
+     */
+    public PlaceEntity createOrFindPlace(String name, String street, String city, String zip, String country) {
+        log.debug("Searching for place: {} in {}, {}", name, city, country);
+        
+        // Try to find an existing place by scanning all candidates in the same city and country
+        int pageNumber = 0;
+        int pageSize = 50;
+        Page<PlaceEntity> existing;
+        
+        do {
+            existing = placeRepository.findByCityAndCountry(
+                    city,
+                    country,
+                    org.springframework.data.domain.PageRequest.of(pageNumber, pageSize));
+            
+            for (PlaceEntity place : existing.getContent()) {
+                if (place.getName() != null && place.getName().equalsIgnoreCase(name)) {
+                    log.debug("Found existing place: {} (id: {})", name, place.getId());
+                    return place;
+                }
+            }
+            
+            pageNumber++;
+        } while (existing.hasNext());
+        
+        // Place not found, create new one
+        log.debug("Place not found, creating new: {} in {}, {}", name, city, country);
+        PlaceEntity newPlace = PlaceEntity.builder()
+                .name(name)
+                .street(street)
+                .city(city)
+                .zip(zip)
+                .country(country)
+                .build();
+        
+        PlaceEntity saved = placeRepository.save(newPlace);
+        log.info("New place created: {} (id: {})", name, saved.getId());
+        return saved;
+    }
 }
