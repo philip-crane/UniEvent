@@ -100,11 +100,11 @@ class PageServiceTests {
         when(pageRepository.findById("page-1")).thenReturn(Optional.of(testPageEntity));
         when(pageMapper.toDTO(testPageEntity)).thenReturn(testPageDTO);
         
-        PageDTO result = pageService.getPageById("page-1");
-        
-        assertNotNull(result);
-        assertEquals("page-1", result.getId());
-        assertEquals("Test Page", result.getName());
+        Optional<PageDTO> result = pageService.getPageById("page-1");
+
+        assertTrue(result.isPresent());
+        assertEquals("page-1", result.get().getId());
+        assertEquals("Test Page", result.get().getName());
         verify(pageRepository, times(1)).findById("page-1");
         verify(pageMapper, times(1)).toDTO(testPageEntity);
     }
@@ -113,9 +113,9 @@ class PageServiceTests {
     void testGetPageByIdNotFound() {
         when(pageRepository.findById("non-existent")).thenReturn(Optional.empty());
         
-        PageDTO result = pageService.getPageById("non-existent");
-        
-        assertNull(result);
+        Optional<PageDTO> result = pageService.getPageById("non-existent");
+
+        assertTrue(result.isEmpty());
     }
     
     @Test

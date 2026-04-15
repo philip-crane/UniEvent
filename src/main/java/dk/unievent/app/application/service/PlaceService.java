@@ -26,7 +26,7 @@ public class PlaceService {
     /**
      * Get a place by ID
      */
-    public PlaceDTO getPlaceById(String id) {
+    public Optional<PlaceDTO> getPlaceById(String id) {
         log.debug("Fetching place with id: {}", id);
         Optional<PlaceEntity> entity = placeRepository.findById(id);
         if (entity.isEmpty()) {
@@ -34,7 +34,7 @@ public class PlaceService {
         } else {
             log.debug("Place found: {}", id);
         }
-        return entity.map(placeMapper::toDTO).orElse(null);
+        return entity.map(placeMapper::toDTO);
     }
     
     /**
@@ -95,12 +95,12 @@ public class PlaceService {
     /**
      * Update an existing place
      */
-    public PlaceDTO updatePlace(String id, PlaceDTO placeDTO) {
+    public Optional<PlaceDTO> updatePlace(String id, PlaceDTO placeDTO) {
         log.info("Updating place with id: {}", id);
         Optional<PlaceEntity> existing = placeRepository.findById(id);
         if (existing.isEmpty()) {
             log.warn("Place not found for update with id: {}", id);
-            return null;
+            return Optional.empty();
         }
         
         PlaceEntity entity = existing.get();
@@ -116,7 +116,7 @@ public class PlaceService {
         
         PlaceEntity updated = placeRepository.save(entity);
         log.info("Place updated successfully: {}", id);
-        return placeMapper.toDTO(updated);
+        return Optional.of(placeMapper.toDTO(updated));
     }
     
     /**

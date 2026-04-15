@@ -11,6 +11,7 @@ import dk.unievent.app.application.dto.PageDTO;
 import dk.unievent.app.application.service.PageService;
 import jakarta.validation.Valid;
 import java.io.IOException;
+import java.util.Optional;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -55,13 +56,13 @@ public class PageController {
     @ApiResponse(responseCode = "404", description = "Page not found")
     public ResponseEntity<PageDTO> getPageById(@PathVariable @Parameter(description = "Facebook page ID") String id) {
         log.debug("Fetching page with id: {}", id);
-        PageDTO page = pageService.getPageById(id);
-        if (page == null) {
+        Optional<PageDTO> page = pageService.getPageById(id);
+        if (page.isEmpty()) {
             log.warn("Page not found with id: {}", id);
             return ResponseEntity.notFound().build();
         }
         log.debug("Page found: {}", id);
-        return ResponseEntity.ok(page);
+        return ResponseEntity.ok(page.get());
     }
 
     @GetMapping("/search")
@@ -108,13 +109,13 @@ public class PageController {
             @PathVariable @Parameter(description = "Facebook page ID") String id,
             @RequestParam("file") MultipartFile file) throws IOException {
         log.info("Uploading picture for page id: {}, filename: {}", id, file.getOriginalFilename());
-        PageDTO updated = pageService.uploadPicture(id, file);
-        if (updated == null) {
+        Optional<PageDTO> updated = pageService.uploadPicture(id, file);
+        if (updated.isEmpty()) {
             log.warn("Page not found for picture upload with id: {}", id);
             return ResponseEntity.notFound().build();
         }
         log.info("Picture uploaded successfully for page: {}", id);
-        return ResponseEntity.ok(updated);
+        return ResponseEntity.ok(updated.get());
     }
 
     @DeleteMapping("/{id}")

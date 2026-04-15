@@ -46,7 +46,7 @@ public class PageService {
         return result;
     }
 
-    public PageDTO getPageById(String id) {
+    public Optional<PageDTO> getPageById(String id) {
         log.debug("Fetching page with id: {}", id); 
         Optional<PageEntity> entity = pageRepository.findById(id);
         if (entity.isEmpty()) {
@@ -54,7 +54,7 @@ public class PageService {
         } else {
             log.debug("Page found: {}", id);
         }
-        return entity.map(pageMapper::toDTO).orElse(null);
+        return entity.map(pageMapper::toDTO);
     }
 
     public Page<PageDTO> getActivePages(Pageable pageable) {
@@ -127,12 +127,12 @@ public class PageService {
         }        
     }
 
-    public PageDTO uploadPicture(String id, MultipartFile file) throws IOException {
+    public Optional<PageDTO> uploadPicture(String id, MultipartFile file) throws IOException {
         log.info("Uploading picture for page: {}", id);
         Optional<PageEntity> existing = pageRepository.findById(id);
         if (existing.isEmpty()) {
             log.warn("Page not found for picture upload with id: {}", id);
-            return null;
+            return Optional.empty();
         }
 
         String storedFilename = mediaService.store(file);
@@ -149,7 +149,7 @@ public class PageService {
         PageEntity updated = pageRepository.save(page);
         log.info("Picture uploaded successfully for page: {}", id);
 
-        return pageMapper.toDTO(updated);
+        return Optional.of(pageMapper.toDTO(updated));
     }
 
     public boolean deletePage(String id) {

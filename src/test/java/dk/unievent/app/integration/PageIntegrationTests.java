@@ -95,17 +95,17 @@ class PageIntegrationTests {
     void testGetPageById() {
         createTestPage("page-search", "Search Me");
         
-        PageDTO found = pageService.getPageById("page-search");
-        
-        assertNotNull(found);
-        assertEquals("Search Me", found.getName());
+        Optional<PageDTO> found = pageService.getPageById("page-search");
+
+        assertTrue(found.isPresent());
+        assertEquals("Search Me", found.get().getName());
     }
     
     @Test
     void testGetPageByIdNotFoundReturnsNull() {
-        PageDTO notFound = pageService.getPageById("nonexistent");
-        
-        assertNull(notFound);
+        Optional<PageDTO> notFound = pageService.getPageById("nonexistent");
+
+        assertTrue(notFound.isEmpty());
     }
     
     @Test

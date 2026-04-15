@@ -11,6 +11,7 @@ import dk.unievent.app.application.dto.EventDTO;
 import dk.unievent.app.application.service.EventService;
 import jakarta.validation.Valid;
 import java.io.IOException;
+import java.util.Optional;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -55,13 +56,13 @@ public class EventController {
     @ApiResponse(responseCode = "404", description = "Event not found")
     public ResponseEntity<EventDTO> getEventById(@PathVariable @Parameter(description = "Event ID") String id) {
         log.debug("Fetching event with id: {}", id);
-        EventDTO event = eventService.getEventById(id);
-        if (event == null) {
+        Optional<EventDTO> event = eventService.getEventById(id);
+        if (event.isEmpty()) {
             log.warn("Event not found with id: {}", id);
             return ResponseEntity.notFound().build();
         }
         log.debug("Event found: {}", id);
-        return ResponseEntity.ok(event);
+        return ResponseEntity.ok(event.get());
     }
 
     @GetMapping("/page/{pageId}")
@@ -107,15 +108,15 @@ public class EventController {
             @PathVariable @Parameter(description = "Event ID") String id,
             @Valid @RequestBody EventDTO eventDTO) {
         log.info("Updating event with id: {}", id);
-        EventDTO updated = eventService.updateEvent(id, eventDTO);
+        Optional<EventDTO> updated = eventService.updateEvent(id, eventDTO);
 
-        if (updated == null) {
+        if (updated.isEmpty()) {
             log.warn("Event not found for update with id: {}", id);
             return ResponseEntity.notFound().build();
         }
 
         log.info("Event updated successfully: {}", id);
-        return ResponseEntity.ok(updated);
+        return ResponseEntity.ok(updated.get());
     }
 
     @PostMapping("/{id}/coverImage")
@@ -126,13 +127,13 @@ public class EventController {
             @PathVariable @Parameter(description = "Event ID") String id,
             @RequestParam("file") MultipartFile file) throws IOException {
         log.info("Uploading cover image for event id: {}, filename: {}", id, file.getOriginalFilename());
-        EventDTO updated = eventService.uploadCoverImage(id, file);
-        if (updated == null) {
+        Optional<EventDTO> updated = eventService.uploadCoverImage(id, file);
+        if (updated.isEmpty()) {
             log.warn("Event not found for cover image upload with id: {}", id);
             return ResponseEntity.notFound().build();
         }
         log.info("Cover image uploaded successfully for event: {}", id);
-        return ResponseEntity.ok(updated);
+        return ResponseEntity.ok(updated.get());
     }
 
     @DeleteMapping("/{id}")

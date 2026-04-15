@@ -132,11 +132,11 @@ class EventServiceTests {
         when(eventRepository.findById("event-1")).thenReturn(Optional.of(testEventEntity));
         when(eventMapper.toDTO(testEventEntity)).thenReturn(testEventDTO);
         
-        EventDTO result = eventService.getEventById("event-1");
+        Optional<EventDTO> result = eventService.getEventById("event-1");
         
-        assertNotNull(result);
-        assertEquals("event-1", result.getId());
-        assertEquals("Test Event", result.getTitle());
+        assertTrue(result.isPresent());
+        assertEquals("event-1", result.get().getId());
+        assertEquals("Test Event", result.get().getTitle());
         verify(eventRepository, times(1)).findById("event-1");
         verify(eventMapper, times(1)).toDTO(testEventEntity);
     }
@@ -145,9 +145,9 @@ class EventServiceTests {
     void testGetEventByIdNotFound() {
         when(eventRepository.findById("non-existent")).thenReturn(Optional.empty());
         
-        EventDTO result = eventService.getEventById("non-existent");
+        Optional<EventDTO> result = eventService.getEventById("non-existent");
         
-        assertNull(result);
+        assertTrue(result.isEmpty());
         verify(eventRepository, times(1)).findById("non-existent");
     }
     
@@ -236,10 +236,10 @@ class EventServiceTests {
         updateDTO.setTitle("Updated Title");
         updateDTO.setDescription("Updated Description");
         
-        EventDTO result = eventService.updateEvent("event-1", updateDTO);
+        Optional<EventDTO> result = eventService.updateEvent("event-1", updateDTO);
         
-        assertNotNull(result);
-        assertEquals("event-1", result.getId());
+        assertTrue(result.isPresent());
+        assertEquals("event-1", result.get().getId());
         verify(eventRepository, times(1)).findById("event-1");
         verify(eventRepository, times(1)).save(any(EventEntity.class));
     }
@@ -251,9 +251,9 @@ class EventServiceTests {
         EventDTO updateDTO = new EventDTO();
         updateDTO.setTitle("Updated Title");
         
-        EventDTO result = eventService.updateEvent("non-existent", updateDTO);
+        Optional<EventDTO> result = eventService.updateEvent("non-existent", updateDTO);
         
-        assertNull(result);
+        assertTrue(result.isEmpty());
         verify(eventRepository, times(1)).findById("non-existent");
         verify(eventRepository, never()).save(any());
     }
@@ -293,9 +293,9 @@ class EventServiceTests {
         updateDTO.setStartTime(newStartTime);
         updateDTO.setEndTime(newEndTime);
         
-        EventDTO result = eventService.updateEvent("event-1", updateDTO);
+        Optional<EventDTO> result = eventService.updateEvent("event-1", updateDTO);
         
-        assertNotNull(result);
+        assertTrue(result.isPresent());
         verify(eventRepository, times(1)).save(any(EventEntity.class));
     }
 }

@@ -125,7 +125,7 @@ class EventControllerTests {
     @Test
     void updateEventShouldPassPathIdToService() throws Exception {
         EventDTO updated = sampleEvent("evt-path");
-        when(eventService.updateEvent(eq("evt-path"), any(EventDTO.class))).thenReturn(updated);
+        when(eventService.updateEvent(eq("evt-path"), any(EventDTO.class))).thenReturn(java.util.Optional.of(updated));
 
         mockMvc.perform(put("/api/events/evt-path")
                 .contentType(MediaType.APPLICATION_JSON)

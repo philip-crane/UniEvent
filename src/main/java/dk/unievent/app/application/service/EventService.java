@@ -64,15 +64,15 @@ public class EventService {
         return result;
     }
 
-    public EventDTO getEventById(String id) {
+    public Optional<EventDTO> getEventById(String id) {
         log.debug("Fetching event with id: {}", id);
         Optional<EventEntity> entity = eventRepository.findById(id);
         if (entity.isEmpty()) {
             log.debug("Event not found with id: {}", id);
-            return null;
+            return Optional.empty();
         }
         log.debug("Event found: {}", id);
-        return entity.map(eventMapper::toDTO).orElse(null);
+        return entity.map(eventMapper::toDTO);
     }
 
     public Page<EventDTO> getEventsByPageId(String pageId, Pageable pageable) {
@@ -117,12 +117,12 @@ public class EventService {
         return eventMapper.toDTO(saved);
     }
 
-    public EventDTO updateEvent(String id, EventDTO eventDTO) {
+    public Optional<EventDTO> updateEvent(String id, EventDTO eventDTO) {
         log.info("Updating event with id: {}", id);
         Optional<EventEntity> existing = eventRepository.findById(id);
         if (existing.isEmpty()) {
             log.warn("Event not found for update with id: {}", id);
-            return null;
+            return Optional.empty();
         }
 
         EventEntity entity = existing.get();
@@ -147,15 +147,15 @@ public class EventService {
 
         EventEntity updated = eventRepository.save(entity);
         log.info("Event updated successfully: {}", id);
-        return eventMapper.toDTO(updated);
+        return Optional.of(eventMapper.toDTO(updated));
     }
 
-    public EventDTO uploadCoverImage(String id, MultipartFile file) throws IOException {
+    public Optional<EventDTO> uploadCoverImage(String id, MultipartFile file) throws IOException {
         log.info("Uploading cover image for event: {}", id);
         Optional<EventEntity> existing = eventRepository.findById(id);
         if (existing.isEmpty()) {
             log.warn("Event not found for cover image upload with id: {}", id);
-            return null;
+            return Optional.empty();
         }
 
         String storedFilename = mediaService.store(file);
@@ -171,7 +171,7 @@ public class EventService {
         entity.setCoverImage(savedMedia);
         EventEntity updated = eventRepository.save(entity);
         log.info("Cover image uploaded successfully for event: {}", id);
-        return eventMapper.toDTO(updated);
+        return Optional.of(eventMapper.toDTO(updated));
     }
 
     public boolean deleteEvent(String id) {

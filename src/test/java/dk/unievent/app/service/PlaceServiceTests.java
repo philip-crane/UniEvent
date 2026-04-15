@@ -70,11 +70,11 @@ class PlaceServiceTests {
         when(placeRepository.findById("place-1")).thenReturn(Optional.of(testPlaceEntity));
         when(placeMapper.toDTO(testPlaceEntity)).thenReturn(testPlaceDTO);
         
-        PlaceDTO result = placeService.getPlaceById("place-1");
-        
-        assertNotNull(result);
-        assertEquals("place-1", result.getId());
-        assertEquals("Test Place", result.getName());
+        Optional<PlaceDTO> result = placeService.getPlaceById("place-1");
+
+        assertTrue(result.isPresent());
+        assertEquals("place-1", result.get().getId());
+        assertEquals("Test Place", result.get().getName());
         verify(placeRepository, times(1)).findById("place-1");
         verify(placeMapper, times(1)).toDTO(testPlaceEntity);
     }
@@ -83,9 +83,9 @@ class PlaceServiceTests {
     void testGetPlaceByIdNotFound() {
         when(placeRepository.findById("non-existent")).thenReturn(Optional.empty());
         
-        PlaceDTO result = placeService.getPlaceById("non-existent");
-        
-        assertNull(result);
+        Optional<PlaceDTO> result = placeService.getPlaceById("non-existent");
+
+        assertTrue(result.isEmpty());
     }
     
     @Test
@@ -215,10 +215,10 @@ class PlaceServiceTests {
         location.setStreet("456 Updated St");
         updateDTO.setLocation(location);
         
-        PlaceDTO result = placeService.updatePlace("place-1", updateDTO);
-        
-        assertNotNull(result);
-        assertEquals("place-1", result.getId());
+        Optional<PlaceDTO> result = placeService.updatePlace("place-1", updateDTO);
+
+        assertTrue(result.isPresent());
+        assertEquals("place-1", result.get().getId());
         verify(placeRepository, times(1)).findById("place-1");
         verify(placeRepository, times(1)).save(any(PlaceEntity.class));
     }
@@ -230,9 +230,9 @@ class PlaceServiceTests {
         PlaceDTO updateDTO = new PlaceDTO();
         updateDTO.setName("Updated");
         
-        PlaceDTO result = placeService.updatePlace("non-existent", updateDTO);
-        
-        assertNull(result);
+        Optional<PlaceDTO> result = placeService.updatePlace("non-existent", updateDTO);
+
+        assertTrue(result.isEmpty());
         verify(placeRepository, times(1)).findById("non-existent");
         verify(placeRepository, never()).save(any());
     }
@@ -269,9 +269,9 @@ class PlaceServiceTests {
         updateDTO.setName("Updated Place");
         // location is null
         
-        PlaceDTO result = placeService.updatePlace("place-1", updateDTO);
-        
-        assertNotNull(result);
+        Optional<PlaceDTO> result = placeService.updatePlace("place-1", updateDTO);
+
+        assertTrue(result.isPresent());
         verify(placeRepository, times(1)).save(any(PlaceEntity.class));
     }
     
@@ -291,9 +291,9 @@ class PlaceServiceTests {
         newLocation.setLongitude(2.3522);
         updateDTO.setLocation(newLocation);
         
-        PlaceDTO result = placeService.updatePlace("place-1", updateDTO);
-        
-        assertNotNull(result);
+        Optional<PlaceDTO> result = placeService.updatePlace("place-1", updateDTO);
+
+        assertTrue(result.isPresent());
         verify(placeRepository, times(1)).save(any(PlaceEntity.class));
     }
 }
