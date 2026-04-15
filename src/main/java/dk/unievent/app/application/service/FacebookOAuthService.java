@@ -135,10 +135,11 @@ public class FacebookOAuthService {
         return vaultService.getPageToken(pageId)
             .map(token -> {
                 try {
-                    // Attempt to use the token with a simple API call
-                    // If successful, token is valid
-                    log.debug("Token validated for page: {}", pageId);
-                    return true;
+                    boolean isValid = facebookGraphApiService.validatePageToken(pageId, token);
+                    if (isValid) {
+                        log.debug("Token validated for page: {}", pageId);
+                    }
+                    return isValid;
                 } catch (FacebookApiException e) {
                     log.warn("Token validation failed for page: {}", pageId, e);
                     return false;

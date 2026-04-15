@@ -245,4 +245,41 @@ public class FacebookGraphApiService {
             );
         }
     }
+
+    /**
+     * Validate a Facebook page token with a lightweight page lookup.
+     *
+     * @param pageId Facebook page ID
+     * @param pageToken Page access token to validate
+     * @return true if token can access the page
+     * @throws FacebookApiException if validation call fails
+     */
+    public boolean validatePageToken(String pageId, String pageToken) {
+        try {
+            log.debug("Validating token for page: {} (token: {})",
+                    pageId, FacebookAppSecurityUtil.maskToken(pageToken));
+
+            URI uri = UriComponentsBuilder
+                    .fromPath("/{version}/{pageId}")
+                    .queryParam("fields", "id")
+                    .buildAndExpand(facebookConfig.getGraphApiVersion(), pageId)
+                    .toUri();
+
+            var response = restClient.get()
+                    .uri(uri)
+                    .header("Authorization", "Bearer " + pageToken)
+                    .retrieve()
+                    .body(new ParameterizedTypeReference<Map<String, Object>>() {});
+
+            return response != null && pageId.equals(String.valueOf(response.get("id")));
+
+        } catch (RestClientResponseException e) {
+            log.warn("Page token validation failed for page: {}. Status: {}", pageId, e.getStatusCode());
+            throw new FacebookApiException(
+                    "Failed to validate page token",
+                    e.getStatusCode().value(),
+                    "TOKEN_VALIDATION_ERROR"
+            );
+        }
+    }
 }
