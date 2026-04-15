@@ -44,9 +44,10 @@ public interface PageRepository extends JpaRepository<PageEntity, String> {
     Page<PageEntity> findPagesToRefresh(LocalDateTime expiresAt, Pageable pageable);
     
     /**
-     * Find pages by name ordered by name (case-insensitive)
+     * Find pages by name using partial match (contains, case-insensitive)
      * Eagerly fetches: picture
      */
     @EntityGraph(attributePaths = {"picture"})
+    @Query("SELECT p FROM PageEntity p WHERE LOWER(p.name) LIKE LOWER(CONCAT('%', ?1, '%')) ORDER BY p.name ASC")
     Page<PageEntity> findByNameIgnoreCase(String name, Pageable pageable);
 }

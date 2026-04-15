@@ -1,20 +1,48 @@
 # Contributing
-
 This document is the **technical** part of DTU Event documentation, for general users. For developer and contributor documentation, see [README.md](./README.md).
 
 We had previously created a version of UniEvent called DTUEvent hosted on Google Cloud and Firebase. Now, we wish to rename the site (to avoid trademark violations) and host it on our own remote hosted server backend, plus add features, e.g. login. 
 
+## Tech Stack
+
+UniEventServer currently runs as a Java/Spring backend with Dockerized infrastructure services on a remote host.
+
+- **Java** (Language, Runtime)
+- **Maven** (Build Tool)
+- **Spring Boot** (Application Development Framework)
+  - **Spring Web** (REST API)
+	- **Spring Data JPA** (database access)
+	- **Spring Validation** (DTO validation)
+	- **Spring OAuth2 Client** (Facebook auth flow groundwork)
+	- **Spring Actuator** (health/ops endpoints)
+- **Lombok** (Boilerplate reduction)
+- **MySQL** (Relational Database)
+- **JPA/Hibernate** (ORM)
+- **H2** (Testing)
+- **Docker** (Containerization)
+- **SeaweedFS** (Media Storage)
+- **HashiCorp Vault** (Secret Storage)
+
 ## TODO
 
-### Big Tasks
+### Backend Big Tasks
 - [in progress] Implement real JWT auth (signed token, expiry, validation filter) and protect non-public API routes
 - [ ] Port /web directory in old repo to new repo (entire frontend currently missing)
 - [ ] Mount frontend dist as volume to avoid having to --build when changes are made
 - [ ] Create Page functionality. Also Split create/update logic so `PUT /api/pages/{id}` returns `404` when page does not exist. Prevent client-controlled ID abuse on create flows (server-side ID policy and validation)
 - [in progress] Fix (auto) token refresh if possible lol
-- [in progress] Facebook Page Organizer Onboarding Flow
+- [ ] Proper admin tool framework 
 
-## DB
+### Frontend Big Tasks
+- [in progress] Facebook Page Organizer Onboarding Flow
+- [ ] Make more mobile-friendly
+- [ ] FB authentication (Facebook OAuth)
+- [ ] Page admin dashboard for managing event sync
+- [ ] Create Event Page
+- [ ] Business Manager integration for stable API access
+- [ ] User favorites and personalization
+
+### DB
 - [ ] Align place deletion behavior with docs (nullify place in events OR document cascading delete)
 - [ ] Add deterministic media replacement lifecycle (cleanup old DB record and SeaweedFS file on replace)
 
@@ -24,254 +52,39 @@ We had previously created a version of UniEvent called DTUEvent hosted on Google
 - [ ] Tokens
 
 ### API
-- [ ] Restrict `/admin/seed` endpoints to local/dev only (profile and/or role guard)
-- [ ] Fix page/place search to do true partial matching (`contains`/`like`) instead of exact match
+- [x] Restrict `/admin/seed` endpoints to local/dev only (profile and/or role guard)
+- [x] Fix page/place search to do true partial matching (`contains`/`like`) instead of exact match
 - [ ] Add integration tests for auth guardrails, seed endpoint access control, and update-not-found behavior
 - [ ] Make actuator `health/info` access strategy explicit for Docker probes + production security
 
-### Frontend
-- [ ] FB authentication (Facebook OAuth)
-- [ ] Page admin dashboard for managing event sync
-- [ ] Create Event Page
-- [ ] Business Manager integration for stable API access
-- [ ] User favorites and personalization
-
-### Nice-To-Have
+### Nice-To-Have Code 
 - [ ] DB Replace `ddl-auto: update` with Flyway or Liquibase migrations
+- [ ] Quartz scheduler
 - [ ] Replace field injection with constructor injection for consistency and testability
 - [ ] Pin Docker image versions (avoid `latest` tags for reproducibility)
-- [ ] Resolve PageDTO URL contract mismatch (computed URL vs validated input field)
 - [ ] Harden media download content-type handling with safe fallback on invalid metadata
-- [ ] Make more mobile-friendly
+
+### Nice-To-Have Features
 - [ ] Location mapping (A literal google maps with the events placed)
 - [ ] Manual event submission (fallback for pages without dedicated event)
 - [ ] Event categorization (academic, social, etc.)
 - [ ] Event moderation and approval system
 - [ ] Analytics dashboard for event engagement
 - [ ] Notification system for page admins (event sync status, token expiration)
+- [ ] Save likes to local-storage which can be transferred upon login (possibly with a dilogue box asking you "You have saved likes while not logged in. Would you like to transfer them?")
 
-## Tech Stack
-
-UniEventServer currently runs as a Java/Spring backend with Dockerized infrastructure services on a remote host.
-
-- Java (Language, Runtime)
-- Maven (Build Tool)
-- Spring Boot (Application Development Framework)
-    - Spring Web (REST API)
-	- Spring Data JPA (database access)
-	- Spring Validation (DTO validation)
-	- Spring OAuth2 Client (Facebook auth flow groundwork)
-	- Spring Actuator (health/ops endpoints)
-- Lombok (Boilerplate reduction)
-- MySQL (Relational Database)
-- JPA/Hibernate (ORM)
-- H2 (Testing)
-- Docker (Containerization)
-- SeaweedFS (Media Storage)
-- HashiCorp Vault (Secret Storage)
-
-## Setup
-
-1. Get .env file and place in root
-2. Copy and rename the override file:
-   - Windows cmd: `copy docker-compose.override.yml.example docker-compose.override.yml`
-   - Windows PowerShell: `Copy-Item docker-compose.override.yml.example docker-compose.override.yml`
-   - Linux/Mac/Git Bash: `cp docker-compose.override.yml.example docker-compose.override.yml`
-3. Generate a self-signed cert:
-   - Windows cmd:
-     `mkdir certs && openssl req -x509 -nodes -days 3650 -newkey rsa:2048 -keyout certs/privkey.pem -out certs/fullchain.pem -subj "/CN=localhost"`
-   - Windows PowerShell:
-     `New-Item -ItemType Directory -Force -Path certs; openssl req -x509 -nodes -days 3650 -newkey rsa:2048 -keyout certs/privkey.pem -out certs/fullchain.pem -subj "/CN=localhost"`
-   - Linux/Mac/Git Bash:
-     `mkdir -p certs && openssl req -x509 -nodes -days 3650 -newkey rsa:2048 -keyout certs/privkey.pem -out certs/fullchain.pem -subj "/CN=localhost"`
-   - Note: In Windows cmd, do not use `mkdir -p` because it can create an unintended `-p` folder.
-4. Start the stack: `docker compose up -d`
-
-## Uploading Test Images
-
-Before seeding test data with images, you need to upload at least one image to get a media file with ID. The first uploaded image will be assigned ID 1, which the seed script uses.
-
-### Upload an Image
-
-**Prepare a test image:**
-- Get any `.jpg`, `.png`, or images file (or create a simple one)
-- Save it locally (e.g., `test-image.jpg`)
-
-**Upload via curl:**
-```sh
-curl -X POST -F "file=@path/to/test-image.jpg" http://localhost:8080/media
-```
-
-(Same command for Windows cmd, PowerShell, Linux/Mac)
-
-**Example response:**
-```json
-{
-  "id": 1,
-  "filename": "test-image.jpg",
-  "contentType": "image/jpeg",
-  "fileId": "1,abc123def456",
-  "uploadedAt": "2026-04-13T15:30:00Z"
-}
-```
-
-The image is now stored in SeaweedFS and accessible at `http://localhost:8080/media/1`.
-
-### Before Seeding
-
-1. Upload your test image (gets ID 1)
-2. Run the seed command — all 10 seeded events will use this image
-3. Visit the frontend and verify all event cards display the image
-
-### Alternative: Use Swagger UI
-
-You can also upload via the interactive API documentation:
-
-1. Open **http://localhost:8080/swagger-ui.html**
-2. Find the **POST /media** endpoint (in "Media" section)
-3. Click **Try it out**
-4. Click **Choose File** and select your image
-5. Click **Execute**
-6. Note the returned media `id` — use this in seed scripts or manual linking
-
-## Test Data Seeding
-
-For local development and testing, you can seed the database with minimal test data using HTTP endpoints. All seeded records are marked with a `SEED_` prefix for easy identification and cleanup.
-
-### Installing curl
-
-If you don't have curl installed:
-- **Windows:** It's built-in on Windows 10+ (use `curl` directly in cmd/PowerShell)
-- **Mac:** `brew install curl`
-- **Linux:** `sudo apt install curl` (Ubuntu/Debian) or `sudo yum install curl` (RedHat/CentOS)
-
-### Seed Test Data
-
-Insert 2 sample pages, 10 events, 2 places, and 10 media files (all sharing the same image) into your local MySQL database:
-
-```sh
-curl -X POST http://localhost:8080/admin/seed
-```
-
-(Same command for Windows cmd, PowerShell, Linux/Mac)
-
-**Example response:**
-```json
-{
-  "success": true,
-  "message": "Seed data created successfully",
-  "pageCount": 2,
-  "eventCount": 10,
-  "placeCount": 2
-}
-```
-
-The seeded data includes:
-- **Pages:** "Tech Events", "Culture Events"
-- **Events:** React Workshop, Spring Boot Masterclass, Docker & Kubernetes, Jazz Night, Art Exhibition, Film Festival, etc.
-- **Places:** Copenhagen, Aarhus
-- **Images:** All 10 events have cover images from your existing `/media/1` endpoint
-- **Relationships:** Events linked to pages and places with realistic dates (7-45 days in future)
-
-### Clear Seeded Data
-
-Remove all test data marked with `SEED_` prefix:
-
-```sh
-curl -X DELETE http://localhost:8080/admin/seed
-```
-
-(Same command for Windows cmd, PowerShell, Linux/Mac)
-```json
-{
-  "success": true,
-  "message": "Seed data cleared successfully",
-  "pageCount": 2,
-  "eventCount": 10,
-  "placeCount": 2
-}
-```
-
-**Important:** Only records with the `SEED_` prefix are removed, so your production or manually-created data is safe.
-
-### Workflow Example
-
-```sh
-# Start the stack
-docker compose up -d
-
-# Wait ~40s for services to be healthy
-
-# Seed test data
-curl -X POST http://localhost:8080/admin/seed
-
-# Clean up when done
-curl -X DELETE http://localhost:8080/admin/seed
-```
-
-### How Images Work
-
-- Each seeded event is assigned a **unique media record** in the database
-- All media records point to the **same image file** in SeaweedFS (from your existing `/media/1`)
-- This avoids ID bloat while ensuring each event has its own cover image reference
-- On reseed, new media records are created pointing to the same image
-
-## Debugging & Logs
-
-### Viewing Application Logs
-
-The application logs are configured with SLF4J/Logback and output to both console and file:
-
-**View logs in real-time from the running container:**
-```powershell
-docker logs -f unievent-app
-```
-
-**View logs for all services:**
-```powershell
-docker compose logs -f
-```
-
-**View log file inside container:**
-```powershell
-docker exec -it unievent-app cat logs/app.log
-```
-
-### Enabling Debug Logging
-
-By default, application logs are at INFO level (production safe). To enable DEBUG logging for development:
-
-**Start the stack with debug profile:**
-```powershell
-docker compose down
-$env:SPRING_PROFILES_ACTIVE = "dev"
-docker compose up -d --build
-```
-
-**Or on Linux/Mac:**
-```bash
-docker compose down
-SPRING_PROFILES_ACTIVE=dev docker compose up -d --build
-```
-
-Debug logging provides additional detail on:
-- Database queries and pagination
-- API endpoint entry/exit points
-- Infrastructure client operations (SeaweedFS, Vault)
-
-Debug output is controlled by `src/main/resources/application-dev.yaml` and is automatically disabled when the dev profile is not active.
-
-### Disabling Debug Logging
-
-To return to INFO-level logging:
-
-**Terminal:**
-```powershell
-docker compose down
-docker compose up -d --build
-```
-
-Simply restart without the `SPRING_PROFILES_ACTIVE=dev` variable to return to production-safe INFO-level logging.
+### Testing
+- [ ] Add `AuthControllerTests` for register/login success, validation errors, and invalid credentials
+- [ ] Add `JwtServiceTests` for token generation format, uniqueness, and edge-case inputs
+- [ ] Add `UserServiceTests` for duplicate email/username rejection, password encoding, and lookup failures
+- [ ] Add `UserRepositoryTests` and `UserEntityTests` for persistence/constraints coverage
+- [ ] Add `SeedDataControllerTests` (dev profile exposure, success/error status mapping for POST/DELETE)
+- [ ] Add `DataSeederServiceTests` (seed and clear behavior, `SEED_` filtering safety, error paths)
+- [ ] Add repository/integration tests for true partial search semantics (contains/like) for pages and places
+- [ ] Add integration tests for `PUT /api/pages/{id}` returning `404` when page does not exist
+- [ ] Add media replacement lifecycle tests (old DB record + SeaweedFS cleanup on replace)
+- [ ] Add config tests for `RestClientConfig` and `PaginationConstantsConfig`
+- [ ] Fix `PageControllerTests.getPageByIdShouldReturnNotFoundWhenMissing` to use `Optional.empty()` (not `null`)
 
 ## Endpoints
 
