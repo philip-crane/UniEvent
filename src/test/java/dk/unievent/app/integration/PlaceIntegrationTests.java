@@ -67,18 +67,18 @@ class PlaceIntegrationTests {
     void testGetPlaceById() {
         createTestPlace("place-find", "Find Me Venue", "Find St", "Odense");
         
-        PlaceDTO found = placeService.getPlaceById("place-find");
-        
-        assertNotNull(found);
-        assertEquals("Find Me Venue", found.getName());
-        assertEquals("Odense", found.getLocation().getCity());
+        Optional<PlaceDTO> found = placeService.getPlaceById("place-find");
+
+        assertTrue(found.isPresent());
+        assertEquals("Find Me Venue", found.get().getName());
+        assertEquals("Odense", found.get().getLocation().getCity());
     }
     
     @Test
     void testGetPlaceByIdNotFoundReturnsNull() {
-        PlaceDTO notFound = placeService.getPlaceById("nonexistent");
-        
-        assertNull(notFound);
+        Optional<PlaceDTO> notFound = placeService.getPlaceById("nonexistent");
+
+        assertTrue(notFound.isEmpty());
     }
     
     @Test
@@ -162,12 +162,12 @@ class PlaceIntegrationTests {
         updateLocation.setCountry("Denmark");
         updateDTO.setLocation(updateLocation);
         
-        PlaceDTO updated = placeService.updatePlace("place-update", updateDTO);
-        
-        assertNotNull(updated);
-        assertEquals("Updated Name", updated.getName());
-        assertEquals("Updated Street", updated.getLocation().getStreet());
-        assertEquals("Aarhus", updated.getLocation().getCity());
+        Optional<PlaceDTO> updated = placeService.updatePlace("place-update", updateDTO);
+
+        assertTrue(updated.isPresent());
+        assertEquals("Updated Name", updated.get().getName());
+        assertEquals("Updated Street", updated.get().getLocation().getStreet());
+        assertEquals("Aarhus", updated.get().getLocation().getCity());
     }
     
     @Test
@@ -175,9 +175,9 @@ class PlaceIntegrationTests {
         PlaceDTO updateDTO = new PlaceDTO();
         updateDTO.setName("New Name");
         
-        PlaceDTO result = placeService.updatePlace("nonexistent", updateDTO);
-        
-        assertNull(result);
+        Optional<PlaceDTO> result = placeService.updatePlace("nonexistent", updateDTO);
+
+        assertTrue(result.isEmpty());
     }
     
     @Test
@@ -234,13 +234,13 @@ class PlaceIntegrationTests {
         dto.setLocation(location);
         
         placeService.createPlace(dto);
-        PlaceDTO retrieved = placeService.getPlaceById("place-complete");
-        
-        assertNotNull(retrieved);
-        assertEquals("Main Street 123", retrieved.getLocation().getStreet());
-        assertEquals("2100", retrieved.getLocation().getZip());
-        assertEquals(55.6761, retrieved.getLocation().getLatitude());
-        assertEquals(12.5883, retrieved.getLocation().getLongitude());
+        Optional<PlaceDTO> retrieved = placeService.getPlaceById("place-complete");
+
+        assertTrue(retrieved.isPresent());
+        assertEquals("Main Street 123", retrieved.get().getLocation().getStreet());
+        assertEquals("2100", retrieved.get().getLocation().getZip());
+        assertEquals(55.6761, retrieved.get().getLocation().getLatitude());
+        assertEquals(12.5883, retrieved.get().getLocation().getLongitude());
     }
     
     // ============= Helper Methods =============

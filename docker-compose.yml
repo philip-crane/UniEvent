@@ -120,6 +120,8 @@ services:
     command: vault server -config=/vault/config/vault.hcl
     environment:
       VAULT_ADDR: http://0.0.0.0:8200
+      SKIP_CHOWN: "true"
+      SKIP_SETCAP: "true"
     ports:
       - "127.0.0.1:8200:8200"
     cap_add:

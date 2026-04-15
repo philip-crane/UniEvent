@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.*;
 import dk.unievent.app.application.dto.PlaceDTO;
 import dk.unievent.app.application.service.PlaceService;
 import jakarta.validation.Valid;
+import java.util.Optional;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -64,15 +65,15 @@ public class PlaceController {
     @ApiResponse(responseCode = "404", description = "Place not found")
     public ResponseEntity<PlaceDTO> getPlaceById(@PathVariable @Parameter(description = "Place ID") String id) {
         log.debug("Fetching place with id: {}", id);
-        PlaceDTO place = placeService.getPlaceById(id);
-        
-        if (place == null) {
+        Optional<PlaceDTO> place = placeService.getPlaceById(id);
+
+        if (place.isEmpty()) {
             log.warn("Place not found with id: {}", id);
             return ResponseEntity.notFound().build();
         }
         
         log.debug("Place found: {}", id);
-        return ResponseEntity.ok(place);
+        return ResponseEntity.ok(place.get());
     }
     
     /**
@@ -216,15 +217,15 @@ public class PlaceController {
             @Valid @RequestBody PlaceDTO placeDTO) {
         log.info("Updating place with id: {}", id);
         placeDTO.setId(id);  // Ensure we're updating the right place
-        PlaceDTO updated = placeService.updatePlace(id, placeDTO);
-        
-        if (updated == null) {
+        Optional<PlaceDTO> updated = placeService.updatePlace(id, placeDTO);
+
+        if (updated.isEmpty()) {
             log.warn("Place not found for update with id: {}", id);
             return ResponseEntity.notFound().build();
         }
         
         log.info("Place updated successfully: {}", id);
-        return ResponseEntity.ok(updated);
+        return ResponseEntity.ok(updated.get());
     }
     
     /**

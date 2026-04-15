@@ -143,18 +143,18 @@ class EventIntegrationTests {
     void testGetEventByIdThroughService() {
         EventDTO created = createTestEvent("Find Me", LocalDateTime.now().plusDays(1), testPage.getId());
         
-        EventDTO found = eventService.getEventById(created.getId());
-        
-        assertNotNull(found);
-        assertEquals("Find Me", found.getTitle());
-        assertEquals(created.getId(), found.getId());
+        Optional<EventDTO> found = eventService.getEventById(created.getId());
+
+        assertTrue(found.isPresent());
+        assertEquals("Find Me", found.get().getTitle());
+        assertEquals(created.getId(), found.get().getId());
     }
     
     @Test
     void testGetEventByIdNotFoundReturnsNull() {
-        EventDTO notFound = eventService.getEventById("nonexistent");
-        
-        assertNull(notFound);
+        Optional<EventDTO> notFound = eventService.getEventById("nonexistent");
+
+        assertTrue(notFound.isEmpty());
     }
     
     @Test
@@ -212,12 +212,12 @@ class EventIntegrationTests {
         updateDTO.setTitle("Updated Title");
         updateDTO.setDescription("Updated Desc");
         
-        EventDTO updated = eventService.updateEvent(created.getId(), updateDTO);
-        
-        assertNotNull(updated);
-        assertEquals("Updated Title", updated.getTitle());
-        assertEquals("Updated Desc", updated.getDescription());
-        assertEquals(created.getId(), updated.getId());
+        Optional<EventDTO> updated = eventService.updateEvent(created.getId(), updateDTO);
+
+        assertTrue(updated.isPresent());
+        assertEquals("Updated Title", updated.get().getTitle());
+        assertEquals("Updated Desc", updated.get().getDescription());
+        assertEquals(created.getId(), updated.get().getId());
     }
     
     @Test
@@ -225,9 +225,9 @@ class EventIntegrationTests {
         EventDTO updateDTO = new EventDTO();
         updateDTO.setTitle("New Title");
         
-        EventDTO result = eventService.updateEvent("nonexistent", updateDTO);
-        
-        assertNull(result);
+        Optional<EventDTO> result = eventService.updateEvent("nonexistent", updateDTO);
+
+        assertTrue(result.isEmpty());
     }
     
     @Test
