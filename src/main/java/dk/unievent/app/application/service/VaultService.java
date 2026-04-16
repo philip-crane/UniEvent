@@ -131,8 +131,8 @@ public class VaultService {
             }
             
         } catch (RestClientResponseException e) {
-            log.error("Failed to store Facebook page token in Vault for page: {}. Status: {}", pageId, e.getStatusCode(), e);
-            throw new RuntimeException("Failed to store page token in Vault: " + e.getMessage(), e);
+            log.error("Failed to store Facebook page token in Vault for page: {}. Status: {} - {}", pageId, e.getStatusCode(), e.getResponseBodyAsString(), e);
+            throw e;  // Re-throw since this is a critical operation
         } catch (Exception e) {
             log.error("Error storing Facebook page token in Vault for page: {}", pageId, e);
             throw new RuntimeException("Unexpected error storing page token: " + e.getMessage(), e);
@@ -186,11 +186,11 @@ public class VaultService {
                 log.debug("Token not found in Vault for page: {}", pageId);
                 return Optional.empty();
             }
-            log.warn("Failed to retrieve Facebook page token for page: {}. Status: {}", pageId, e.getStatusCode(), e);
-            throw e;
+            log.warn("Failed to retrieve Facebook page token for page: {}. Status: {} - {}", pageId, e.getStatusCode(), e.getResponseBodyAsString(), e);
+            return Optional.empty();  // Return empty instead of throwing to prevent entire ingestion from failing
         } catch (Exception e) {
             log.warn("Error retrieving Facebook page token for page: {}", pageId, e);
-            throw new IllegalStateException("Error retrieving Facebook page token for page: " + pageId, e);
+            return Optional.empty();  // Return empty instead of throwing
         }
     }
 

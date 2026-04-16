@@ -5,6 +5,7 @@ import dk.unievent.app.infrastructure.config.FacebookConfig;
 import dk.unievent.app.infrastructure.exception.FacebookApiException;
 import dk.unievent.app.infrastructure.util.FacebookAppSecurityUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpStatus;
@@ -46,6 +47,8 @@ public class FacebookGraphApiService {
         this.restClientNoBaseUrl = RestClient.builder().build();
         this.facebookConfig = facebookConfig;
         this.objectMapper = new ObjectMapper();
+        // Register JSR310 module for Java 8+ date/time types (LocalDateTime, LocalDate, etc.)
+        this.objectMapper.registerModule(new JavaTimeModule());
     }
     
     /**
@@ -277,13 +280,13 @@ public class FacebookGraphApiService {
             log.debug("Fetching events for page: {} (token: {})", pageId, FacebookAppSecurityUtil.maskToken(pageToken));
             
             // Build full URI with scheme and host (Facebook returns text/javascript content type)
+            // Use /events endpoint with proper fields for page events
             String fields = "id,name,description,start_time,end_time,place,cover,timezone,is_canceled,is_online,type";
             URI uri = UriComponentsBuilder.newInstance()
                     .scheme("https")
                     .host("graph.facebook.com")
                     .path("/{version}/{pageId}/events")
                     .queryParam("fields", fields)
-                    .queryParam("type", "upcoming")
                     .queryParam("limit", 100)
                     .buildAndExpand(facebookConfig.getGraphApiVersion(), pageId)
                     .toUri();
@@ -326,9 +329,9 @@ public class FacebookGraphApiService {
             return events;
             
         } catch (RestClientResponseException e) {
-            log.error("Failed to fetch events for page: {}. Status: {}", pageId, e.getStatusCode());
+            log.error("Failed to fetch events for page: {}. Status: {} - Response: {}", pageId, e.getStatusCode(), e.getResponseBodyAsString());
             throw new FacebookApiException(
-                    "Failed to fetch page events",
+                    "Failed to fetch page events: " + e.getResponseBodyAsString(),
                     e.getStatusCode().value(),
                     "EVENTS_FETCH_ERROR"
             );

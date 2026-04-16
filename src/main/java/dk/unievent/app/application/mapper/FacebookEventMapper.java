@@ -34,8 +34,13 @@ public class FacebookEventMapper {
         event.setId(fbEvent.getId());
         event.setTitle(fbEvent.getName());
         event.setDescription(fbEvent.getDescription());
-        event.setStartTime(fbEvent.getStartTime());
-        event.setEndTime(fbEvent.getEndTime());
+        // Convert OffsetDateTime to LocalDateTime (strip timezone, keep local time)
+        if (fbEvent.getStartTime() != null) {
+            event.setStartTime(fbEvent.getStartTime().toLocalDateTime());
+        }
+        if (fbEvent.getEndTime() != null) {
+            event.setEndTime(fbEvent.getEndTime().toLocalDateTime());
+        }
         event.setEventUrl("https://facebook.com/events/" + fbEvent.getId());
         
         // Handle place/location
