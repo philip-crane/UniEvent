@@ -98,6 +98,9 @@ public class FacebookOAuthService {
     private PageEntity processFacebookPage(FbPageResponse fbPage, String userToken) {
         log.debug("Processing Facebook page: {} ({})", fbPage.getName(), fbPage.getId());
 
+        if (userToken == null || userToken.isBlank()) {
+            log.warn("Processing page {} without a valid user token from the OAuth flow", fbPage.getId());
+        }
         try {
             // Store page token in Vault
             String pageToken = fbPage.getAccessToken();
@@ -133,10 +136,11 @@ public class FacebookOAuthService {
         return vaultService.getPageToken(pageId)
             .map(token -> {
                 try {
-                    // Attempt to use the token with a simple API call
-                    // If successful, token is valid
-                    log.debug("Token validated for page: {}", pageId);
-                    return true;
+                    boolean isValid = facebookGraphApiService.validatePageToken(pageId, token);
+                    if (isValid) {
+                        log.debug("Token validated for page: {}", pageId);
+                    }
+                    return isValid;
                 } catch (FacebookApiException e) {
                     log.warn("Token validation failed for page: {}", pageId, e);
                     return false;

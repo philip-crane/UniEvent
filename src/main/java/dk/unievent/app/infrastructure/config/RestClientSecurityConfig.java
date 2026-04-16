@@ -2,6 +2,7 @@ package dk.unievent.app.infrastructure.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.web.client.RestClient;
 import lombok.extern.slf4j.Slf4j;
 
@@ -26,6 +27,7 @@ public class RestClientSecurityConfig {
      * @return Configured RestClient.Builder with security defaults
      */
     @Bean
+    @Primary
     public RestClient.Builder secureRestClientBuilder() {
         log.info("Configuring secure RestClient with HTTPS enforcement");
         

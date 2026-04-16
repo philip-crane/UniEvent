@@ -6,6 +6,8 @@ import dk.unievent.app.infrastructure.exception.FacebookApiException;
 import dk.unievent.app.infrastructure.util.FacebookAppSecurityUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
@@ -391,6 +393,51 @@ public class FacebookGraphApiService {
                     "Failed to refresh page token: " + e.getMessage(),
                     0,
                     "TOKEN_REFRESH_ERROR"
+            );
+        }
+    }
+
+    /**
+     * Validate a Facebook page token with a lightweight page lookup.
+     *
+     * @param pageId Facebook page ID
+     * @param pageToken Page access token to validate
+     * @return true if token can access the page
+     * @throws FacebookApiException if validation call fails
+     */
+    public boolean validatePageToken(String pageId, String pageToken) {
+        try {
+            log.debug("Validating token for page: {} (token: {})",
+                    pageId, FacebookAppSecurityUtil.maskToken(pageToken));
+
+            URI uri = UriComponentsBuilder
+                    .fromPath("/{version}/{pageId}")
+                    .queryParam("fields", "id")
+                    .buildAndExpand(facebookConfig.getGraphApiVersion(), pageId)
+                    .toUri();
+
+            var response = restClient.get()
+                    .uri(uri)
+                    .header("Authorization", "Bearer " + pageToken)
+                    .retrieve()
+                    .body(new ParameterizedTypeReference<Map<String, Object>>() {});
+
+            if (response == null) {
+                return false;
+            }
+            Object id = response.get("id");
+            return id instanceof String && pageId.equals((String) id);
+
+        } catch (RestClientResponseException e) {
+            if (e.getStatusCode() == HttpStatus.UNAUTHORIZED || e.getStatusCode() == HttpStatus.FORBIDDEN) {
+                log.debug("Page token rejected for page: {}. Status: {}", pageId, e.getStatusCode());
+                return false;
+            }
+            log.warn("Page token validation failed for page: {}. Status: {}", pageId, e.getStatusCode());
+            throw new FacebookApiException(
+                    "Failed to validate page token",
+                    e.getStatusCode().value(),
+                    "TOKEN_VALIDATION_ERROR"
             );
         }
     }

@@ -8,7 +8,7 @@ path "secret/metadata/unievent" {
 
 # Facebook integration - page token storage
 path "secret/data/unievent/facebook/page_*" {
-  capabilities = ["create", "read", "update", "delete"]
+  capabilities = ["create", "read", "update"]
 }
 
 path "secret/metadata/unievent/facebook/page_*" {

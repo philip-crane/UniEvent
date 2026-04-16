@@ -213,16 +213,26 @@ public class PageService {
         log.info("Starting batch token refresh for all pages");
 
         Pageable pageable = org.springframework.data.domain.PageRequest.of(0, 100);
-        Page<PageEntity> pagesToRefresh = getPagesToRefresh(pageable);
-
         int successCount = 0;
-        for (PageEntity page : pagesToRefresh.getContent()) {
-            if (refreshToken(page.getId())) {
-                successCount++;
+        long totalElements = 0;
+
+        while (true) {
+            Page<PageEntity> pagesToRefresh = getPagesToRefresh(pageable);
+            totalElements = pagesToRefresh.getTotalElements();
+
+            for (PageEntity page : pagesToRefresh.getContent()) {
+                if (refreshToken(page.getId())) {
+                    successCount++;
+                }
             }
+
+            if (!pagesToRefresh.hasNext()) {
+                break;
+            }
+            pageable = pagesToRefresh.nextPageable();
         }
 
-        log.info("Batch token refresh completed. Success: {}/{}", successCount, pagesToRefresh.getTotalElements());
+        log.info("Batch token refresh completed. Success: {}/{}", successCount, totalElements);
         return successCount;
     }
 

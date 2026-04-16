@@ -127,7 +127,7 @@ public class VaultService {
             if (response.getStatusCode() == HttpStatus.OK || response.getStatusCode() == HttpStatus.NO_CONTENT) {
                 log.info("Facebook page token stored successfully for page: {}", pageId);
             } else {
-                log.error("Failed to store token: unexpected status {}", response.getStatusCode());
+                throw new RuntimeException("Failed to store page token in Vault: unexpected status " + response.getStatusCode());
             }
             
         } catch (RestClientResponseException e) {
@@ -145,6 +145,7 @@ public class VaultService {
      * @param pageId Facebook page ID
      * @return Optional containing the access token if found
      */
+    @SuppressWarnings("unchecked")
     public Optional<String> getPageToken(String pageId) {
         try {
             log.debug("Retrieving Facebook page token for page: {}", pageId);
@@ -181,15 +182,15 @@ public class VaultService {
             return Optional.empty();
             
         } catch (RestClientResponseException e) {
-            if (e.getStatusCode().value() == 404) {
+            if (e.getStatusCode().value() == HttpStatus.NOT_FOUND.value()) {
                 log.debug("Token not found in Vault for page: {}", pageId);
                 return Optional.empty();
             }
             log.warn("Failed to retrieve Facebook page token for page: {}. Status: {}", pageId, e.getStatusCode(), e);
-            return Optional.empty();
+            throw e;
         } catch (Exception e) {
             log.warn("Error retrieving Facebook page token for page: {}", pageId, e);
-            return Optional.empty();
+            throw new IllegalStateException("Error retrieving Facebook page token for page: " + pageId, e);
         }
     }
 
