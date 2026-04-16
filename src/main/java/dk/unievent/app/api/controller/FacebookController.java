@@ -11,6 +11,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.util.List;
 import java.util.Map;
@@ -26,6 +27,9 @@ import java.util.Map;
 public class FacebookController {
 
     private final FacebookOAuthService facebookOAuthService;
+
+    @Value("${frontend.url:http://localhost}")
+    private String frontendUrl;
 
     public FacebookController(FacebookOAuthService facebookOAuthService) {
         this.facebookOAuthService = facebookOAuthService;
@@ -49,19 +53,20 @@ public class FacebookController {
     @ApiResponse(responseCode = "200", description = "OAuth callback processed successfully")
     @ApiResponse(responseCode = "400", description = "Missing authorization code")
     @ApiResponse(responseCode = "500", description = "OAuth flow failed")
-    public ResponseEntity<?> handleOAuthCallback(
+    public void handleOAuthCallback(
         @Parameter(description = "Authorization code from Facebook")
         @RequestParam(required = false) String code,
         @Parameter(description = "State parameter for CSRF protection")
-        @RequestParam(required = false) String state
-    ) {
+        @RequestParam(required = false) String state,
+        jakarta.servlet.http.HttpServletResponse response
+    ) throws java.io.IOException {
         log.info("Received Facebook OAuth callback via GET/POST");
 
         if (code == null || code.isEmpty()) {
             log.error("OAuth callback missing authorization code");
-            return ResponseEntity
-                .badRequest()
-                .body(Map.of("error", "Missing authorization code"));
+            String errorUrl = frontendUrl + "?error=Missing+authorization+code";
+            response.sendRedirect(errorUrl);
+            return;
         }
 
         try {
@@ -70,27 +75,14 @@ public class FacebookController {
 
             log.info("OAuth callback processed successfully. {} pages stored", pages.size());
 
-            // Return success response
-            return ResponseEntity.ok()
-                .body(Map.of(
-                    "message", "OAuth callback processed successfully",
-                    "pages_stored", pages.size(),
-                    "pages", pages.stream()
-                        .map(p -> Map.of(
-                            "id", p.getId(),
-                            "name", p.getName()
-                        ))
-                        .toList()
-                ));
+            // Redirect back to frontend with success
+            String successUrl = frontendUrl + "?success=true&pages=" + pages.size();
+            response.sendRedirect(successUrl);
 
         } catch (Exception e) {
             log.error("Error processing Facebook OAuth callback", e);
-            return ResponseEntity
-                .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(Map.of(
-                    "error", "OAuth callback failed",
-                    "message", e.getMessage()
-                ));
+            String errorUrl = frontendUrl + "?error=" + java.net.URLEncoder.encode(e.getMessage(), "UTF-8");
+            response.sendRedirect(errorUrl);
         }
     }
 
