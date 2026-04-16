@@ -18,6 +18,7 @@ import java.util.List;
 @Builder
 public class PlaceEntity {
     @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
     private String id;
 
     private String name;

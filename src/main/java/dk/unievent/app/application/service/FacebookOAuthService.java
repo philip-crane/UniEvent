@@ -59,7 +59,8 @@ public class FacebookOAuthService {
             log.debug("Step 2: Exchanging short-lived token for long-lived token");
             FbLongLivedTokenResponse longLivedResponse = facebookGraphApiService.getLongLivedToken(shortLivedToken);
             String longLivedToken = longLivedResponse.getAccessToken();
-            int  expiresIn = longLivedResponse.getExpiresIn();
+            Integer expiresInObj = longLivedResponse.getExpiresIn();
+            int expiresIn = expiresInObj != null ? expiresInObj : 5184000; // Default: 60 days in seconds
             log.debug("Long-lived token obtained, expires in {} seconds (~{} days)",
                 expiresIn, (expiresIn / 86400));
 

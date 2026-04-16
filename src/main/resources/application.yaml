@@ -60,8 +60,8 @@ unievent:
     license-name: MIT
     license-url: https://opensource.org/licenses/MIT
   facebook:
-    enabled: ${FACEBOOK_ENABLED:false}
+    enabled: ${FACEBOOK_ENABLED:true}
     app-id: ${FACEBOOK_APP_ID:}
     app-secret: ${FACEBOOK_APP_SECRET:}
     redirect-uri: ${FACEBOOK_REDIRECT_URI:http://localhost:8080/api/facebook/callback}
-    graph-api-version: ${FACEBOOK_GRAPH_VERSION:v25}
+    graph-api-version: ${FACEBOOK_GRAPH_VERSION:v25.0}

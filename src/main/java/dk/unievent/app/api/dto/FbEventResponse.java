@@ -1,16 +1,18 @@
 package dk.unievent.app.api.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 /**
  * Facebook event data from Graph API
  * Contains event details, location, and cover image info
  */
+@JsonIgnoreProperties(ignoreUnknown = true)
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -23,11 +25,10 @@ public class FbEventResponse {
     private String description;
     
     @JsonProperty("start_time")
-    private LocalDateTime startTime;
-    
+    private OffsetDateTime startTime;
+
     @JsonProperty("end_time")
-    private LocalDateTime endTime;
-    
+    private OffsetDateTime endTime;
     private FbPlaceData place;
     
     private FbCoverData cover;
