@@ -66,8 +66,16 @@ public class PageService {
         return result;
     }
 
+    // Refresh tokens expiring within this window so the scheduler acts before expiry, not after.
+    // Must exceed the scheduler interval (45 days) subtracted from token lifetime (60 days): > 15.
+    private static final int REFRESH_WINDOW_DAYS = 20;
+
     public Page<PageEntity> getPagesToRefresh(Pageable pageable) {
-        return pageRepository.findPagesToRefresh(LocalDateTime.now(), pageable);
+        return pageRepository.findPagesToRefresh(LocalDateTime.now().plusDays(REFRESH_WINDOW_DAYS), pageable);
+    }
+
+    public Page<PageEntity> getAllPageEntities(Pageable pageable) {
+        return pageRepository.findAllByOrderByNameAsc(pageable);
     }
 
     public Page<PageDTO> getExpiredPages(Pageable pageable) {

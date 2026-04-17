@@ -24,6 +24,12 @@ args=()
 for arg in "$@"; do
   case "$arg" in
     --verbose) args+=("-v") ;;
+    --clear)   args+=("-c") ;;
+    --down)    args+=("-d") ;;
+    --wipe)    args+=("-w") ;;
+    --page)    args+=("-p") ;;
+    --remote)  args+=("-r") ;;
+    --help)    args+=("-h") ;;
     --*)       args+=("-${arg#--}") ;;
     *)         args+=("$arg") ;;
   esac

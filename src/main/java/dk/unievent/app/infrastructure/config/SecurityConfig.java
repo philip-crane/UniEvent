@@ -47,7 +47,7 @@ public class SecurityConfig {
                 .requestMatchers(org.springframework.http.HttpMethod.PUT, "/api/**").authenticated()
                 .requestMatchers(org.springframework.http.HttpMethod.DELETE, "/api/**").authenticated()
                 .requestMatchers(org.springframework.http.HttpMethod.POST, "/media/**").authenticated()
-                .requestMatchers("/admin/tools/**").permitAll()
+                .requestMatchers("/admin/tools/**").permitAll()  // @Profile("dev") controllers only — not loaded in production
                 .requestMatchers("/admin/**").authenticated()
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
                 .requestMatchers("/actuator/health", "/actuator/info").authenticated()

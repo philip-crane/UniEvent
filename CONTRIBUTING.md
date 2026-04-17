@@ -32,6 +32,20 @@ Run `pwsh ./tools.ps1 setup`. If you're on Mac/Linux, install PowerShell and res
 - Add "tools" environmental variable (Windows: As user PATH in the directory ~/.local/bin) so you no longer have to prefix the dev tools with `./tools`, but now just with `setup`
 - Optionally begin Docker Compose
 
+## Tools
+
+After running `pwsh ./tools.ps1 setup`, you will be able to type `tools` to run the following commands from our cli folder:
+
+```text
+cli/
+├── setup.ps1      # tools setup
+├── ingest.ps1     # tools ingest [-p <pageId>]
+├── refresh.ps1    # tools refresh [-p <pageId>]
+├── seed.ps1       # tools seed, tools clear
+├── vault.ps1      # tools vault, tools unseal
+└── shared.ps1     # (helpers)
+```
+
 ## TODO
 
 ### Backend Big Tasks
@@ -50,15 +64,6 @@ Run `pwsh ./tools.ps1 setup`. If you're on Mac/Linux, install PowerShell and res
 - [ ] Create Event Page
 - [ ] Business Manager integration for stable API access
 - [ ] User favorites and personalization
-
-### Dev Tools
-- [ ] Finish setup with Vault seal/unseal
-- [ ] Easy Seal/Unseal tool
-- [ ] Manual Ingest tool
-- [ ] Manual Token Refresh tool
-- [ ] Check Health tool
-- [ ] Refactor away from infra/seeding directory 
-- [ ] Put SeedController, SeedReponse and SeedService into a flat infra/tools/seeding folder
 
 ### DB
 - [ ] Align place deletion behavior with docs (nullify place in events OR document cascading delete)
