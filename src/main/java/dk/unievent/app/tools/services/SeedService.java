@@ -10,6 +10,7 @@ import dk.unievent.app.db.repository.MediaRepository;
 import dk.unievent.app.db.repository.PageRepository;
 import dk.unievent.app.db.repository.PlaceRepository;
 import dk.unievent.app.tools.models.SeedResponse;
+import jakarta.persistence.EntityManager;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,18 +33,20 @@ public class SeedService {
     private final PlaceRepository placeRepository;
     private final MediaRepository mediaRepository;
     private final MediaService mediaService;
+    private final EntityManager entityManager;
 
     private static final String SEED_PREFIX = "SEED_";
     private static final String PLACEHOLDER_IMAGE_URL = "https://placehold.co/600x400.jpg";
 
     public SeedService(EventRepository eventRepository, PageRepository pageRepository,
                        PlaceRepository placeRepository, MediaRepository mediaRepository,
-                       MediaService mediaService) {
+                       MediaService mediaService, EntityManager entityManager) {
         this.eventRepository = eventRepository;
         this.pageRepository = pageRepository;
         this.placeRepository = placeRepository;
         this.mediaRepository = mediaRepository;
         this.mediaService = mediaService;
+        this.entityManager = entityManager;
     }
 
     /**
@@ -55,25 +58,33 @@ public class SeedService {
     public SeedResponse seedData() {
         log.info("Starting data seed operation...");
         try {
-            // Download a placeholder image and upload it to SeaweedFS once
-            String sharedFileId = mediaService.downloadAndStoreImage(PLACEHOLDER_IMAGE_URL, "SEED_placeholder.jpg");
-            log.info("Placeholder image uploaded to SeaweedFS: {}", sharedFileId);
+            // Clear any existing seed data first so seeding is idempotent
+            clearExistingSeedRecords();
 
-            // Create 10 unique media records all pointing to the same image
-            MediaEntity media1 = createAndSaveMedia("SEED_react_workshop.jpg", "image/jpeg", sharedFileId);
-            MediaEntity media2 = createAndSaveMedia("SEED_spring_boot.jpg", "image/jpeg", sharedFileId);
-            MediaEntity media3 = createAndSaveMedia("SEED_docker_k8s.jpg", "image/jpeg", sharedFileId);
-            MediaEntity media4 = createAndSaveMedia("SEED_ai_ml.jpg", "image/jpeg", sharedFileId);
-            MediaEntity media5 = createAndSaveMedia("SEED_graphql.jpg", "image/jpeg", sharedFileId);
-            MediaEntity media6 = createAndSaveMedia("SEED_jazz_night.jpg", "image/jpeg", sharedFileId);
-            MediaEntity media7 = createAndSaveMedia("SEED_art_exhibition.jpg", "image/jpeg", sharedFileId);
-            MediaEntity media8 = createAndSaveMedia("SEED_film_festival.jpg", "image/jpeg", sharedFileId);
-            MediaEntity media9 = createAndSaveMedia("SEED_classical_concert.jpg", "image/jpeg", sharedFileId);
-            MediaEntity media10 = createAndSaveMedia("SEED_book_club.jpg", "image/jpeg", sharedFileId);
+            // Try to upload a placeholder image to SeaweedFS; if unavailable, proceed without media
+            String sharedFileId = null;
+            try {
+                sharedFileId = mediaService.downloadAndStoreImage(PLACEHOLDER_IMAGE_URL, "SEED_placeholder.jpg");
+                log.info("Placeholder image uploaded to SeaweedFS: {}", sharedFileId);
+            } catch (Exception e) {
+                log.warn("SeaweedFS unavailable - seeding without cover images: {}", e.getMessage());
+            }
 
-            // Create places
-            PlaceEntity copenhagenPlace = createAndSavePlace("SEED_CPH", "Copenhagen", "Nørrebro", "1200", "Denmark", 55.6761, 12.5683);
-            PlaceEntity aarhusPlace = createAndSavePlace("SEED_AAH", "Aarhus", "Centrum", "8000", "Denmark", 56.1629, 10.2039);
+            // Create 10 unique media records all pointing to the same image (or null if upload failed)
+            MediaEntity media1  = sharedFileId != null ? createAndSaveMedia("SEED_react_workshop.jpg",    "image/jpeg", sharedFileId) : null;
+            MediaEntity media2  = sharedFileId != null ? createAndSaveMedia("SEED_spring_boot.jpg",       "image/jpeg", sharedFileId) : null;
+            MediaEntity media3  = sharedFileId != null ? createAndSaveMedia("SEED_docker_k8s.jpg",        "image/jpeg", sharedFileId) : null;
+            MediaEntity media4  = sharedFileId != null ? createAndSaveMedia("SEED_ai_ml.jpg",             "image/jpeg", sharedFileId) : null;
+            MediaEntity media5  = sharedFileId != null ? createAndSaveMedia("SEED_graphql.jpg",           "image/jpeg", sharedFileId) : null;
+            MediaEntity media6  = sharedFileId != null ? createAndSaveMedia("SEED_jazz_night.jpg",        "image/jpeg", sharedFileId) : null;
+            MediaEntity media7  = sharedFileId != null ? createAndSaveMedia("SEED_art_exhibition.jpg",    "image/jpeg", sharedFileId) : null;
+            MediaEntity media8  = sharedFileId != null ? createAndSaveMedia("SEED_film_festival.jpg",     "image/jpeg", sharedFileId) : null;
+            MediaEntity media9  = sharedFileId != null ? createAndSaveMedia("SEED_classical_concert.jpg", "image/jpeg", sharedFileId) : null;
+            MediaEntity media10 = sharedFileId != null ? createAndSaveMedia("SEED_book_club.jpg",         "image/jpeg", sharedFileId) : null;
+
+            // Create places (UUIDs auto-generated; use SEED_ name prefix for identification)
+            PlaceEntity copenhagenPlace = createAndSavePlace("SEED_Copenhagen", "Nørrebro", "1200", "Denmark", 55.6761, 12.5683);
+            PlaceEntity aarhusPlace = createAndSavePlace("SEED_Aarhus", "Centrum", "8000", "Denmark", 56.1629, 10.2039);
 
             // Create pages
             PageEntity techEventsPage = createAndSavePage("SEED_TECH_EVENTS", "Tech Events");
@@ -132,8 +143,9 @@ public class SeedService {
                 now.plus(35, ChronoUnit.DAYS).withHour(19).withMinute(0),
                 cultureEventsPage, null, media10);
 
-            SeedResponse result = new SeedResponse(true, "Seed data created successfully", 2, 10, 2);
-            log.info("Data seed completed: {} pages, {} events, {} places, 10 media records (all sharing same image)", result.getPageCount(), result.getEventCount(), result.getPlaceCount());
+            String msg = sharedFileId != null ? "Seed data created successfully" : "Seed data created (no cover images - SeaweedFS unavailable)";
+            SeedResponse result = new SeedResponse(true, msg, 2, 10, 2);
+            log.info("Data seed completed: {} pages, {} events, {} places, media={}", result.getPageCount(), result.getEventCount(), result.getPlaceCount(), sharedFileId != null ? "10 records" : "skipped");
             return result;
         } catch (Exception e) {
             log.error("Error during data seed operation", e);
@@ -165,7 +177,7 @@ public class SeedService {
 
             // Delete places (events must be deleted first due to foreign key)
             List<PlaceEntity> seededPlaces = placeRepository.findAll().stream()
-                .filter(p -> p.getId().startsWith(SEED_PREFIX))
+                .filter(p -> p.getName() != null && p.getName().startsWith(SEED_PREFIX))
                 .toList();
             placeRepository.deleteAll(seededPlaces);
             long deletedPlaces = seededPlaces.size();
@@ -195,6 +207,23 @@ public class SeedService {
         }
     }
 
+    private void clearExistingSeedRecords() {
+        eventRepository.findAll().stream()
+            .filter(e -> e.getId().startsWith(SEED_PREFIX))
+            .forEach(eventRepository::delete);
+        pageRepository.findAll().stream()
+            .filter(p -> p.getId().startsWith(SEED_PREFIX))
+            .forEach(pageRepository::delete);
+        placeRepository.findAll().stream()
+            .filter(p -> p.getName() != null && p.getName().startsWith(SEED_PREFIX))
+            .forEach(placeRepository::delete);
+        mediaRepository.findAll().stream()
+            .filter(m -> m.getFilename() != null && m.getFilename().startsWith(SEED_PREFIX))
+            .forEach(mediaRepository::delete);
+        entityManager.flush();
+        entityManager.clear();
+    }
+
     private MediaEntity createAndSaveMedia(String filename, String contentType, String fileId) {
         MediaEntity media = MediaEntity.builder()
             .filename(filename)
@@ -205,9 +234,8 @@ public class SeedService {
         return mediaRepository.save(media);
     }
 
-    private PlaceEntity createAndSavePlace(String id, String name, String street, String zip, String country, Double latitude, Double longitude) {
+    private PlaceEntity createAndSavePlace(String name, String street, String zip, String country, Double latitude, Double longitude) {
         PlaceEntity place = PlaceEntity.builder()
-            .id(id)
             .name(name)
             .street(street)
             .zip(zip)
@@ -224,7 +252,8 @@ public class SeedService {
             .name(name)
             .tokenStatus("valid")
             .build();
-        return pageRepository.save(page);
+        entityManager.persist(page);
+        return page;
     }
 
     private EventEntity createAndSaveEvent(String id, String title, String description,
@@ -240,6 +269,7 @@ public class SeedService {
             .place(place)
             .coverImage(coverImage)
             .build();
-        return eventRepository.save(event);
+        entityManager.persist(event);
+        return event;
     }
 }

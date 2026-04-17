@@ -951,11 +951,17 @@ function Invoke-Setup {
         return
     }
 
-    # Check if stack is already up
+    # Check if stack is already up - parse text output so stderr noise cannot
+    # contaminate the result (2>&1 would make any warning count as "running").
+    # Compose v2 shows "running", Compose v1/legacy shows "Up".
     $stackUp = $false
     try {
-        $ps = & $dockerPath compose ps --quiet 2>&1
-        $stackUp = ($LASTEXITCODE -eq 0 -and $ps -and $ps.ToString().Trim() -ne "")
+        $prevEap = $ErrorActionPreference
+        $ErrorActionPreference = "Continue"
+        $psLines = @(& $dockerPath compose ps 2>$null)
+        $exitCode = $LASTEXITCODE
+        $ErrorActionPreference = $prevEap
+        $stackUp = ($exitCode -eq 0) -and [bool]($psLines | Where-Object { $_ -match '\brunning\b|\bUp\b' })
     } catch {
         $stackUp = $false
     }
