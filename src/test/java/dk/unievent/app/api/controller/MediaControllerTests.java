@@ -103,12 +103,12 @@ class MediaControllerTests {
     }
 
     @Test
-    void downloadShouldReturnInternalServerErrorWhenMediaMissing() throws Exception {
+    void downloadShouldReturnNotFoundWhenMediaMissing() throws Exception {
         when(mediaRepository.findById(999L)).thenReturn(Optional.empty());
 
         mockMvc.perform(get("/media/999"))
-            .andExpect(status().isInternalServerError())
-            .andExpect(jsonPath("$.error").value("Internal Server Error"));
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.error").value("Not Found"));
     }
 
     @Test

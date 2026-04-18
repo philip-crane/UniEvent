@@ -236,6 +236,7 @@ public class SeedService {
 
     private PlaceEntity createAndSavePlace(String name, String street, String zip, String country, Double latitude, Double longitude) {
         PlaceEntity place = PlaceEntity.builder()
+            .id(java.util.UUID.randomUUID().toString())
             .name(name)
             .street(street)
             .zip(zip)

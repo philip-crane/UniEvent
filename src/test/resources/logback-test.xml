@@ -1,0 +1,21 @@
+<configuration>
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>WARN</level>
+        </filter>
+        <encoder>
+            <pattern>%-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <logger name="org.hibernate.orm.jdbc.error" level="OFF"/>
+    <logger name="dk.unievent.app.infrastructure.client" level="OFF"/>
+    <logger name="dk.unievent.app.api.handler" level="OFF"/>
+    <logger name="dk.unievent.app.api.controller" level="OFF"/>
+    <logger name="dk.unievent.app.application.service" level="OFF"/>
+    <logger name="dk.unievent.app.tools" level="OFF"/>
+
+    <root level="WARN">
+        <appender-ref ref="CONSOLE"/>
+    </root>
+</configuration>

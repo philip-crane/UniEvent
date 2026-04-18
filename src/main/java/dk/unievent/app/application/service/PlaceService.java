@@ -171,6 +171,7 @@ public class PlaceService {
         // Place not found, create new one
         log.debug("Place not found, creating new: {} in {}, {}", name, city, country);
         PlaceEntity newPlace = PlaceEntity.builder()
+                .id(java.util.UUID.randomUUID().toString())
                 .name(name)
                 .street(street)
                 .city(city)

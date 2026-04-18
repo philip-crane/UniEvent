@@ -61,7 +61,7 @@ class PageControllerTests {
 
     @Test
     void getPageByIdShouldReturnNotFoundWhenMissing() throws Exception {
-        when(pageService.getPageById("missing")).thenReturn(null);
+        when(pageService.getPageById("missing")).thenReturn(java.util.Optional.empty());
 
         mockMvc.perform(get("/api/pages/missing"))
             .andExpect(status().isNotFound());

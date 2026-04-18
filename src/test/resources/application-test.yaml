@@ -1,3 +1,20 @@
+logging:
+  level:
+    root: WARN
+    dk.unievent: WARN
+    org.springframework: WARN
+    org.hibernate: WARN
+    com.zaxxer.hikari: WARN
+    org.flywaydb: WARN
+    org.springdoc: ERROR
+    org.hibernate.orm.deprecation: ERROR
+    org.hibernate.orm.jdbc.error: OFF
+    dk.unievent.app.infrastructure.client: OFF
+    dk.unievent.app.api.handler: OFF
+    dk.unievent.app.api.controller: OFF
+    dk.unievent.app.application.service: OFF
+    dk.unievent.app.tools: OFF
+
 spring:
   application:
     name: web
@@ -5,6 +22,8 @@ spring:
     import:
       - classpath:db-test.yaml
       - classpath:vault-test.yaml
+  jpa:
+    show-sql: false
 
 app:
   pagination:
