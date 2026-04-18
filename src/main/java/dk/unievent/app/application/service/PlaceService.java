@@ -1,6 +1,5 @@
 package dk.unievent.app.application.service;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -9,19 +8,18 @@ import dk.unievent.app.application.dto.PlaceDTO;
 import dk.unievent.app.application.mapper.PlaceMapper;
 import dk.unievent.app.db.model.PlaceEntity;
 import dk.unievent.app.db.repository.PlaceRepository;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.Optional;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class PlaceService {
-    
-    @Autowired
-    private PlaceRepository placeRepository;
-    
-    @Autowired
-    private PlaceMapper placeMapper;
+
+    private final PlaceRepository placeRepository;
+    private final PlaceMapper placeMapper;
     
     /**
      * Get a place by ID

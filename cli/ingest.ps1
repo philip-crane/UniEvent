@@ -63,7 +63,7 @@ function Invoke-Ingest {
 
     if (-not $pageId) {
         Write-Info "Fetching tracked pages..."
-        $pages = Get-PageList -BaseUrl $BaseUrl -VerboseOutput:$VerboseOutput
+        $pages = @(Get-PageList -BaseUrl $BaseUrl -VerboseOutput:$VerboseOutput)
         $chosen = Select-PageInteractive -Pages $pages
         $pageId = $chosen.id
         $pageName = "$($chosen.name) ($pageId)"

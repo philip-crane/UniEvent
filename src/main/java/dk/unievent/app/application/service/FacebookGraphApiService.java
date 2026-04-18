@@ -3,7 +3,6 @@ package dk.unievent.app.application.service;
 import dk.unievent.app.api.dto.*;
 import dk.unievent.app.infrastructure.config.FacebookConfig;
 import dk.unievent.app.infrastructure.exception.FacebookApiException;
-import dk.unievent.app.infrastructure.util.FacebookAppSecurityUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import lombok.extern.slf4j.Slf4j;
@@ -113,7 +112,7 @@ public class FacebookGraphApiService {
     @SuppressWarnings("unchecked")
     public List<FbPageResponse> getPagesFromUser(String userToken) {
         try {
-            log.debug("Fetching admin-controlled pages for user (token: {})", FacebookAppSecurityUtil.maskToken(userToken));
+            log.debug("Fetching admin-controlled pages for user (token: {})", maskToken(userToken));
 
             String responseBody = restClient.get()
                     .uri("/{version}/me/accounts?fields=id,name,access_token", facebookConfig.getGraphApiVersion())
@@ -170,7 +169,7 @@ public class FacebookGraphApiService {
     @SuppressWarnings("unchecked")
     public List<FbEventResponse> getPageEvents(String pageId, String pageToken) {
         try {
-            log.debug("Fetching events for page: {} (token: {})", pageId, FacebookAppSecurityUtil.maskToken(pageToken));
+            log.debug("Fetching events for page: {} (token: {})", pageId, maskToken(pageToken));
 
             String fields = "id,name,description,start_time,end_time,place,cover,timezone,is_canceled,is_online,type";
 
@@ -229,7 +228,7 @@ public class FacebookGraphApiService {
 
     public FbLongLivedTokenResponse refreshPageToken(String expiredToken) {
         try {
-            log.debug("Refreshing page token (token: {})", FacebookAppSecurityUtil.maskToken(expiredToken));
+            log.debug("Refreshing page token (token: {})", maskToken(expiredToken));
 
             MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
             body.add("grant_type", "fb_exchange_token");
@@ -266,7 +265,7 @@ public class FacebookGraphApiService {
     public boolean validatePageToken(String pageId, String pageToken) {
         try {
             log.debug("Validating token for page: {} (token: {})",
-                    pageId, FacebookAppSecurityUtil.maskToken(pageToken));
+                    pageId, maskToken(pageToken));
 
             var response = restClient.get()
                     .uri("/{version}/{pageId}?fields=id", facebookConfig.getGraphApiVersion(), pageId)
@@ -292,5 +291,11 @@ public class FacebookGraphApiService {
                     "TOKEN_VALIDATION_ERROR"
             );
         }
+    }
+
+    private static String maskToken(String token) {
+        if (token == null || token.isEmpty()) return "[EMPTY]";
+        int visible = Math.min(4, token.length() - 1);
+        return (visible > 0 ? token.substring(0, visible) : "") + "***";
     }
 }

@@ -1,6 +1,5 @@
 package dk.unievent.app.api.controller;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -15,14 +14,15 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.Parameter;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 /**
  * REST Controller for Place endpoints (Venues/Locations)
  * All endpoints are prefixed with /api/places
- * 
+ *
  * Places are the VENUES where events happen (bars, cafes, restaurants, etc.)
- * 
+ *
  * Example requests:
  * GET  /api/places/{id}                    - Get place by ID
  * GET  /api/places/city/{city}             - Find venues in a city
@@ -33,10 +33,10 @@ import lombok.extern.slf4j.Slf4j;
 @RestController
 @RequestMapping("/api/places")
 @Tag(name = "Places", description = "Manage and search venues/locations for events")
+@RequiredArgsConstructor
 public class PlaceController {
-    
-    @Autowired
-    private PlaceService placeService;
+
+    private final PlaceService placeService;
     
     /**
      * GET /api/places/{id}

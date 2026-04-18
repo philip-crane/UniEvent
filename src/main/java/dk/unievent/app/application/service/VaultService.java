@@ -5,7 +5,6 @@ import dk.unievent.app.application.mapper.SecretMapper;
 import dk.unievent.app.db.model.SecretEntity;
 import dk.unievent.app.db.repository.SecretRepository;
 import dk.unievent.app.infrastructure.client.VaultClient;
-import dk.unievent.app.infrastructure.util.FacebookAppSecurityUtil;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -105,7 +104,7 @@ public class VaultService {
      */
     public void storePageToken(String pageId, String token) {
         try {
-            log.debug("Storing Facebook page token for page: {} (token: {})", pageId, FacebookAppSecurityUtil.maskToken(token));
+            log.debug("Storing Facebook page token for page: {} (token: {})", pageId, maskToken(token));
             
             String vaultPath = String.format("/v1/secret/data/unievent/facebook/page_%s", pageId);
             
@@ -174,7 +173,7 @@ public class VaultService {
             Map<String, Object> tokenData = (Map<String, Object>) dataMap.get("data");
             if (tokenData != null && tokenData.containsKey("access_token")) {
                 String token = (String) tokenData.get("access_token");
-                log.debug("Facebook page token retrieved successfully for page: {} (token: {})", pageId, FacebookAppSecurityUtil.maskToken(token));
+                log.debug("Facebook page token retrieved successfully for page: {} (token: {})", pageId, maskToken(token));
                 return Optional.of(token);
             }
             
@@ -202,7 +201,7 @@ public class VaultService {
      */
     public void updatePageToken(String pageId, String newToken) {
         try {
-            log.debug("Updating Facebook page token for page: {} (token: {})", pageId, FacebookAppSecurityUtil.maskToken(newToken));
+            log.debug("Updating Facebook page token for page: {} (token: {})", pageId, maskToken(newToken));
             
             String vaultPath = String.format("/v1/secret/data/unievent/facebook/page_%s", pageId);
             
@@ -234,5 +233,11 @@ public class VaultService {
             log.error("Error updating Facebook page token in Vault for page: {}", pageId, e);
             throw new RuntimeException("Unexpected error updating page token: " + e.getMessage(), e);
         }
+    }
+
+    private static String maskToken(String token) {
+        if (token == null || token.isEmpty()) return "[EMPTY]";
+        int visible = Math.min(4, token.length() - 1);
+        return (visible > 0 ? token.substring(0, visible) : "") + "***";
     }
 }

@@ -81,13 +81,12 @@ cli/
 - [ ] Make actuator `health/info` access strategy explicit for Docker probes + production security
 
 ### Small Tasks
-- [ ] Move JWT refresh in ms env var to JwtConfig
+- [x] Move JWT refresh in ms env var to JwtConfig
 - [ ] Consolidate constants into one config called ConstantsConfig
-- [ ] Replace field injection with constructor injection for consistency and testability
+- [x] Replace field injection with constructor injection for consistency and testability
 - [ ] Harden media download content-type handling with safe fallback on invalid metadata
-- [ ] Refactor away from FacebookAppSecurityUtil; just do it directly in the code
-- [ ] Combine RestClientSecurityConfig into RestClientConfig
-- [ ] Add more exceptions where needed
+- [x] Refactor away from FacebookAppSecurityUtil; just do it directly in the code
+- [x] Combine RestClientSecurityConfig into RestClientConfig
 
 ### Nice-To-Have Frameworks
 - [ ] DB Replace `ddl-auto: update` with Flyway or Liquibase migrations
