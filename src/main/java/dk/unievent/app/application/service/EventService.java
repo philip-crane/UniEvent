@@ -182,8 +182,18 @@ public class EventService {
         MediaEntity savedMedia = mediaRepository.save(mediaEntity);
 
         EventEntity entity = existing.get();
+        MediaEntity oldMedia = entity.getCoverImage();
         entity.setCoverImage(savedMedia);
         EventEntity updated = eventRepository.save(entity);
+
+        if (oldMedia != null) {
+            try {
+                mediaService.delete(oldMedia.getFileId());
+            } catch (IOException e) {
+                log.warn("Failed to delete old cover image from SeaweedFS: {}", oldMedia.getFileId(), e);
+            }
+        }
+
         log.info("Cover image uploaded successfully for event: {}", id);
         return Optional.of(eventMapper.toDTO(updated));
     }

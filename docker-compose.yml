@@ -84,6 +84,12 @@ services:
       - "127.0.0.1:8080:8080"
     networks:
       - unievent-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
+      start_period: 60s
+      interval: 15s
+      timeout: 5s
+      retries: 5
 
   certbot:
     image: certbot/certbot:latest

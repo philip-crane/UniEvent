@@ -36,7 +36,7 @@ public class PlaceEntity {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    @OneToMany(mappedBy = "place", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "place")
     private List<EventEntity> events;
 
     @PrePersist

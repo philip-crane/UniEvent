@@ -13,7 +13,9 @@ import org.springframework.data.domain.Pageable;
 import dk.unievent.app.application.dto.LocationDTO;
 import dk.unievent.app.application.dto.PlaceDTO;
 import dk.unievent.app.application.mapper.PlaceMapper;
+import dk.unievent.app.db.model.EventEntity;
 import dk.unievent.app.db.model.PlaceEntity;
+import dk.unievent.app.db.repository.EventRepository;
 import dk.unievent.app.db.repository.PlaceRepository;
 
 import java.util.List;
@@ -29,9 +31,12 @@ class PlaceServiceTests {
     
     @Mock
     private PlaceRepository placeRepository;
-    
+
     @Mock
     private PlaceMapper placeMapper;
+
+    @Mock
+    private EventRepository eventRepository;
     
     @InjectMocks
     private PlaceService placeService;
@@ -239,11 +244,13 @@ class PlaceServiceTests {
     @Test
     void testDeletePlace() {
         when(placeRepository.existsById("place-1")).thenReturn(true);
-        
+        when(eventRepository.findByPlaceId("place-1")).thenReturn(List.of());
+
         boolean result = placeService.deletePlace("place-1");
-        
+
         assertTrue(result);
         verify(placeRepository, times(1)).existsById("place-1");
+        verify(eventRepository, times(1)).findByPlaceId("place-1");
         verify(placeRepository, times(1)).deleteById("place-1");
     }
     

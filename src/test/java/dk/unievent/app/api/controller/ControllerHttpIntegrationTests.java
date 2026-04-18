@@ -211,6 +211,43 @@ class ControllerHttpIntegrationTests {
     }
 
     @Test
+    void eventUpdateNotFoundShouldReturn404() throws Exception {
+        String token = getAuthToken();
+        String body = "{" +
+                "\"pageId\":\"nonexistent-page\"," +
+                "\"title\":\"Ghost Event\"," +
+                "\"startTime\":\"2030-06-01T10:00:00\"," +
+                "\"endTime\":\"2030-06-01T12:00:00\"" +
+                "}";
+
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(url("/api/events/not-found-event")))
+                .header("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+                .header("Authorization", "Bearer " + token)
+                .PUT(HttpRequest.BodyPublishers.ofString(body))
+                .build();
+
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        assertEquals(404, response.statusCode());
+    }
+
+    @Test
+    void pageUpdateNotFoundShouldReturn404() throws Exception {
+        String token = getAuthToken();
+        String body = "{\"name\":\"Ghost Page\"}";
+
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(url("/api/pages/not-found-page")))
+                .header("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+                .header("Authorization", "Bearer " + token)
+                .PUT(HttpRequest.BodyPublishers.ofString(body))
+                .build();
+
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        assertEquals(404, response.statusCode());
+    }
+
+    @Test
     void placeUpdateNotFoundShouldReturn404() throws Exception {
         String token = getAuthToken();
         String body = "{" +

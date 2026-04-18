@@ -94,7 +94,7 @@ class PageControllerTests {
 
     @Test
     void updatePageShouldOverrideBodyIdWithPathId() throws Exception {
-        when(pageService.savePage(any(PageDTO.class))).thenReturn(samplePage("path-id", "Updated"));
+        when(pageService.updatePage(eq("path-id"), any(PageDTO.class))).thenReturn(java.util.Optional.of(samplePage("path-id", "Updated")));
 
         mockMvc.perform(put("/api/pages/path-id")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -103,7 +103,7 @@ class PageControllerTests {
             .andExpect(jsonPath("$.id").value("path-id"));
 
         ArgumentCaptor<PageDTO> captor = ArgumentCaptor.forClass(PageDTO.class);
-        verify(pageService).savePage(captor.capture());
+        verify(pageService).updatePage(eq("path-id"), captor.capture());
         assertEquals("path-id", captor.getValue().getId());
     }
 

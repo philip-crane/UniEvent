@@ -174,6 +174,10 @@ public class MediaService {
                 "Mozilla/5.0 (compatible; UniEventServer/1.0; +http://unievent.dk)");
 
             try (InputStream in = conn.getInputStream()) {
+                String contentType = conn.getContentType();
+                if (contentType != null && !contentType.startsWith("image/")) {
+                    throw new IOException("Unexpected content-type from remote URL: " + contentType);
+                }
                 byte[] imageData = in.readAllBytes();
                 log.debug("Downloaded {} bytes from URL", imageData.length);
                 return imageData;

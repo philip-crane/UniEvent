@@ -12,6 +12,7 @@ import dk.unievent.app.db.model.MediaEntity;
 import dk.unievent.app.db.model.PageEntity;
 import dk.unievent.app.db.repository.MediaRepository;
 import dk.unievent.app.db.repository.PageRepository;
+import dk.unievent.app.infrastructure.config.ConstantsConfig;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
@@ -66,12 +67,8 @@ public class PageService {
         return result;
     }
 
-    // Refresh tokens expiring within this window so the scheduler acts before expiry, not after.
-    // Must exceed the scheduler interval (45 days) subtracted from token lifetime (60 days): > 15.
-    private static final int REFRESH_WINDOW_DAYS = 20;
-
     public Page<PageEntity> getPagesToRefresh(Pageable pageable) {
-        return pageRepository.findPagesToRefresh(LocalDateTime.now().plusDays(REFRESH_WINDOW_DAYS), pageable);
+        return pageRepository.findPagesToRefresh(LocalDateTime.now().plusDays(ConstantsConfig.REFRESH_WINDOW_DAYS), pageable);
     }
 
     public Page<PageEntity> getAllPageEntities(Pageable pageable) {
@@ -103,6 +100,13 @@ public class PageService {
         PageEntity saved = pageRepository.save(entity);
         log.info("Page saved successfully with id: {}", saved.getId());
         return pageMapper.toDTO(saved);
+    }
+
+    public Optional<PageDTO> updatePage(String id, PageDTO pageDTO) {
+        if (!pageRepository.existsById(id)) {
+            return Optional.empty();
+        }
+        return Optional.of(savePage(pageDTO));
     }
 
     public void updatePageToken(String pageId, String tokenStatus, LocalDateTime expiresAt, Integer expiresInDays) {
@@ -154,10 +158,19 @@ public class PageService {
         MediaEntity saved = mediaRepository.save(mediaEntity);
 
         PageEntity page = existing.get();
+        MediaEntity oldMedia = page.getPicture();
         page.setPicture(saved);
         PageEntity updated = pageRepository.save(page);
-        log.info("Picture uploaded successfully for page: {}", id);
 
+        if (oldMedia != null) {
+            try {
+                mediaService.delete(oldMedia.getFileId());
+            } catch (IOException e) {
+                log.warn("Failed to delete old picture from SeaweedFS: {}", oldMedia.getFileId(), e);
+            }
+        }
+
+        log.info("Picture uploaded successfully for page: {}", id);
         return Optional.of(pageMapper.toDTO(updated));
     }
 
@@ -202,7 +215,7 @@ public class PageService {
         pageEntity.setLastRefreshAttempt(LocalDateTime.now());
 
         // Token expiration: Facebook long-lived tokens expire in ~60 days
-        LocalDateTime expirationTime = LocalDateTime.now().plusDays(60);
+        LocalDateTime expirationTime = LocalDateTime.now().plusDays(ConstantsConfig.TOKEN_EXPIRATION_DAYS);
         pageEntity.setTokenExpiresAt(expirationTime);
         pageEntity.setTokenExpiresInDays(60);
 
@@ -272,7 +285,7 @@ public class PageService {
             page.setLastRefreshAttempt(LocalDateTime.now());
 
             // Update expiration: refresh adds another ~60 days
-            LocalDateTime expirationTime = LocalDateTime.now().plusDays(60);
+            LocalDateTime expirationTime = LocalDateTime.now().plusDays(ConstantsConfig.TOKEN_EXPIRATION_DAYS);
             page.setTokenExpiresAt(expirationTime);
             page.setTokenExpiresInDays(60);
 

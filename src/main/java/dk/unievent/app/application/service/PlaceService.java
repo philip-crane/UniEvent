@@ -6,11 +6,14 @@ import org.springframework.stereotype.Service;
 
 import dk.unievent.app.application.dto.PlaceDTO;
 import dk.unievent.app.application.mapper.PlaceMapper;
+import dk.unievent.app.db.model.EventEntity;
 import dk.unievent.app.db.model.PlaceEntity;
+import dk.unievent.app.db.repository.EventRepository;
 import dk.unievent.app.db.repository.PlaceRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.List;
 import java.util.Optional;
 
 @Slf4j
@@ -20,6 +23,7 @@ public class PlaceService {
 
     private final PlaceRepository placeRepository;
     private final PlaceMapper placeMapper;
+    private final EventRepository eventRepository;
     
     /**
      * Get a place by ID
@@ -122,13 +126,18 @@ public class PlaceService {
      */
     public boolean deletePlace(String id) {
         log.info("Deleting place with id: {}", id);
-        if (placeRepository.existsById(id)) {
-            placeRepository.deleteById(id);
-            log.info("Place deleted successfully: {}", id);
-            return true;
+        if (!placeRepository.existsById(id)) {
+            log.warn("Place not found for deletion with id: {}", id);
+            return false;
         }
-        log.warn("Place not found for deletion with id: {}", id);
-        return false;
+        List<EventEntity> affected = eventRepository.findByPlaceId(id);
+        for (EventEntity event : affected) {
+            event.setPlace(null);
+        }
+        eventRepository.saveAll(affected);
+        placeRepository.deleteById(id);
+        log.info("Place deleted, nullified place on {} event(s): {}", affected.size(), id);
+        return true;
     }
 
     /**

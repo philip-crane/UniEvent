@@ -26,16 +26,15 @@ class SecurityConfigTests {
     }
 
     @Test
-    void healthAndInfoShouldRequireAuthentication() throws Exception {
+    void healthAndInfoShouldBePubliclyAccessible() throws Exception {
         HttpRequest health = HttpRequest.newBuilder().uri(URI.create(url("/actuator/health"))).GET().build();
         HttpRequest info = HttpRequest.newBuilder().uri(URI.create(url("/actuator/info"))).GET().build();
 
         HttpResponse<String> healthResponse = httpClient.send(health, HttpResponse.BodyHandlers.ofString());
         HttpResponse<String> infoResponse = httpClient.send(info, HttpResponse.BodyHandlers.ofString());
 
-        // Unauthenticated requests should be forbidden
-        assertEquals(403, healthResponse.statusCode());
-        assertEquals(403, infoResponse.statusCode());
+        assertEquals(200, healthResponse.statusCode());
+        assertEquals(200, infoResponse.statusCode());
     }
 
     @Test

@@ -30,14 +30,14 @@ class SecurityIntegrationTests {
     }
 
     @Test
-    void healthEndpointShouldRequireAuthentication() throws Exception {
+    void healthEndpointShouldBePubliclyAccessible() throws Exception {
         HttpRequest request = HttpRequest.newBuilder()
             .uri(URI.create(url("/actuator/health")))
             .GET()
             .build();
 
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-        assertEquals(403, response.statusCode());
+        assertEquals(200, response.statusCode());
     }
 
     @Test
@@ -120,14 +120,51 @@ class SecurityIntegrationTests {
         JsonNode payload = objectMapper.readTree(registerResponse.body());
         String token = payload.path("token").asText();
 
-        HttpRequest healthRequest = HttpRequest.newBuilder()
-            .uri(URI.create(url("/actuator/health")))
+        // POST /api/events with valid JWT but empty body — expect 400 (validation), not 403 (auth failure)
+        HttpRequest writeRequest = HttpRequest.newBuilder()
+            .uri(URI.create(url("/api/events")))
+            .header("Content-Type", "application/json")
             .header("Authorization", "Bearer " + token)
-            .GET()
+            .POST(HttpRequest.BodyPublishers.ofString("{}"))
             .build();
 
-        HttpResponse<String> healthResponse = httpClient.send(healthRequest, HttpResponse.BodyHandlers.ofString());
-        assertEquals(200, healthResponse.statusCode());
+        HttpResponse<String> writeResponse = httpClient.send(writeRequest, HttpResponse.BodyHandlers.ofString());
+        assertEquals(400, writeResponse.statusCode());
+    }
+
+    @Test
+    void unauthenticatedPostToApiShouldBeForbidden() throws Exception {
+        HttpRequest request = HttpRequest.newBuilder()
+            .uri(URI.create(url("/api/events")))
+            .header("Content-Type", "application/json")
+            .POST(HttpRequest.BodyPublishers.ofString("{}"))
+            .build();
+
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        assertEquals(403, response.statusCode());
+    }
+
+    @Test
+    void unauthenticatedPutToApiShouldBeForbidden() throws Exception {
+        HttpRequest request = HttpRequest.newBuilder()
+            .uri(URI.create(url("/api/events/any-id")))
+            .header("Content-Type", "application/json")
+            .PUT(HttpRequest.BodyPublishers.ofString("{}"))
+            .build();
+
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        assertEquals(403, response.statusCode());
+    }
+
+    @Test
+    void unauthenticatedDeleteToApiShouldBeForbidden() throws Exception {
+        HttpRequest request = HttpRequest.newBuilder()
+            .uri(URI.create(url("/api/events/any-id")))
+            .DELETE()
+            .build();
+
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        assertEquals(403, response.statusCode());
     }
 
     @Test

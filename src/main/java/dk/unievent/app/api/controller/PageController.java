@@ -96,9 +96,13 @@ public class PageController {
             @Valid @RequestBody PageDTO pageDTO) {
         log.info("Updating page with id: {}", id);
         pageDTO.setId(id);
-        PageDTO updated = pageService.savePage(pageDTO);
+        Optional<PageDTO> updated = pageService.updatePage(id, pageDTO);
+        if (updated.isEmpty()) {
+            log.warn("Page not found for update with id: {}", id);
+            return ResponseEntity.notFound().build();
+        }
         log.info("Page updated successfully: {}", id);
-        return ResponseEntity.ok(updated);
+        return ResponseEntity.ok(updated.get());
     }
 
     @PostMapping("/{id}/picture")

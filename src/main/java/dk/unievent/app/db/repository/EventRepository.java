@@ -9,6 +9,7 @@ import org.springframework.stereotype.Repository;
 import dk.unievent.app.db.model.EventEntity;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Repository
 public interface EventRepository extends JpaRepository<EventEntity, String> {
@@ -47,4 +48,6 @@ public interface EventRepository extends JpaRepository<EventEntity, String> {
      */
     @EntityGraph(attributePaths = {"page", "place", "coverImage"})
     Page<EventEntity> findByPlaceIdOrderByStartTimeAsc(String placeId, Pageable pageable);
+
+    List<EventEntity> findByPlaceId(String placeId);
 }
