@@ -63,7 +63,7 @@ class ControllerHttpIntegrationTests {
     }
 
     private String getAuthToken() throws Exception {
-        String regBody = "{\"username\":\"ctrl-testuser\",\"email\":\"ctrl-testuser@test.com\",\"password\":\"password123\"}";
+        String regBody = "{\"username\":\"ctrl-testuser\",\"email\":\"ctrl-testuser@test.com\",\"password\":\"password1234\"}";
         HttpResponse<String> regResponse = httpClient.send(
                 HttpRequest.newBuilder()
                         .uri(URI.create(url("/api/auth/register")))
@@ -74,7 +74,7 @@ class ControllerHttpIntegrationTests {
         if (regResponse.statusCode() == 200) {
             return (String) objectMapper.readValue(regResponse.body(), new TypeReference<Map<String, Object>>() {}).get("token");
         }
-        String loginBody = "{\"email\":\"ctrl-testuser@test.com\",\"password\":\"password123\"}";
+        String loginBody = "{\"email\":\"ctrl-testuser@test.com\",\"password\":\"password1234\"}";
         HttpResponse<String> loginResponse = httpClient.send(
                 HttpRequest.newBuilder()
                         .uri(URI.create(url("/api/auth/login")))

@@ -1,7 +1,6 @@
 package dk.unievent.app.infrastructure.filter;
 
 import dk.unievent.app.application.service.JwtService;
-import dk.unievent.app.application.service.UserService;
 import jakarta.servlet.FilterChain;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -16,9 +15,6 @@ import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 
 import java.util.List;
 
@@ -30,9 +26,6 @@ class JwtAuthenticationFilterTests {
 
     @Mock
     private JwtService jwtService;
-
-    @Mock
-    private UserService userService;
 
     @Mock
     private FilterChain filterChain;
@@ -76,16 +69,11 @@ class JwtAuthenticationFilterTests {
 
     @Test
     void shouldPopulateSecurityContextWhenTokenIsValid() throws Exception {
-        UserDetails userDetails = User.builder()
-            .username("test@example.com")
-            .password("encoded")
-            .authorities(List.of(new SimpleGrantedAuthority("ROLE_USER")))
-            .build();
-
         request.addHeader(HttpHeaders.AUTHORIZATION, "Bearer valid-token");
         when(jwtService.extractUsername("valid-token")).thenReturn("test@example.com");
-        when(userService.loadUserByUsername("test@example.com")).thenReturn(userDetails);
-        when(jwtService.isTokenValid("valid-token", userDetails)).thenReturn(true);
+        when(jwtService.isTokenValid("valid-token", "test@example.com")).thenReturn(true);
+        when(jwtService.extractAuthorities("valid-token"))
+            .thenReturn(List.of(new SimpleGrantedAuthority("ROLE_USER")));
 
         filter.doFilter(request, response, filterChain);
 
@@ -97,16 +85,9 @@ class JwtAuthenticationFilterTests {
 
     @Test
     void shouldNotSetAuthenticationWhenTokenIsInvalid() throws Exception {
-        UserDetails userDetails = User.builder()
-            .username("test@example.com")
-            .password("encoded")
-            .roles("USER")
-            .build();
-
         request.addHeader(HttpHeaders.AUTHORIZATION, "Bearer bad-token");
         when(jwtService.extractUsername("bad-token")).thenReturn("test@example.com");
-        when(userService.loadUserByUsername("test@example.com")).thenReturn(userDetails);
-        when(jwtService.isTokenValid("bad-token", userDetails)).thenReturn(false);
+        when(jwtService.isTokenValid("bad-token", "test@example.com")).thenReturn(false);
 
         filter.doFilter(request, response, filterChain);
 
@@ -115,11 +96,9 @@ class JwtAuthenticationFilterTests {
     }
 
     @Test
-    void shouldContinueChainWhenUserNotFound() throws Exception {
+    void shouldContinueChainWhenUsernameNotExtracted() throws Exception {
         request.addHeader(HttpHeaders.AUTHORIZATION, "Bearer orphan-token");
-        when(jwtService.extractUsername("orphan-token")).thenReturn("ghost@example.com");
-        when(userService.loadUserByUsername("ghost@example.com"))
-            .thenThrow(new UsernameNotFoundException("User not found"));
+        when(jwtService.extractUsername("orphan-token")).thenReturn(null);
 
         filter.doFilter(request, response, filterChain);
 
@@ -139,6 +118,6 @@ class JwtAuthenticationFilterTests {
         filter.doFilter(request, response, filterChain);
 
         verify(filterChain).doFilter(request, response);
-        verifyNoInteractions(userService);
+        verifyNoMoreInteractions(jwtService);
     }
 }

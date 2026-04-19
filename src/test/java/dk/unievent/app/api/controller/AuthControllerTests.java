@@ -5,6 +5,7 @@ import dk.unievent.app.application.dto.UserDTO;
 import dk.unievent.app.application.service.RefreshTokenService;
 import dk.unievent.app.application.service.UserService;
 import dk.unievent.app.db.model.UserEntity;
+import dk.unievent.app.infrastructure.security.UserDetailsAdapter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -18,6 +19,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -74,7 +76,7 @@ class AuthControllerTests {
 
         mockMvc.perform(post("/api/auth/register")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"username\":\"testuser\",\"email\":\"test@example.com\",\"password\":\"password123\"}"))
+                .content("{\"username\":\"testuser\",\"email\":\"test@example.com\",\"password\":\"password123456\"}"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.token").value("access-token-value"))
             .andExpect(jsonPath("$.refreshToken").value("refresh-token-value"))
@@ -108,20 +110,21 @@ class AuthControllerTests {
 
     @Test
     void loginShouldReturnTokensOnSuccess() throws Exception {
-        when(userService.findByEmail("test@example.com")).thenReturn(testUser);
+        UserDetailsAdapter principal = new UserDetailsAdapter(testUser);
+        UsernamePasswordAuthenticationToken auth =
+            new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities());
+        when(authenticationManager.authenticate(any())).thenReturn(auth);
         when(refreshTokenService.issueTokenPair(testUser)).thenReturn(testTokenPair);
 
         mockMvc.perform(post("/api/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"email\":\"test@example.com\",\"password\":\"password123\"}"))
+                .content("{\"email\":\"test@example.com\",\"password\":\"password123456\"}"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.token").value("access-token-value"))
             .andExpect(jsonPath("$.username").value("testuser"))
             .andExpect(jsonPath("$.email").value("test@example.com"));
 
-        verify(authenticationManager).authenticate(
-            any(UsernamePasswordAuthenticationToken.class)
-        );
+        verify(authenticationManager).authenticate(any(UsernamePasswordAuthenticationToken.class));
     }
 
     @Test
@@ -142,7 +145,7 @@ class AuthControllerTests {
 
     @Test
     void refreshShouldReturnNewTokenPair() throws Exception {
-        when(refreshTokenService.rotate("old-refresh-token")).thenReturn(testTokenPair);
+        when(refreshTokenService.rotate(eq("old-refresh-token"), any(), any())).thenReturn(testTokenPair);
 
         mockMvc.perform(post("/api/auth/refresh")
                 .contentType(MediaType.APPLICATION_JSON)

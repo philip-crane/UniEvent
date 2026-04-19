@@ -16,13 +16,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.time.Instant;
-import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.*;
@@ -133,24 +131,12 @@ class RefreshTokenServiceTests {
                         .expiresAt(Instant.now().plusSeconds(60))
                         .build()
         ));
-        when(refreshTokenRepository.findAllByFamilyIdAndRevokedAtIsNull("family-1")).thenReturn(List.of(
-                RefreshTokenEntity.builder()
-                        .id(10L)
-                        .tokenId("token-1")
-                        .familyId("family-1")
-                        .tokenHash(javaHash(refreshToken))
-                        .userId(user.getId())
-                        .userEmail(user.getEmail())
-                        .expiresAt(Instant.now().plusSeconds(60))
-                        .build()
-        ));
         when(refreshTokenRepository.save(any(RefreshTokenEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(refreshTokenRepository.saveAll(anyList())).thenAnswer(invocation -> invocation.getArgument(0));
 
         refreshTokenService.logout(refreshToken);
 
         verify(refreshTokenRepository).save(any(RefreshTokenEntity.class));
-        verify(refreshTokenRepository).saveAll(any());
+        verify(refreshTokenRepository).revokeByFamilyId(eq("family-1"), any());
     }
 
     @Test
@@ -159,7 +145,6 @@ class RefreshTokenServiceTests {
         when(jwtService.extractRefreshTokenId("bad-token")).thenReturn("token-1");
         when(jwtService.extractRefreshFamilyId("bad-token")).thenReturn("family-1");
         when(refreshTokenRepository.findByTokenId("token-1")).thenReturn(Optional.empty());
-        when(refreshTokenRepository.findAllByFamilyIdAndRevokedAtIsNull("family-1")).thenReturn(List.of());
 
         assertThrows(UnauthorizedTokenException.class, () -> refreshTokenService.rotate("bad-token"));
     }

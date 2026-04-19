@@ -35,6 +35,9 @@ class PageServiceTests {
     private PageMapper pageMapper;
 
     @Mock
+    private MediaService mediaService;
+
+    @Mock
     private MediaRepository mediaRepository;
     
     @InjectMocks
@@ -240,21 +243,23 @@ class PageServiceTests {
     
     @Test
     void testDeletePage() {
-        when(pageRepository.existsById("page-1")).thenReturn(true);
-        
+        when(pageRepository.findById("page-1")).thenReturn(Optional.of(testPageEntity));
+
         boolean result = pageService.deletePage("page-1");
-        
+
         assertTrue(result);
+        verify(pageRepository, times(1)).findById("page-1");
         verify(pageRepository, times(1)).deleteById("page-1");
     }
-    
+
     @Test
     void testDeletePageNotFound() {
-        when(pageRepository.existsById("non-existent")).thenReturn(false);
-        
+        when(pageRepository.findById("non-existent")).thenReturn(Optional.empty());
+
         boolean result = pageService.deletePage("non-existent");
-        
+
         assertFalse(result);
+        verify(pageRepository, times(1)).findById("non-existent");
         verify(pageRepository, never()).deleteById(anyString());
     }
     

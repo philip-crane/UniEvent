@@ -259,23 +259,23 @@ class EventServiceTests {
     
     @Test
     void testDeleteEvent() {
-        when(eventRepository.existsById("event-1")).thenReturn(true);
-        
+        when(eventRepository.findById("event-1")).thenReturn(Optional.of(testEventEntity));
+
         boolean result = eventService.deleteEvent("event-1");
-        
+
         assertTrue(result);
-        verify(eventRepository, times(1)).existsById("event-1");
+        verify(eventRepository, times(1)).findById("event-1");
         verify(eventRepository, times(1)).deleteById("event-1");
     }
-    
+
     @Test
     void testDeleteEventNotFound() {
-        when(eventRepository.existsById("non-existent")).thenReturn(false);
-        
+        when(eventRepository.findById("non-existent")).thenReturn(Optional.empty());
+
         boolean result = eventService.deleteEvent("non-existent");
-        
+
         assertFalse(result);
-        verify(eventRepository, times(1)).existsById("non-existent");
+        verify(eventRepository, times(1)).findById("non-existent");
         verify(eventRepository, never()).deleteById("non-existent");
     }
     

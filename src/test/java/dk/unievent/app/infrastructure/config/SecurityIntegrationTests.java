@@ -106,7 +106,7 @@ class SecurityIntegrationTests {
     @Test
     void jwtFromRegisterShouldAuthenticateProtectedEndpoints() throws Exception {
         String suffix = String.valueOf(System.nanoTime());
-        String registerJson = "{\"username\":\"user" + suffix + "\",\"email\":\"user" + suffix + "@example.com\",\"password\":\"secret123\"}";
+        String registerJson = "{\"username\":\"user" + suffix + "\",\"email\":\"user" + suffix + "@example.com\",\"password\":\"secret12345678\"}";
 
         HttpRequest registerRequest = HttpRequest.newBuilder()
             .uri(URI.create(url("/api/auth/register")))
@@ -170,7 +170,7 @@ class SecurityIntegrationTests {
     @Test
     void refreshTokenShouldRotateAndLogoutShouldRevokeIt() throws Exception {
         String suffix = String.valueOf(System.nanoTime());
-        String registerJson = "{\"username\":\"refresh" + suffix + "\",\"email\":\"refresh" + suffix + "@example.com\",\"password\":\"secret123\"}";
+        String registerJson = "{\"username\":\"refresh" + suffix + "\",\"email\":\"refresh" + suffix + "@example.com\",\"password\":\"secret12345678\"}";
 
         HttpRequest registerRequest = HttpRequest.newBuilder()
             .uri(URI.create(url("/api/auth/register")))

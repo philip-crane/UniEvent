@@ -1,7 +1,7 @@
 package dk.unievent.app.api.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import dk.unievent.app.api.handler.GlobalExceptionHandler;
+import tools.jackson.databind.json.JsonMapper;
 import dk.unievent.app.application.service.MediaService;
 import dk.unievent.app.db.model.MediaEntity;
 import dk.unievent.app.db.repository.MediaRepository;
@@ -12,6 +12,12 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.core.io.ByteArrayResource;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableHandlerMethodArgumentResolver;
+import org.springframework.http.converter.ResourceHttpMessageConverter;
+import org.springframework.http.converter.json.JacksonJsonHttpMessageConverter;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -46,11 +52,15 @@ class MediaControllerTests {
 
     @BeforeEach
     void setUp() {
+        JacksonJsonHttpMessageConverter converter = new JacksonJsonHttpMessageConverter(
+            JsonMapper.builder().findAndAddModules().build()
+        );
         mockMvc = MockMvcBuilders
             .standaloneSetup(mediaController)
             .setControllerAdvice(new GlobalExceptionHandler())
+            .setCustomArgumentResolvers(new PageableHandlerMethodArgumentResolver())
+            .setMessageConverters(converter, new ResourceHttpMessageConverter())
             .build();
-        new ObjectMapper().findAndRegisterModules();
     }
 
     @Test
@@ -116,13 +126,14 @@ class MediaControllerTests {
         MediaEntity first = MediaEntity.builder().id(1L).filename("a.jpg").contentType("image/jpeg").fileId("1,a").uploadedAt(Instant.now()).build();
         MediaEntity second = MediaEntity.builder().id(2L).filename("b.png").contentType("image/png").fileId("1,b").uploadedAt(Instant.now()).build();
 
-        when(mediaRepository.findAll()).thenReturn(List.of(first, second));
+        when(mediaRepository.findAll(any(Pageable.class)))
+            .thenReturn(new PageImpl<>(List.of(first, second), PageRequest.of(0, 50), 2));
 
         mockMvc.perform(get("/media"))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$[0].id").value(1L))
-            .andExpect(jsonPath("$[0].fileId").value("1,a"))
-            .andExpect(jsonPath("$[1].id").value(2L))
-            .andExpect(jsonPath("$[1].fileId").value("1,b"));
+            .andExpect(jsonPath("$.content[0].id").value(1))
+            .andExpect(jsonPath("$.content[0].fileId").value("1,a"))
+            .andExpect(jsonPath("$.content[1].id").value(2))
+            .andExpect(jsonPath("$.content[1].fileId").value("1,b"));
     }
 }

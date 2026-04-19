@@ -137,11 +137,11 @@ class PlaceIntegrationTests {
     @Test
     void testSearchPlacesByNamePartial() {
         createTestPlace("place-1", "S-huset", "Street 1", "Copenhagen");
-        createTestPlace("place-2", "S-huset", "Street 2", "Copenhagen");
+        createTestPlace("place-2", "S-huset", "Street 2", "Aarhus");
         createTestPlace("place-3", "Pumpehuset", "Street 3", "Copenhagen");
-        
+
         Page<PlaceDTO> searchResults = placeService.searchByName("S-huset", PageRequest.of(0, 20));
-        
+
         assertEquals(2, searchResults.getContent().size());
     }
     

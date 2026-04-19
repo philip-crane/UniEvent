@@ -38,10 +38,14 @@ public class FacebookEventMapper {
         event.setDescription(fbEvent.getDescription());
         ZoneId zone = resolveZone(fbEvent.getTimezone(), fbEvent.getId());
         if (fbEvent.getStartTime() != null) {
-            event.setStartTime(fbEvent.getStartTime().atZoneSameInstant(zone).toLocalDateTime());
+            event.setStartTime(zone != null
+                    ? fbEvent.getStartTime().atZoneSameInstant(zone).toLocalDateTime()
+                    : fbEvent.getStartTime().toLocalDateTime());
         }
         if (fbEvent.getEndTime() != null) {
-            event.setEndTime(fbEvent.getEndTime().atZoneSameInstant(zone).toLocalDateTime());
+            event.setEndTime(zone != null
+                    ? fbEvent.getEndTime().atZoneSameInstant(zone).toLocalDateTime()
+                    : fbEvent.getEndTime().toLocalDateTime());
         }
         event.setEventUrl("https://facebook.com/events/" + fbEvent.getId());
         
@@ -70,8 +74,9 @@ public class FacebookEventMapper {
                 return ZoneId.of(timezone);
             } catch (Exception e) {
                 log.warn("Unrecognised timezone '{}' for event {}, falling back to UTC", timezone, eventId);
+                return ZoneId.of("UTC");
             }
         }
-        return ZoneId.of("UTC");
+        return null;
     }
 }

@@ -128,7 +128,9 @@ class MediaControllerHttpIntegrationTests {
                 .build();
 
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-        List<Map<String, Object>> items = objectMapper.readValue(response.body(), new TypeReference<List<Map<String, Object>>>() {});
+        Map<String, Object> page = objectMapper.readValue(response.body(), new TypeReference<Map<String, Object>>() {});
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> items = (List<Map<String, Object>>) page.get("content");
 
         assertEquals(200, response.statusCode());
         assertFalse(items.isEmpty());
@@ -178,7 +180,7 @@ class MediaControllerHttpIntegrationTests {
     }
 
     private String getAuthToken() throws Exception {
-        String regBody = "{\"username\":\"media-testuser\",\"email\":\"media-testuser@test.com\",\"password\":\"password123\"}";
+        String regBody = "{\"username\":\"media-testuser\",\"email\":\"media-testuser@test.com\",\"password\":\"password1234\"}";
         HttpResponse<String> regResponse = httpClient.send(
                 HttpRequest.newBuilder()
                         .uri(URI.create(url("/api/auth/register")))
@@ -189,7 +191,7 @@ class MediaControllerHttpIntegrationTests {
         if (regResponse.statusCode() == 200) {
             return (String) objectMapper.readValue(regResponse.body(), new TypeReference<Map<String, Object>>() {}).get("token");
         }
-        String loginBody = "{\"email\":\"media-testuser@test.com\",\"password\":\"password123\"}";
+        String loginBody = "{\"email\":\"media-testuser@test.com\",\"password\":\"password1234\"}";
         HttpResponse<String> loginResponse = httpClient.send(
                 HttpRequest.newBuilder()
                         .uri(URI.create(url("/api/auth/login")))
