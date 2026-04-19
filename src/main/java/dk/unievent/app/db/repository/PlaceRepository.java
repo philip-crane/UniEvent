@@ -31,4 +31,10 @@ public interface PlaceRepository extends JpaRepository<PlaceEntity, String> {
      */
     @Query("SELECT p FROM PlaceEntity p WHERE LOWER(p.name) LIKE LOWER(CONCAT('%', ?1, '%')) ORDER BY p.name ASC")
     Page<PlaceEntity> findByNameIgnoreCase(String name, Pageable pageable);
+
+    /**
+     * Exact case-insensitive lookup by name, city, and country - used by ingestion to avoid N+1 loops
+     */
+    @Query("SELECT p FROM PlaceEntity p WHERE LOWER(p.name) = LOWER(?1) AND p.city = ?2 AND p.country = ?3")
+    java.util.Optional<PlaceEntity> findByNameIgnoreCaseAndCityAndCountry(String name, String city, String country);
 }

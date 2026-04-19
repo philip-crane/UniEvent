@@ -9,15 +9,19 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 import lombok.extern.slf4j.Slf4j;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.URLConnection;
 import java.nio.file.Path;
+import java.util.Set;
 
 @Slf4j
 @Service
 public class MediaService {
+
+    private static final Set<String> ALLOWED_IMAGE_TYPES = Set.of("image/jpeg", "image/png", "image/webp");
 
     private final SeaweedFsClient seaweedClient;
 
@@ -46,10 +50,19 @@ public class MediaService {
         }
 
         try {
+            byte[] bytes = file.getBytes();
+            String detectedType = detectMimeType(bytes);
+            if (!ALLOWED_IMAGE_TYPES.contains(detectedType)) {
+                log.warn("Rejected upload with unsupported MIME type '{}': {}", detectedType, filename);
+                throw new IllegalArgumentException(
+                    "Unsupported file type '" + detectedType + "'. Allowed: image/jpeg, image/png, image/webp");
+            }
             SeaweedFsClient.FileAssignment assignment = seaweedClient.assignFile();
-            seaweedClient.uploadFile(assignment.publicUrl(), assignment.fid(), filename, file.getBytes());
+            seaweedClient.uploadFile(assignment.publicUrl(), assignment.fid(), filename, bytes);
             log.info("File stored successfully with id: {}", assignment.fid());
             return assignment.fid();
+        } catch (IllegalArgumentException e) {
+            throw e;
         } catch (Exception e) {
             log.error("Error uploading file to SeaweedFS: {}", filename, e);
             throw new IOException("Error uploading file to SeaweedFS: " + e.getMessage(), e);
@@ -151,6 +164,21 @@ public class MediaService {
         } catch (Exception e) {
             log.error("Error downloading/storing image from URL: {}", imageUrl, e);
             throw new IOException("Error downloading/storing image: " + e.getMessage(), e);
+        }
+    }
+
+    private String detectMimeType(byte[] bytes) {
+        // Check WebP: RIFF????WEBP
+        if (bytes.length >= 12
+                && bytes[0] == 'R' && bytes[1] == 'I' && bytes[2] == 'F' && bytes[3] == 'F'
+                && bytes[8] == 'W' && bytes[9] == 'E' && bytes[10] == 'B' && bytes[11] == 'P') {
+            return "image/webp";
+        }
+        try (InputStream is = new ByteArrayInputStream(bytes)) {
+            String type = URLConnection.guessContentTypeFromStream(is);
+            return type != null ? type : "application/octet-stream";
+        } catch (IOException e) {
+            return "application/octet-stream";
         }
     }
 

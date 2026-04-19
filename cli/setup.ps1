@@ -149,7 +149,54 @@ function Invoke-Setup {
         }
     }
 
-    # ── Step 5: Install CLI on PATH ───────────────────────────────────────────
+    # ── Step 5: Vault TLS certificate ────────────────────────────────────────
+
+    Write-Step "Checking Vault TLS certificate..."
+    $vaultCertFile = Join-Path $certsDir "vault.crt"
+    $vaultKeyFile  = Join-Path $certsDir "vault.key"
+
+    if ((Test-Path $vaultCertFile) -and (Test-Path $vaultKeyFile)) {
+        Write-Ok "Vault TLS certificate already exists"
+    } else {
+        Write-Info "Generating Vault TLS certificate (CN=vault, SAN=DNS:vault,DNS:localhost,IP:127.0.0.1)..."
+
+        # Write a temporary OpenSSL config so SANs work across all OpenSSL versions
+        $sanConf = @"
+[req]
+distinguished_name = req_distinguished_name
+x509_extensions    = v3_req
+prompt             = no
+
+[req_distinguished_name]
+CN = vault
+
+[v3_req]
+subjectAltName = DNS:vault,DNS:localhost,IP:127.0.0.1
+"@
+        $tempConf = [System.IO.Path]::GetTempFileName() + ".cnf"
+        $sanConf | Set-Content -Path $tempConf -Encoding ASCII
+
+        try {
+            & $opensslPath req -x509 -nodes -days 3650 -newkey rsa:2048 `
+                -keyout $vaultKeyFile -out $vaultCertFile `
+                -config $tempConf 2>&1 | Out-Null
+        } catch {
+            Write-Err "OpenSSL failed generating Vault cert: $($_.Exception.Message)"
+            Remove-Item $tempConf -ErrorAction SilentlyContinue
+            exit 1
+        } finally {
+            Remove-Item $tempConf -ErrorAction SilentlyContinue
+        }
+
+        if ((Test-Path $vaultCertFile) -and (Test-Path $vaultKeyFile)) {
+            Write-Ok "Vault TLS certificate generated (valid 10 years)"
+        } else {
+            Write-Err "Vault TLS certificate generation failed - files not created"
+            exit 1
+        }
+    }
+
+    # ── Step 7: Install CLI on PATH ───────────────────────────────────────────
 
     Write-Step "Installing CLI..."
 
@@ -278,7 +325,7 @@ function Invoke-Setup {
         Write-Info "You can now run: tools seed, tools setup, tools clear"
     }
 
-    # ── Step 6: Done ──────────────────────────────────────────────────────────
+    # ── Step 8: Done ──────────────────────────────────────────────────────────
 
     Write-Host ""
     Write-Sep

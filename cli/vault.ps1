@@ -235,7 +235,7 @@ function Invoke-VaultSetup {
         Write-Ok "App container updated"
 
         Write-Host ""
-        Write-Warn "Vault credentials saved to .env — back up that file securely (keep it off version control)."
+        Write-Warn "Vault credentials saved to .env - back up that file securely (keep it off version control)."
 
     } elseif ($statusJson.sealed) {
         Write-Info "Vault is sealed - unsealing..."

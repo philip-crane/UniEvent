@@ -13,7 +13,6 @@ import org.springframework.data.domain.Pageable;
 import dk.unievent.app.application.dto.LocationDTO;
 import dk.unievent.app.application.dto.PlaceDTO;
 import dk.unievent.app.application.mapper.PlaceMapper;
-import dk.unievent.app.db.model.EventEntity;
 import dk.unievent.app.db.model.PlaceEntity;
 import dk.unievent.app.db.repository.EventRepository;
 import dk.unievent.app.db.repository.PlaceRepository;

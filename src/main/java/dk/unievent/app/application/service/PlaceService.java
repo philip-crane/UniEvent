@@ -153,28 +153,13 @@ public class PlaceService {
      */
     public PlaceEntity createOrFindPlace(String name, String street, String city, String zip, String country) {
         log.debug("Searching for place: {} in {}, {}", name, city, country);
-        
-        // Try to find an existing place by scanning all candidates in the same city and country
-        int pageNumber = 0;
-        int pageSize = 50;
-        Page<PlaceEntity> existing;
-        
-        do {
-            existing = placeRepository.findByCityAndCountry(
-                    city,
-                    country,
-                    org.springframework.data.domain.PageRequest.of(pageNumber, pageSize));
-            
-            for (PlaceEntity place : existing.getContent()) {
-                if (place.getName() != null && place.getName().equalsIgnoreCase(name)) {
-                    log.debug("Found existing place: {} (id: {})", name, place.getId());
-                    return place;
-                }
-            }
-            
-            pageNumber++;
-        } while (existing.hasNext());
-        
+
+        java.util.Optional<PlaceEntity> found = placeRepository.findByNameIgnoreCaseAndCityAndCountry(name, city, country);
+        if (found.isPresent()) {
+            log.debug("Found existing place: {} (id: {})", name, found.get().getId());
+            return found.get();
+        }
+
         // Place not found, create new one
         log.debug("Place not found, creating new: {} in {}, {}", name, city, country);
         PlaceEntity newPlace = PlaceEntity.builder()

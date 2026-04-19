@@ -18,9 +18,9 @@ import dk.unievent.app.infrastructure.filter.JwtAuthenticationFilter;
  * Security Configuration
  *
  * Actuator strategy:
- *   /actuator/health — public (Docker probes and load balancer checks cannot authenticate)
- *   /actuator/info  — public (static build metadata, no secrets)
- *   /actuator/**    — denyAll (metrics and other endpoints blocked in production)
+ *   /actuator/health - public (Docker probes and load balancer checks cannot authenticate)
+ *   /actuator/info  - public (static build metadata, no secrets)
+ *   /actuator/**    - denyAll (metrics and other endpoints blocked in production)
  */
 @Configuration
 @EnableWebSecurity
@@ -45,13 +45,14 @@ public class SecurityConfig {
                 .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/**").authenticated()
                 .requestMatchers(org.springframework.http.HttpMethod.PUT, "/api/**").authenticated()
                 .requestMatchers(org.springframework.http.HttpMethod.DELETE, "/api/**").authenticated()
+                .requestMatchers(org.springframework.http.HttpMethod.GET, "/media/**").permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.POST, "/media/**").authenticated()
-                .requestMatchers("/admin/tools/**").permitAll()  // @Profile("dev") controllers only — not loaded in production
+                .requestMatchers("/admin/tools/**").authenticated()
                 .requestMatchers("/admin/**").authenticated()
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
                 .requestMatchers("/actuator/health", "/actuator/info").permitAll()
                 .requestMatchers("/actuator/**").denyAll()
-                .anyRequest().permitAll()
+                .anyRequest().authenticated()
             )
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .cors(cors -> {})

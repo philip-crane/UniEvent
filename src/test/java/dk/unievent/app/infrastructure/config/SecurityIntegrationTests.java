@@ -120,7 +120,7 @@ class SecurityIntegrationTests {
         JsonNode payload = objectMapper.readTree(registerResponse.body());
         String token = payload.path("token").asText();
 
-        // POST /api/events with valid JWT but empty body — expect 400 (validation), not 403 (auth failure)
+        // POST /api/events with valid JWT but empty body - expect 400 (validation), not 403 (auth failure)
         HttpRequest writeRequest = HttpRequest.newBuilder()
             .uri(URI.create(url("/api/events")))
             .header("Content-Type", "application/json")

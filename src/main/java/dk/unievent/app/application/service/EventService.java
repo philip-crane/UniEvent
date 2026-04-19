@@ -298,6 +298,7 @@ public class EventService {
             eventEntity.setPage(page);
 
             // Download and store cover image if present
+            MediaEntity oldCoverImage = existing.map(EventEntity::getCoverImage).orElse(null);
             if (fbEvent.getCover() != null && fbEvent.getCover().getSource() != null) {
                 try {
                     log.debug("Downloading cover image for event: {}", fbEvent.getId());
@@ -316,6 +317,18 @@ public class EventService {
 
             // Persist or update event
             EventEntity saved = eventRepository.save(eventEntity);
+
+            // Delete the old cover image from SeaweedFS after the new one is committed
+            if (oldCoverImage != null && (eventEntity.getCoverImage() == null
+                    || !oldCoverImage.getId().equals(eventEntity.getCoverImage().getId()))) {
+                try {
+                    mediaService.delete(oldCoverImage.getFileId());
+                    mediaRepository.delete(oldCoverImage);
+                    log.debug("Deleted orphaned cover image {} for event: {}", oldCoverImage.getFileId(), fbEvent.getId());
+                } catch (Exception e) {
+                    log.warn("Failed to delete orphaned cover image {} for event: {}", oldCoverImage.getFileId(), fbEvent.getId(), e);
+                }
+            }
             String action = existing.isPresent() ? "updated" : "created";
             log.info("Facebook event {} successfully: {} ({})", action, saved.getTitle(), saved.getId());
 

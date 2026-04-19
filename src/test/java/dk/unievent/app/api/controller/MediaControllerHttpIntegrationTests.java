@@ -65,7 +65,8 @@ class MediaControllerHttpIntegrationTests {
     void uploadShouldReturnDtoAndPersistMetadata() throws Exception {
         String token = getAuthToken();
         String boundary = "----unievent-boundary";
-        byte[] body = multipartBody(boundary, "file", "poster.png", "image/png", "png-bytes".getBytes());
+        byte[] pngMagic = {(byte)0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n'};
+        byte[] body = multipartBody(boundary, "file", "poster.png", "image/png", pngMagic);
 
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(url("/media")))
@@ -94,7 +95,8 @@ class MediaControllerHttpIntegrationTests {
         fakeSeaweed.failAssign = true;
 
         String boundary = "----unievent-boundary";
-        byte[] body = multipartBody(boundary, "file", "poster.png", "image/png", "png-bytes".getBytes());
+        byte[] pngMagic = {(byte)0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n'};
+        byte[] body = multipartBody(boundary, "file", "poster.png", "image/png", pngMagic);
 
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(url("/media")))

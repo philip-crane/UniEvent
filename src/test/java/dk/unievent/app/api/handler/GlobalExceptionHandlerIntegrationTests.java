@@ -136,8 +136,10 @@ class GlobalExceptionHandlerIntegrationTests {
 
     @Test
     void uncaughtRuntimeExceptionShouldUseGlobalFallback() throws Exception {
+        String token = getAuthToken();
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(url("/test-exceptions/runtime-error")))
+                .header("Authorization", "Bearer " + token)
                 .GET()
                 .build();
 
@@ -152,8 +154,10 @@ class GlobalExceptionHandlerIntegrationTests {
 
     @Test
     void maxUploadExceptionShouldReturnPayloadTooLargeShape() throws Exception {
+        String token = getAuthToken();
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(url("/test-exceptions/max-upload")))
+                .header("Authorization", "Bearer " + token)
                 .GET()
                 .build();
 

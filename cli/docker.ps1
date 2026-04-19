@@ -66,9 +66,10 @@ function Invoke-Docker {
         exit 1
     }
 
-    Write-Info "Waiting for services to be healthy..."
+    Write-Info "Waiting for infrastructure services to be healthy..."
     $elapsed = 0
-    while ($elapsed -lt 90) {
+    $infraReady = $false
+    while ($elapsed -lt 150) {
         Start-Sleep -Seconds 5
         $elapsed += 5
         $prev = $ErrorActionPreference
@@ -76,13 +77,53 @@ function Invoke-Docker {
         $psLines = @(& $dockerPath compose ps 2>$null)
         $ErrorActionPreference = $prev
         $stillStarting = $psLines | Where-Object { $_ -match '\(starting\)|\(health: starting\)' }
-        if (-not $stillStarting) { Write-Ok "Services ready ($($elapsed)s)"; break }
+        $unhealthy     = $psLines | Where-Object { $_ -match '\(unhealthy\)' }
+        if ($unhealthy) {
+            Write-Warn "  Service(s) unhealthy at $($elapsed)s - check with: docker compose ps"
+            foreach ($line in $unhealthy) { Write-Host "    $line" -ForegroundColor Yellow }
+        }
+        if (-not $stillStarting) {
+            if ($unhealthy) {
+                Write-Warn "Services stopped starting but some are unhealthy ($($elapsed)s)"
+            } else {
+                Write-Ok "Infrastructure ready ($($elapsed)s)"
+            }
+            $infraReady = $true
+            break
+        }
         Write-Info "  Still starting... ($($elapsed)s)"
+    }
+    if (-not $infraReady) {
+        Write-Warn "Timed out waiting for services to be healthy (150s) - continuing anyway"
+        Write-Warn "Check status with: docker compose ps"
     }
 
     if (-not $SkipVaultSetup) {
         Write-Host ""
         Write-Step "Configuring Vault..."
         Invoke-VaultSetup
+    }
+
+    # After vault setup the app container is restarted with the new token - wait for it to pass health checks.
+    Write-Host ""
+    Write-Info "Waiting for app to be ready..."
+    $appReady = $false
+    $appLines  = @()
+    for ($i = 0; $i -lt 24; $i++) {
+        Start-Sleep -Seconds 5
+        $prev = $ErrorActionPreference
+        $ErrorActionPreference = "Continue"
+        $psLines = @(& $dockerPath compose ps 2>$null)
+        $ErrorActionPreference = $prev
+        $appLines = @($psLines | Where-Object { $_ -match 'unievent-app' })
+        $appStatus = $appLines -join " "
+        if ($appStatus -match '\(healthy\)')   { Write-Ok "App is ready ($(($i + 1) * 5)s)"; $appReady = $true; break }
+        if ($appStatus -match '\(unhealthy\)') { Write-Warn "App is unhealthy - check with: docker compose logs app"; break }
+        Write-Info "  App starting... ($(($i + 1) * 5)s)"
+    }
+    if (-not $appReady -and (($appLines -join " ") -notmatch '\(unhealthy\)')) {
+        Write-Warn "App did not report healthy within 120s - it may still be starting"
+        Write-Warn "Check status: docker compose ps"
+        Write-Warn "Check logs:   docker compose logs app"
     }
 }

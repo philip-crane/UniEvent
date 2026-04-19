@@ -14,6 +14,7 @@ import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import dk.unievent.app.infrastructure.exception.UnauthorizedTokenException;
 import jakarta.validation.ConstraintViolationException;
+import org.springframework.security.core.AuthenticationException;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
@@ -82,6 +83,12 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleDataIntegrityViolation(DataIntegrityViolationException ex) {
         log.warn("Data integrity violation: {}", ex.getMostSpecificCause().getMessage());
         return buildErrorResponse(HttpStatus.CONFLICT, "Conflict", "A resource with the same unique identifier already exists.");
+    }
+
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<Map<String, Object>> handleAuthenticationException(AuthenticationException ex) {
+        log.warn("Authentication failed: {}", ex.getMessage());
+        return buildErrorResponse(HttpStatus.UNAUTHORIZED, "Unauthorized", "Invalid credentials.");
     }
 
     @ExceptionHandler(UnauthorizedTokenException.class)

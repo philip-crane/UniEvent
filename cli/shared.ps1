@@ -157,10 +157,68 @@ function Test-ServerHealth {
     }
 }
 
+$script:_adminToken = $null
+
+function Get-AdminToken {
+    param([string]$BaseUrl)
+
+    if ($script:_adminToken) { return $script:_adminToken }
+
+    $envVars  = Load-DotEnv
+    $password = $envVars["ADMIN_PASSWORD"]
+
+    if (-not $password) {
+        $bytes    = [System.Security.Cryptography.RandomNumberGenerator]::GetBytes(18)
+        $password = [Convert]::ToBase64String($bytes)
+        Update-EnvVar -Key "ADMIN_PASSWORD" -Value $password
+        Write-Info "Generated CLI service account password and saved to .env"
+    }
+
+    $email = "cli@unievent.internal"
+
+    $loginBody = "{`"email`":`"$email`",`"password`":`"$password`"}"
+    $loginErr  = $null
+    try {
+        $resp  = Invoke-Web -Uri "$BaseUrl/api/auth/login" -Method "POST" `
+            -Headers @{ "Content-Type" = "application/json" } -Body $loginBody -TimeoutSec 15
+        $token = ($resp.Content | ConvertFrom-Json).token
+    } catch {
+        $loginErr = $_.Exception.Message
+        $token = $null
+    }
+
+    if (-not $token) {
+        $regBody = "{`"username`":`"cli`",`"email`":`"$email`",`"password`":`"$password`"}"
+        $regErr  = $null
+        try {
+            $resp  = Invoke-Web -Uri "$BaseUrl/api/auth/register" -Method "POST" `
+                -Headers @{ "Content-Type" = "application/json" } -Body $regBody -TimeoutSec 15
+            $token = ($resp.Content | ConvertFrom-Json).token
+        } catch {
+            $regErr = $_.Exception.Message
+            $token = $null
+        }
+    }
+
+    if (-not $token) {
+        Write-Err "Could not authenticate CLI service account — check server logs"
+        if ($loginErr) { Write-Warn "  login:    $loginErr" }
+        if ($regErr)   { Write-Warn "  register: $regErr" }
+        exit 1
+    }
+
+    $script:_adminToken = $token
+    return $token
+}
+
 function Invoke-AdminRequest {
     param([string]$Method, [string]$Url, [switch]$VerboseOutput)
 
-    $headers = @{ "Content-Type" = "application/json" }
+    $uri     = [System.Uri]$Url
+    $baseUrl = "$($uri.Scheme)://$($uri.Authority)"
+    $token   = Get-AdminToken -BaseUrl $baseUrl
+
+    $headers = @{ "Content-Type" = "application/json"; "Authorization" = "Bearer $token" }
 
     if ($VerboseOutput) {
         Write-Info "$Method $Url"
