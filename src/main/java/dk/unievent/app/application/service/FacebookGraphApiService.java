@@ -4,7 +4,6 @@ import dk.unievent.app.api.dto.*;
 import dk.unievent.app.infrastructure.config.FacebookConfig;
 import dk.unievent.app.infrastructure.exception.FacebookApiException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpStatus;
@@ -15,6 +14,8 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
 
+import java.net.URI;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -26,11 +27,10 @@ public class FacebookGraphApiService {
     private final FacebookConfig facebookConfig;
     private final ObjectMapper objectMapper;
 
-    public FacebookGraphApiService(RestClient.Builder restClientBuilder, FacebookConfig facebookConfig) {
+    public FacebookGraphApiService(RestClient.Builder restClientBuilder, FacebookConfig facebookConfig, ObjectMapper objectMapper) {
         this.restClient = restClientBuilder.baseUrl(facebookConfig.getGraphApiBaseUrl()).build();
         this.facebookConfig = facebookConfig;
-        this.objectMapper = new ObjectMapper();
-        this.objectMapper.registerModule(new JavaTimeModule());
+        this.objectMapper = objectMapper;
     }
 
     public FbShortLivedTokenResponse getShortLivedToken(String code) {
@@ -185,25 +185,35 @@ public class FacebookGraphApiService {
                 return List.of();
             }
 
-            Map<String, Object> responseMap = objectMapper.readValue(responseBody, Map.class);
-            if (!responseMap.containsKey("data")) {
-                log.warn("No 'data' field in Facebook events response for page: {}", pageId);
-                return List.of();
-            }
+            List<Map<String, Object>> allEventsData = new ArrayList<>();
+            String nextUrl = null;
 
-            Object dataObj = responseMap.get("data");
-            if (dataObj == null) {
-                log.warn("'data' field is null in Facebook events response for page: {}", pageId);
-                return List.of();
-            }
+            do {
+                Map<String, Object> responseMap = objectMapper.readValue(responseBody, Map.class);
+                Object dataObj = responseMap.get("data");
+                if (dataObj instanceof List<?> page) {
+                    allEventsData.addAll((List<Map<String, Object>>) page);
+                }
 
-            List<Map<String, Object>> eventsData = (List<Map<String, Object>>) dataObj;
-            if (eventsData.isEmpty()) {
+                Map<String, Object> paging = (Map<String, Object>) responseMap.get("paging");
+                nextUrl = paging != null ? (String) paging.get("next") : null;
+
+                if (nextUrl != null) {
+                    log.debug("Following paging.next for page: {}", pageId);
+                    responseBody = restClient.get()
+                            .uri(URI.create(nextUrl))
+                            .header("Authorization", "Bearer " + pageToken)
+                            .retrieve()
+                            .body(String.class);
+                }
+            } while (nextUrl != null && responseBody != null);
+
+            if (allEventsData.isEmpty()) {
                 log.debug("No events found for page: {}", pageId);
                 return List.of();
             }
 
-            List<FbEventResponse> events = eventsData.stream()
+            List<FbEventResponse> events = allEventsData.stream()
                     .map(data -> objectMapper.convertValue(data, FbEventResponse.class))
                     .toList();
             log.debug("Retrieved {} events for page: {}", events.size(), pageId);

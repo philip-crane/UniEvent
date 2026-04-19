@@ -24,12 +24,15 @@ public class MediaEntity {
 
     private String filename;
 
+    @Column(nullable = false)
     private String contentType;
 
     /**
      * SeaweedFS file ID (fid) for storage retrieval
      */
     private String fileId;
+
+    private String sourceUrl;
 
     private Instant uploadedAt;
 }

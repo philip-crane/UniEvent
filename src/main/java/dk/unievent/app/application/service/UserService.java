@@ -4,29 +4,65 @@ import dk.unievent.app.application.dto.UserDTO;
 import dk.unievent.app.db.model.UserEntity;
 import dk.unievent.app.db.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.userdetails.User;
+import lombok.extern.slf4j.Slf4j;
+import dk.unievent.app.infrastructure.security.UserDetailsAdapter;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.ApplicationArguments;
+import org.springframework.boot.ApplicationRunner;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
-public class UserService implements UserDetailsService {
+public class UserService implements UserDetailsService, ApplicationRunner {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+
+    @Value("${ADMIN_EMAIL:cli@unievent.internal}")
+    private String adminEmail;
+
+    @Value("${ADMIN_PASSWORD:}")
+    private String adminPassword;
+
+    @Override
+    public void run(ApplicationArguments args) {
+        if (adminPassword == null || adminPassword.isBlank()) {
+            log.warn("ADMIN_PASSWORD not set - CLI admin account not provisioned");
+            return;
+        }
+        userRepository.findByEmail(adminEmail).ifPresentOrElse(existing -> {
+            if (!passwordEncoder.matches(adminPassword, existing.getPassword())) {
+                log.error("CLI admin account {} exists but ADMIN_PASSWORD does not match - not touching it (possible pre-registration attack?)", adminEmail);
+                return;
+            }
+            if (!"ADMIN".equals(existing.getRole())) {
+                existing.setRole("ADMIN");
+                userRepository.save(existing);
+                log.warn("CLI admin account role corrected to ADMIN: {}", adminEmail);
+            } else {
+                log.debug("CLI admin account already exists: {}", adminEmail);
+            }
+        }, () -> {
+            userRepository.save(UserEntity.builder()
+                    .username("cli")
+                    .email(adminEmail)
+                    .password(passwordEncoder.encode(adminPassword))
+                    .role("ADMIN")
+                    .build());
+            log.info("CLI admin account provisioned: {}", adminEmail);
+        });
+    }
 
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
         UserEntity user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + email));
-        return User.builder()
-                .username(user.getEmail())
-                .password(user.getPassword())
-                .roles(user.getRole())
-                .build();
+        return new UserDetailsAdapter(user);
     }
 
     public UserEntity register(UserDTO user) {

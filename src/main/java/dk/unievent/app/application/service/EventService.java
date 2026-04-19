@@ -200,13 +200,22 @@ public class EventService {
 
     public boolean deleteEvent(String id) {
         log.info("Deleting event with id: {}", id);
-        if (eventRepository.existsById(id)) {
-            eventRepository.deleteById(id);
-            log.info("Event deleted successfully: {}", id);
-            return true;
+        Optional<EventEntity> event = eventRepository.findById(id);
+        if (event.isEmpty()) {
+            log.warn("Event not found for deletion with id: {}", id);
+            return false;
         }
-        log.warn("Event not found for deletion with id: {}", id);
-        return false;
+        MediaEntity coverImage = event.get().getCoverImage();
+        eventRepository.deleteById(id);
+        if (coverImage != null) {
+            try {
+                mediaService.delete(coverImage.getFileId());
+            } catch (IOException e) {
+                log.warn("Failed to delete cover image from SeaweedFS: {}", coverImage.getFileId(), e);
+            }
+        }
+        log.info("Event deleted successfully: {}", id);
+        return true;
     }
 
     private PageEntity getPageOrThrow(String pageId) {
@@ -297,21 +306,25 @@ public class EventService {
             PageEntity page = getPageOrThrow(pageId);
             eventEntity.setPage(page);
 
-            // Download and store cover image if present
+            // Download and store cover image if present (skip if URL is unchanged)
             MediaEntity oldCoverImage = existing.map(EventEntity::getCoverImage).orElse(null);
             if (fbEvent.getCover() != null && fbEvent.getCover().getSource() != null) {
-                try {
-                    log.debug("Downloading cover image for event: {}", fbEvent.getId());
-                    String imageUrl = fbEvent.getCover().getSource();
-                    String filename = String.format("fb_event_%s.jpg", fbEvent.getId());
-                    MediaEntity coverImage = downloadAndStoreCoverImage(imageUrl, filename);
-                    if (coverImage != null) {
-                        eventEntity.setCoverImage(coverImage);
-                        log.debug("Cover image stored for event: {}", fbEvent.getId());
+                String imageUrl = fbEvent.getCover().getSource();
+                if (oldCoverImage != null && imageUrl.equals(oldCoverImage.getSourceUrl())) {
+                    eventEntity.setCoverImage(oldCoverImage);
+                    log.debug("Cover image URL unchanged for event {}, reusing existing", fbEvent.getId());
+                } else {
+                    try {
+                        log.debug("Downloading cover image for event: {}", fbEvent.getId());
+                        String filename = String.format("fb_event_%s.jpg", fbEvent.getId());
+                        MediaEntity coverImage = downloadAndStoreCoverImage(imageUrl, filename);
+                        if (coverImage != null) {
+                            eventEntity.setCoverImage(coverImage);
+                            log.debug("Cover image stored for event: {}", fbEvent.getId());
+                        }
+                    } catch (Exception e) {
+                        log.warn("Failed to download cover image for event: {}", fbEvent.getId(), e);
                     }
-                } catch (Exception e) {
-                    log.warn("Failed to download cover image for event: {}", fbEvent.getId(), e);
-                    // Continue without cover image
                 }
             }
 
@@ -358,6 +371,7 @@ public class EventService {
                 .filename(filename)
                 .contentType("image/jpeg")
                 .fileId(storedFileId)
+                .sourceUrl(imageUrl)
                 .uploadedAt(Instant.now())
                 .build();
 

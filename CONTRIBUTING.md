@@ -65,13 +65,16 @@ cli/
 - [ ] Business Manager integration for stable API access
 - [ ] User favorites and personalization
 
+### TODO
+- [ ] Move SeaweedFS to authenticated access and internal-only network; do not rely solely on Docker network isolation
+
 ### Serverless Functions
 - [ ] FB Callback
 - [ ] FB -> DB Ingest
 - [ ] Tokens
 
 ### Nice-To-Have Frameworks
-- [ ] DB Replace `ddl-auto: update` with Flyway or Liquibase migrations
+- [ ] DB Replace `ddl-auto: update` with Flyway or Liquibase migrations (move to `ddl-auto: validate`)
 - [ ] Quartz scheduler
 - [ ] PicoCLI for proper tool CLI integration
 - [ ] Pin Docker image versions (avoid `latest` tags for reproducibility)

@@ -168,42 +168,26 @@ function Get-AdminToken {
     $password = $envVars["ADMIN_PASSWORD"]
 
     if (-not $password) {
-        $bytes    = [System.Security.Cryptography.RandomNumberGenerator]::GetBytes(18)
-        $password = [Convert]::ToBase64String($bytes)
-        Update-EnvVar -Key "ADMIN_PASSWORD" -Value $password
-        Write-Info "Generated CLI service account password and saved to .env"
+        Write-Err "ADMIN_PASSWORD is not set in .env"
+        Write-Warn "Set ADMIN_PASSWORD in your .env - the server provisions the admin account from this value at startup."
+        exit 1
     }
 
     $email = "cli@unievent.internal"
 
     $loginBody = "{`"email`":`"$email`",`"password`":`"$password`"}"
-    $loginErr  = $null
     try {
         $resp  = Invoke-Web -Uri "$BaseUrl/api/auth/login" -Method "POST" `
             -Headers @{ "Content-Type" = "application/json" } -Body $loginBody -TimeoutSec 15
         $token = ($resp.Content | ConvertFrom-Json).token
     } catch {
-        $loginErr = $_.Exception.Message
-        $token = $null
+        Write-Err "Could not authenticate CLI service account: $($_.Exception.Message)"
+        Write-Warn "Ensure the server is running and ADMIN_PASSWORD matches what the server was started with."
+        exit 1
     }
 
     if (-not $token) {
-        $regBody = "{`"username`":`"cli`",`"email`":`"$email`",`"password`":`"$password`"}"
-        $regErr  = $null
-        try {
-            $resp  = Invoke-Web -Uri "$BaseUrl/api/auth/register" -Method "POST" `
-                -Headers @{ "Content-Type" = "application/json" } -Body $regBody -TimeoutSec 15
-            $token = ($resp.Content | ConvertFrom-Json).token
-        } catch {
-            $regErr = $_.Exception.Message
-            $token = $null
-        }
-    }
-
-    if (-not $token) {
-        Write-Err "Could not authenticate CLI service account — check server logs"
-        if ($loginErr) { Write-Warn "  login:    $loginErr" }
-        if ($regErr)   { Write-Warn "  register: $regErr" }
+        Write-Err "Login succeeded but response contained no token - check server logs"
         exit 1
     }
 

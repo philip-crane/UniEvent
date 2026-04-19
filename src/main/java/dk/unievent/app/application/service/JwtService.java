@@ -5,12 +5,16 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
+import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import javax.crypto.SecretKey;
 
 @Service
@@ -27,12 +31,17 @@ public class JwtService {
         Date issuedAt = new Date();
         Date expiration = new Date(issuedAt.getTime() + jwtConfig.getExpirationMs());
 
+        List<String> roles = userDetails.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .collect(Collectors.toList());
+
         return Jwts.builder()
                 .id(UUID.randomUUID().toString())
                 .subject(userDetails.getUsername())
                 .issuedAt(issuedAt)
                 .expiration(expiration)
                 .claim("type", "access")
+                .claim("roles", roles)
                 .signWith(getSigningKey())
                 .compact();
     }
@@ -94,14 +103,31 @@ public class JwtService {
     }
 
     public boolean isTokenValid(String token, UserDetails userDetails) {
+        return isTokenValid(token, userDetails.getUsername());
+    }
+
+    public boolean isTokenValid(String token, String expectedSubject) {
         try {
             Claims claims = extractAllClaims(token);
-            return userDetails.getUsername().equals(claims.getSubject())
+            return expectedSubject.equals(claims.getSubject())
                     && claims.getExpiration().after(new Date())
                     && "access".equals(claims.get("type"));
         } catch (Exception ex) {
             return false;
         }
+    }
+
+    public List<SimpleGrantedAuthority> extractAuthorities(String token) {
+        try {
+            Object roles = extractAllClaims(token).get("roles");
+            if (roles instanceof List<?> list) {
+                return list.stream()
+                        .map(r -> new SimpleGrantedAuthority(r.toString()))
+                        .collect(Collectors.toList());
+            }
+        } catch (Exception ignored) {
+        }
+        return List.of();
     }
 
     public boolean isRefreshTokenValid(String token, UserDetails userDetails) {

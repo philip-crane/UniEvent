@@ -1,5 +1,6 @@
 package dk.unievent.app.application.service;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -170,9 +171,14 @@ public class PlaceService {
                 .zip(zip)
                 .country(country)
                 .build();
-        
-        PlaceEntity saved = placeRepository.save(newPlace);
-        log.info("New place created: {} (id: {})", name, saved.getId());
-        return saved;
+        try {
+            PlaceEntity saved = placeRepository.save(newPlace);
+            log.info("New place created: {} (id: {})", name, saved.getId());
+            return saved;
+        } catch (DataIntegrityViolationException e) {
+            // Concurrent insertion - another thread won the race; return the existing row
+            return placeRepository.findByNameIgnoreCaseAndCityAndCountry(name, city, country)
+                    .orElseThrow(() -> new RuntimeException("Place conflict but not found: " + name, e));
+        }
     }
 }

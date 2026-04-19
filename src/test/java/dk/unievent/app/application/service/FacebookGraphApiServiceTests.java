@@ -1,5 +1,6 @@
 package dk.unievent.app.application.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import dk.unievent.app.api.dto.FbLongLivedTokenResponse;
 import dk.unievent.app.api.dto.FbPageResponse;
 import dk.unievent.app.api.dto.FbShortLivedTokenResponse;
@@ -37,7 +38,7 @@ class FacebookGraphApiServiceTests {
         config.setAppSecret("app-secret");
         config.setRedirectUri("http://localhost/callback");
 
-        service = new FacebookGraphApiService(builder, config);
+        service = new FacebookGraphApiService(builder, config, new ObjectMapper());
     }
 
     @Test

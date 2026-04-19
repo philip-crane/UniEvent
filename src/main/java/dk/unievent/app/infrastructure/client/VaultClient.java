@@ -22,6 +22,8 @@ import java.nio.file.Paths;
 import java.security.KeyStore;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -31,9 +33,14 @@ import java.util.Map;
 @ConditionalOnProperty(prefix = "unievent.vault", name = "enabled", havingValue = "true")
 public class VaultClient {
 
+    private static final Duration CACHE_TTL = Duration.ofMinutes(5);
+
     private final VaultConfig config;
     private final RestClient restClient;
     private final ObjectMapper objectMapper;
+
+    private volatile Map<String, String> secretCache = null;
+    private volatile Instant cacheExpiry = Instant.EPOCH;
 
     public VaultClient(VaultConfig config, RestClient.Builder restClientBuilder, ObjectMapper objectMapper) {
         this.config = config;
@@ -110,7 +117,12 @@ public class VaultClient {
         }
     }
 
-    public String readSecretValue(String key) {
-        return readSecretData().getOrDefault(key, null);
+    public synchronized String readSecretValue(String key) {
+        if (secretCache == null || Instant.now().isAfter(cacheExpiry)) {
+            secretCache = readSecretData();
+            cacheExpiry = Instant.now().plus(CACHE_TTL);
+            log.debug("Vault secret cache refreshed, expires at {}", cacheExpiry);
+        }
+        return secretCache.getOrDefault(key, null);
     }
 }

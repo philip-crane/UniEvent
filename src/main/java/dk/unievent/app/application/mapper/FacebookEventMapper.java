@@ -7,6 +7,8 @@ import dk.unievent.app.db.model.PlaceEntity;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import java.time.ZoneId;
+
 
 
 /**
@@ -34,12 +36,12 @@ public class FacebookEventMapper {
         event.setId(fbEvent.getId());
         event.setTitle(fbEvent.getName());
         event.setDescription(fbEvent.getDescription());
-        // Convert OffsetDateTime to LocalDateTime (strip timezone, keep local time)
+        ZoneId zone = resolveZone(fbEvent.getTimezone(), fbEvent.getId());
         if (fbEvent.getStartTime() != null) {
-            event.setStartTime(fbEvent.getStartTime().toLocalDateTime());
+            event.setStartTime(fbEvent.getStartTime().atZoneSameInstant(zone).toLocalDateTime());
         }
         if (fbEvent.getEndTime() != null) {
-            event.setEndTime(fbEvent.getEndTime().toLocalDateTime());
+            event.setEndTime(fbEvent.getEndTime().atZoneSameInstant(zone).toLocalDateTime());
         }
         event.setEventUrl("https://facebook.com/events/" + fbEvent.getId());
         
@@ -60,5 +62,16 @@ public class FacebookEventMapper {
         
         log.debug("Successfully mapped Facebook event {} to EventEntity", fbEvent.getId());
         return event;
+    }
+
+    private ZoneId resolveZone(String timezone, String eventId) {
+        if (timezone != null) {
+            try {
+                return ZoneId.of(timezone);
+            } catch (Exception e) {
+                log.warn("Unrecognised timezone '{}' for event {}, falling back to UTC", timezone, eventId);
+            }
+        }
+        return ZoneId.of("UTC");
     }
 }

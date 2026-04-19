@@ -103,10 +103,14 @@ public class PageService {
     }
 
     public Optional<PageDTO> updatePage(String id, PageDTO pageDTO) {
-        if (!pageRepository.existsById(id)) {
-            return Optional.empty();
-        }
-        return Optional.of(savePage(pageDTO));
+        return pageRepository.findById(id).map(existing -> {
+            existing.setName(pageDTO.getName());
+            if (pageDTO.getPictureId() != null) {
+                MediaEntity picture = mediaRepository.findById(pageDTO.getPictureId()).orElse(null);
+                existing.setPicture(picture);
+            }
+            return pageMapper.toDTO(pageRepository.save(existing));
+        });
     }
 
     public void updatePageToken(String pageId, String tokenStatus, LocalDateTime expiresAt, Integer expiresInDays) {
@@ -176,13 +180,22 @@ public class PageService {
 
     public boolean deletePage(String id) {
         log.info("Deleting page with id: {}", id);
-        if (pageRepository.existsById(id)) {
-            pageRepository.deleteById(id);
-            log.info("Page deleted successfully: {}", id);
-            return true;
+        Optional<PageEntity> page = pageRepository.findById(id);
+        if (page.isEmpty()) {
+            log.warn("Page not found for deletion with id: {}", id);
+            return false;
         }
-        log.warn("Page not found for deletion with id: {}", id);
-        return false;
+        MediaEntity picture = page.get().getPicture();
+        pageRepository.deleteById(id);
+        if (picture != null) {
+            try {
+                mediaService.delete(picture.getFileId());
+            } catch (java.io.IOException e) {
+                log.warn("Failed to delete picture from SeaweedFS: {}", picture.getFileId(), e);
+            }
+        }
+        log.info("Page deleted successfully: {}", id);
+        return true;
     }
 
     /**

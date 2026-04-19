@@ -3,3 +3,8 @@ logging:
     root: INFO
     dk.unievent.app: DEBUG
     dk.unievent.app.infrastructure.client: DEBUG
+
+unievent:
+  media:
+    ssrf:
+      extra-allowed-hosts: placehold.co

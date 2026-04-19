@@ -10,7 +10,10 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @Entity
-@Table(name = "pages")
+@Table(name = "pages", indexes = {
+    @Index(name = "idx_page_token_status", columnList = "tokenStatus"),
+    @Index(name = "idx_page_token_expires_at", columnList = "tokenExpiresAt")
+})
 @Getter
 @Setter
 @NoArgsConstructor

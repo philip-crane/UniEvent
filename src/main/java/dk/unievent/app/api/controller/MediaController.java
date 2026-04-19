@@ -8,6 +8,9 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.core.io.Resource;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -24,8 +27,6 @@ import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
-import java.util.List;
-import java.util.stream.Collectors;
 
 @Slf4j
 @RestController
@@ -92,8 +93,11 @@ public class MediaController {
         // fileId stored in DB is the SeaweedFS file ID
         Resource resource = mediaService.loadAsResource(media.getFileId());
         String encoded = URLEncoder.encode(media.getFilename(), StandardCharsets.UTF_8);
+        MediaType contentType = media.getContentType() != null
+                ? MediaType.parseMediaType(media.getContentType())
+                : MediaType.APPLICATION_OCTET_STREAM;
         return ResponseEntity.ok()
-                .contentType(MediaType.parseMediaType(media.getContentType()))
+                .contentType(contentType)
                 .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + encoded + "\"")
                 .body(resource);
     }
@@ -105,10 +109,10 @@ public class MediaController {
     )
     @ApiResponse(responseCode = "200", description = "List of media files",
         content = @Content(mediaType = "application/json", schema = @Schema(implementation = MediaDTO.class)))
-    public List<MediaDTO> list() {
-        log.debug("Listing all media files");
-        List<MediaDTO> media = repository.findAll().stream().map(this::toDto).collect(Collectors.toList());
-        log.debug("Found {} media files", media.size());
+    public Page<MediaDTO> list(@PageableDefault(size = 50) Pageable pageable) {
+        log.debug("Listing media files: page={}, size={}", pageable.getPageNumber(), pageable.getPageSize());
+        Page<MediaDTO> media = repository.findAll(pageable).map(this::toDto);
+        log.debug("Found {} media files", media.getTotalElements());
         return media;
     }
 
