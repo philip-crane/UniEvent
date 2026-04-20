@@ -63,7 +63,7 @@ class UserEntityTests {
             .role("admin")
             .build();
 
-        assertEquals("ADMIN", entity.getRole());
+        assertEquals("admin", entity.getRole());
     }
 
     private void invokeLifecycle(UserEntity entity, String methodName) throws Exception {

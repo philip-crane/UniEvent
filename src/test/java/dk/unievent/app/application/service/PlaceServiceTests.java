@@ -243,13 +243,13 @@ class PlaceServiceTests {
     @Test
     void testDeletePlace() {
         when(placeRepository.existsById("place-1")).thenReturn(true);
-        when(eventRepository.findByPlaceId("place-1")).thenReturn(List.of());
+        when(eventRepository.nullifyEventsByPlaceId("place-1")).thenReturn(0);
 
         boolean result = placeService.deletePlace("place-1");
 
         assertTrue(result);
         verify(placeRepository, times(1)).existsById("place-1");
-        verify(eventRepository, times(1)).findByPlaceId("place-1");
+        verify(eventRepository, times(1)).nullifyEventsByPlaceId("place-1");
         verify(placeRepository, times(1)).deleteById("place-1");
     }
     
