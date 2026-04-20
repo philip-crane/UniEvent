@@ -1,0 +1,304 @@
+package dk.unievent.app.application.service;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+
+import dk.unievent.app.application.dto.LocationDTO;
+import dk.unievent.app.application.dto.PlaceDTO;
+import dk.unievent.app.application.mapper.PlaceMapper;
+import dk.unievent.app.db.model.PlaceEntity;
+import dk.unievent.app.db.repository.EventRepository;
+import dk.unievent.app.db.repository.PlaceRepository;
+
+import java.util.List;
+import java.util.Optional;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.*;
+
+@ExtendWith(MockitoExtension.class)
+class PlaceServiceTests {
+    
+    @Mock
+    private PlaceRepository placeRepository;
+
+    @Mock
+    private PlaceMapper placeMapper;
+
+    @Mock
+    private EventRepository eventRepository;
+    
+    @InjectMocks
+    private PlaceService placeService;
+    
+    private PlaceEntity testPlaceEntity;
+    private PlaceDTO testPlaceDTO;
+    
+    @BeforeEach
+    void setUp() {
+        testPlaceEntity = PlaceEntity.builder()
+                .id("place-1")
+                .name("Test Place")
+                .city("Test City")
+                .country("Test Country")
+                .latitude(55.6761)
+                .longitude(12.5883)
+                .build();
+        
+        LocationDTO location = new LocationDTO();
+        location.setCity("Test City");
+        location.setCountry("Test Country");
+        location.setStreet("123 Test St");
+        location.setZip("12345");
+        location.setLatitude(55.6761);
+        location.setLongitude(12.5883);
+        
+        testPlaceDTO = new PlaceDTO();
+        testPlaceDTO.setId("place-1");
+        testPlaceDTO.setName("Test Place");
+        testPlaceDTO.setLocation(location);
+    }
+    
+    @Test
+    void testGetPlaceById() {
+        when(placeRepository.findById("place-1")).thenReturn(Optional.of(testPlaceEntity));
+        when(placeMapper.toDTO(testPlaceEntity)).thenReturn(testPlaceDTO);
+        
+        Optional<PlaceDTO> result = placeService.getPlaceById("place-1");
+
+        assertTrue(result.isPresent());
+        assertEquals("place-1", result.get().getId());
+        assertEquals("Test Place", result.get().getName());
+        verify(placeRepository, times(1)).findById("place-1");
+        verify(placeMapper, times(1)).toDTO(testPlaceEntity);
+    }
+    
+    @Test
+    void testGetPlaceByIdNotFound() {
+        when(placeRepository.findById("non-existent")).thenReturn(Optional.empty());
+        
+        Optional<PlaceDTO> result = placeService.getPlaceById("non-existent");
+
+        assertTrue(result.isEmpty());
+    }
+    
+    @Test
+    void testGetPlacesByCity() {
+        List<PlaceEntity> cityPlaces = List.of(testPlaceEntity);
+        Page<PlaceEntity> cityPlacesPage = new PageImpl<>(cityPlaces, PageRequest.of(0, 20), 1);
+        when(placeRepository.findByCity(eq("Test City"), any(Pageable.class))).thenReturn(cityPlacesPage);
+        when(placeMapper.toDTO(testPlaceEntity)).thenReturn(testPlaceDTO);
+        
+        Page<PlaceDTO> result = placeService.getPlacesByCity("Test City", PageRequest.of(0, 20));
+        
+        assertEquals(1, result.getContent().size());
+        assertEquals("place-1", result.getContent().get(0).getId());
+        verify(placeRepository, times(1)).findByCity(eq("Test City"), any(Pageable.class));
+    }
+    
+    @Test
+    void testGetPlacesByCityEmpty() {
+        Page<PlaceEntity> emptyPage = new PageImpl<>(List.of(), PageRequest.of(0, 20), 0);
+        when(placeRepository.findByCity(eq("Unknown City"), any(Pageable.class))).thenReturn(emptyPage);
+        
+        Page<PlaceDTO> result = placeService.getPlacesByCity("Unknown City", PageRequest.of(0, 20));
+        
+        assertTrue(result.getContent().isEmpty());
+    }
+    
+    @Test
+    void testGetPlacesByCountry() {
+        List<PlaceEntity> countryPlaces = List.of(testPlaceEntity);
+        Page<PlaceEntity> countryPlacesPage = new PageImpl<>(countryPlaces, PageRequest.of(0, 20), 1);
+        when(placeRepository.findByCountry(eq("Test Country"), any(Pageable.class))).thenReturn(countryPlacesPage);
+        when(placeMapper.toDTO(testPlaceEntity)).thenReturn(testPlaceDTO);
+        
+        Page<PlaceDTO> result = placeService.getPlacesByCountry("Test Country", PageRequest.of(0, 20));
+        
+        assertEquals(1, result.getContent().size());
+        verify(placeRepository, times(1)).findByCountry(eq("Test Country"), any(Pageable.class));
+    }
+    
+    @Test
+    void testGetPlacesByCountryEmpty() {
+        Page<PlaceEntity> emptyPage = new PageImpl<>(List.of(), PageRequest.of(0, 20), 0);
+        when(placeRepository.findByCountry(eq("Unknown Country"), any(Pageable.class))).thenReturn(emptyPage);
+        
+        Page<PlaceDTO> result = placeService.getPlacesByCountry("Unknown Country", PageRequest.of(0, 20));
+        
+        assertTrue(result.getContent().isEmpty());
+    }
+    
+    @Test
+    void testGetPlacesByCityAndCountry() {
+        List<PlaceEntity> places = List.of(testPlaceEntity);
+        Page<PlaceEntity> placesPage = new PageImpl<>(places, PageRequest.of(0, 20), 1);
+        when(placeRepository.findByCityAndCountry(eq("Test City"), eq("Test Country"), any(Pageable.class)))
+            .thenReturn(placesPage);
+        when(placeMapper.toDTO(testPlaceEntity)).thenReturn(testPlaceDTO);
+        
+        Page<PlaceDTO> result = placeService.getPlacesByCityAndCountry("Test City", "Test Country", PageRequest.of(0, 20));
+        
+        assertEquals(1, result.getContent().size());
+        verify(placeRepository, times(1)).findByCityAndCountry(eq("Test City"), eq("Test Country"), any(Pageable.class));
+    }
+    
+    @Test
+    void testGetPlacesByCityAndCountryEmpty() {
+        Page<PlaceEntity> emptyPage = new PageImpl<>(List.of(), PageRequest.of(0, 20), 0);
+        when(placeRepository.findByCityAndCountry(eq("Unknown"), eq("Unknown"), any(Pageable.class)))
+            .thenReturn(emptyPage);
+        
+        Page<PlaceDTO> result = placeService.getPlacesByCityAndCountry("Unknown", "Unknown", PageRequest.of(0, 20));
+        
+        assertTrue(result.getContent().isEmpty());
+    }
+    
+    @Test
+    void testSearchByName() {
+        List<PlaceEntity> searchResults = List.of(testPlaceEntity);
+        Page<PlaceEntity> searchResultsPage = new PageImpl<>(searchResults, PageRequest.of(0, 20), 1);
+        when(placeRepository.findByNameIgnoreCase(eq("test place"), any(Pageable.class)))
+            .thenReturn(searchResultsPage);
+        when(placeMapper.toDTO(testPlaceEntity)).thenReturn(testPlaceDTO);
+        
+        Page<PlaceDTO> result = placeService.searchByName("test place", PageRequest.of(0, 20));
+        
+        assertEquals(1, result.getContent().size());
+        verify(placeRepository, times(1)).findByNameIgnoreCase(eq("test place"), any(Pageable.class));
+    }
+    
+    @Test
+    void testSearchByNameEmpty() {
+        Page<PlaceEntity> emptyPage = new PageImpl<>(List.of(), PageRequest.of(0, 20), 0);
+        when(placeRepository.findByNameIgnoreCase(eq("not-found"), any(Pageable.class)))
+            .thenReturn(emptyPage);
+        
+        Page<PlaceDTO> result = placeService.searchByName("not-found", PageRequest.of(0, 20));
+        
+        assertTrue(result.getContent().isEmpty());
+    }
+    
+    @Test
+    void testCreatePlace() {
+        when(placeMapper.toEntity(testPlaceDTO)).thenReturn(testPlaceEntity);
+        when(placeRepository.save(testPlaceEntity)).thenReturn(testPlaceEntity);
+        when(placeMapper.toDTO(testPlaceEntity)).thenReturn(testPlaceDTO);
+        
+        PlaceDTO result = placeService.createPlace(testPlaceDTO);
+        
+        assertNotNull(result);
+        assertEquals("place-1", result.getId());
+        verify(placeMapper, times(1)).toEntity(testPlaceDTO);
+        verify(placeRepository, times(1)).save(testPlaceEntity);
+        verify(placeMapper, times(1)).toDTO(testPlaceEntity);
+    }
+    
+    @Test
+    void testUpdatePlace() {
+        when(placeRepository.findById("place-1")).thenReturn(Optional.of(testPlaceEntity));
+        when(placeRepository.save(any(PlaceEntity.class))).thenReturn(testPlaceEntity);
+        when(placeMapper.toDTO(testPlaceEntity)).thenReturn(testPlaceDTO);
+        
+        PlaceDTO updateDTO = new PlaceDTO();
+        updateDTO.setName("Updated Place");
+        
+        LocationDTO location = new LocationDTO();
+        location.setCity("Updated City");
+        location.setCountry("Updated Country");
+        location.setStreet("456 Updated St");
+        updateDTO.setLocation(location);
+        
+        Optional<PlaceDTO> result = placeService.updatePlace("place-1", updateDTO);
+
+        assertTrue(result.isPresent());
+        assertEquals("place-1", result.get().getId());
+        verify(placeRepository, times(1)).findById("place-1");
+        verify(placeRepository, times(1)).save(any(PlaceEntity.class));
+    }
+    
+    @Test
+    void testUpdatePlaceNotFound() {
+        when(placeRepository.findById("non-existent")).thenReturn(Optional.empty());
+        
+        PlaceDTO updateDTO = new PlaceDTO();
+        updateDTO.setName("Updated");
+        
+        Optional<PlaceDTO> result = placeService.updatePlace("non-existent", updateDTO);
+
+        assertTrue(result.isEmpty());
+        verify(placeRepository, times(1)).findById("non-existent");
+        verify(placeRepository, never()).save(any());
+    }
+    
+    @Test
+    void testDeletePlace() {
+        when(placeRepository.existsById("place-1")).thenReturn(true);
+        when(eventRepository.nullifyEventsByPlaceId("place-1")).thenReturn(0);
+
+        boolean result = placeService.deletePlace("place-1");
+
+        assertTrue(result);
+        verify(placeRepository, times(1)).existsById("place-1");
+        verify(eventRepository, times(1)).nullifyEventsByPlaceId("place-1");
+        verify(placeRepository, times(1)).deleteById("place-1");
+    }
+    
+    @Test
+    void testDeletePlaceNotFound() {
+        when(placeRepository.existsById("non-existent")).thenReturn(false);
+        
+        boolean result = placeService.deletePlace("non-existent");
+        
+        assertFalse(result);
+        verify(placeRepository, times(1)).existsById("non-existent");
+        verify(placeRepository, never()).deleteById("non-existent");
+    }
+    
+    @Test
+    void testUpdatePlaceWithoutLocation() {
+        when(placeRepository.findById("place-1")).thenReturn(Optional.of(testPlaceEntity));
+        when(placeRepository.save(any(PlaceEntity.class))).thenReturn(testPlaceEntity);
+        when(placeMapper.toDTO(testPlaceEntity)).thenReturn(testPlaceDTO);
+        
+        PlaceDTO updateDTO = new PlaceDTO();
+        updateDTO.setName("Updated Place");
+        // location is null
+        
+        Optional<PlaceDTO> result = placeService.updatePlace("place-1", updateDTO);
+
+        assertTrue(result.isPresent());
+        verify(placeRepository, times(1)).save(any(PlaceEntity.class));
+    }
+    
+    @Test
+    void testUpdatePlaceWithLocation() {
+        when(placeRepository.findById("place-1")).thenReturn(Optional.of(testPlaceEntity));
+        when(placeRepository.save(any(PlaceEntity.class))).thenReturn(testPlaceEntity);
+        when(placeMapper.toDTO(testPlaceEntity)).thenReturn(testPlaceDTO);
+        
+        PlaceDTO updateDTO = new PlaceDTO();
+        updateDTO.setName("Updated Place");
+        
+        LocationDTO newLocation = new LocationDTO();
+        newLocation.setCity("New City");
+        newLocation.setCountry("New Country");
+        newLocation.setLatitude(48.8566);
+        newLocation.setLongitude(2.3522);
+        updateDTO.setLocation(newLocation);
+        
+        Optional<PlaceDTO> result = placeService.updatePlace("place-1", updateDTO);
+
+        assertTrue(result.isPresent());
+        verify(placeRepository, times(1)).save(any(PlaceEntity.class));
+    }
+}

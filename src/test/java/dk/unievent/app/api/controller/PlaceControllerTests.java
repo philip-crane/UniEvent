@@ -59,7 +59,7 @@ class PlaceControllerTests {
 
     @Test
     void getPlaceByIdShouldReturnNotFoundWhenMissing() throws Exception {
-        when(placeService.getPlaceById("missing")).thenReturn(null);
+        when(placeService.getPlaceById("missing")).thenReturn(java.util.Optional.empty());
 
         mockMvc.perform(get("/api/places/missing"))
             .andExpect(status().isNotFound());
@@ -90,7 +90,7 @@ class PlaceControllerTests {
 
     @Test
     void updatePlaceShouldReturnNotFoundWhenServiceReturnsNull() throws Exception {
-        when(placeService.updatePlace(eq("place-404"), any(PlaceDTO.class))).thenReturn(null);
+        when(placeService.updatePlace(eq("place-404"), any(PlaceDTO.class))).thenReturn(java.util.Optional.empty());
 
         mockMvc.perform(put("/api/places/place-404")
                 .contentType(MediaType.APPLICATION_JSON)

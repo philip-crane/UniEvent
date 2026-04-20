@@ -2,6 +2,8 @@ package dk.unievent.app.application.service;
 
 import dk.unievent.app.infrastructure.client.SeaweedFsClient;
 
+import jakarta.annotation.PostConstruct;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
@@ -9,20 +11,45 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 import lombok.extern.slf4j.Slf4j;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.URLConnection;
 import java.nio.file.Path;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
 public class MediaService {
 
+    private static final Set<String> ALLOWED_IMAGE_TYPES = Set.of("image/jpeg", "image/png", "image/webp");
+    private static final Set<String> FACEBOOK_CDN_HOSTS = Set.of("fbcdn.net", "facebook.com", "cdninstagram.com", "instagram.com");
+    private static final int MAX_REMOTE_IMAGE_BYTES = 10 * 1024 * 1024; // 10 MB
+
+    @Value("${unievent.media.ssrf.extra-allowed-hosts:}")
+    private String extraAllowedHostsConfig;
+
+    private Set<String> allowedImageHosts;
+
     private final SeaweedFsClient seaweedClient;
 
     public MediaService(SeaweedFsClient seaweedClient) {
         this.seaweedClient = seaweedClient;
+    }
+
+    @PostConstruct
+    void buildAllowlist() {
+        allowedImageHosts = new HashSet<>(FACEBOOK_CDN_HOSTS);
+        if (extraAllowedHostsConfig != null && !extraAllowedHostsConfig.isBlank()) {
+            Set<String> extra = Arrays.stream(extraAllowedHostsConfig.split(","))
+                    .map(String::trim).filter(s -> !s.isEmpty()).collect(Collectors.toSet());
+            allowedImageHosts.addAll(extra);
+            log.info("SSRF allowlist extended with dev hosts: {}", extra);
+        }
     }
 
     /**
@@ -46,10 +73,19 @@ public class MediaService {
         }
 
         try {
+            byte[] bytes = file.getBytes();
+            String detectedType = detectMimeType(bytes);
+            if (!ALLOWED_IMAGE_TYPES.contains(detectedType)) {
+                log.warn("Rejected upload with unsupported MIME type '{}': {}", detectedType, filename);
+                throw new IllegalArgumentException(
+                    "Unsupported file type '" + detectedType + "'. Allowed: image/jpeg, image/png, image/webp");
+            }
             SeaweedFsClient.FileAssignment assignment = seaweedClient.assignFile();
-            seaweedClient.uploadFile(assignment.publicUrl(), assignment.fid(), filename, file.getBytes());
+            seaweedClient.uploadFile(assignment.publicUrl(), assignment.fid(), filename, bytes);
             log.info("File stored successfully with id: {}", assignment.fid());
             return assignment.fid();
+        } catch (IllegalArgumentException e) {
+            throw e;
         } catch (Exception e) {
             log.error("Error uploading file to SeaweedFS: {}", filename, e);
             throw new IOException("Error uploading file to SeaweedFS: " + e.getMessage(), e);
@@ -101,7 +137,7 @@ public class MediaService {
             log.info("File deleted successfully: {}", fileId);
         } catch (Exception e) {
             log.warn("Could not delete file from SeaweedFS: {}", fileId, e);
-            // Don't fail hard—file might already be deleted
+            // Don't fail hard-file might already be deleted
         }
     }
 
@@ -154,6 +190,21 @@ public class MediaService {
         }
     }
 
+    private String detectMimeType(byte[] bytes) {
+        // Check WebP: RIFF????WEBP
+        if (bytes.length >= 12
+                && bytes[0] == 'R' && bytes[1] == 'I' && bytes[2] == 'F' && bytes[3] == 'F'
+                && bytes[8] == 'W' && bytes[9] == 'E' && bytes[10] == 'B' && bytes[11] == 'P') {
+            return "image/webp";
+        }
+        try (InputStream is = new ByteArrayInputStream(bytes)) {
+            String type = URLConnection.guessContentTypeFromStream(is);
+            return type != null ? type : "application/octet-stream";
+        } catch (IOException e) {
+            return "application/octet-stream";
+        }
+    }
+
     /**
      * Download image bytes from a URL with timeout.
      * @param imageUrl URL to download from
@@ -161,23 +212,47 @@ public class MediaService {
      * @throws IOException if download fails
      */
     private byte[] downloadImageBytes(String imageUrl) throws IOException {
+        URI uri;
         try {
-            var url = URI.create(imageUrl).toURL();
-            URLConnection conn = url.openConnection();
-            
-            // Set timeout to 10 seconds
+            uri = URI.create(imageUrl);
+        } catch (IllegalArgumentException e) {
+            throw new IOException("Invalid image URL: " + imageUrl);
+        }
+        if (!"https".equalsIgnoreCase(uri.getScheme())) {
+            throw new IOException("Only HTTPS image URLs are permitted, got: " + uri.getScheme());
+        }
+        String host = uri.getHost();
+        if (host == null) {
+            throw new IOException("Image URL has no host: " + imageUrl);
+        }
+        boolean hostAllowed = allowedImageHosts.stream()
+                .anyMatch(h -> host.equals(h) || host.endsWith("." + h));
+        if (!hostAllowed) {
+            throw new IOException("Image URL host not in allowlist: " + host);
+        }
+
+        try {
+            URLConnection conn = uri.toURL().openConnection();
             conn.setConnectTimeout(10000);
             conn.setReadTimeout(10000);
-            
-            // Set user agent to avoid blocking by some servers
             conn.setRequestProperty("User-Agent",
                 "Mozilla/5.0 (compatible; UniEventServer/1.0; +http://unievent.dk)");
 
             try (InputStream in = conn.getInputStream()) {
-                byte[] imageData = in.readAllBytes();
+                String contentType = conn.getContentType();
+                if (contentType != null && !contentType.startsWith("image/")) {
+                    throw new IOException("Unexpected content-type from remote URL: " + contentType);
+                }
+                byte[] imageData = in.readNBytes(MAX_REMOTE_IMAGE_BYTES + 1);
+                if (imageData.length > MAX_REMOTE_IMAGE_BYTES) {
+                    throw new IOException("Remote image exceeds maximum allowed size of " + MAX_REMOTE_IMAGE_BYTES + " bytes");
+                }
                 log.debug("Downloaded {} bytes from URL", imageData.length);
                 return imageData;
             }
+        } catch (IOException e) {
+            log.error("Failed to download image from URL: {}", imageUrl, e);
+            throw e;
         } catch (Exception e) {
             log.error("Failed to download image from URL: {}", imageUrl, e);
             throw new IOException("Failed to download image: " + e.getMessage(), e);

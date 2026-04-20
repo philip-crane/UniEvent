@@ -1,5 +1,7 @@
 package dk.unievent.app.infrastructure.config;
 
+import jakarta.annotation.PostConstruct;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 import org.springframework.context.annotation.Bean;
@@ -15,13 +17,14 @@ import java.util.List;
  * Binds to properties under unievent.security.cors prefix.
  * Defines allowed origins, methods, headers, and credentials policy for /api/** and /media/** endpoints.
  */
+@Slf4j
 @Component
 @ConfigurationProperties(prefix = "unievent.security.cors")
 public class CorsConfig {
 
     private List<String> allowedOrigins = List.of("http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:8080", "http://127.0.0.1:8080", "https://localhost");
     private List<String> allowedMethods = List.of("GET", "POST", "PUT", "DELETE", "OPTIONS");
-    private List<String> allowedHeaders = List.of("*");
+    private List<String> allowedHeaders = List.of("Authorization", "Content-Type", "Accept");
     private boolean allowCredentials = true;
     private Long maxAge = 3600L;
 
@@ -63,6 +66,14 @@ public class CorsConfig {
 
     public void setMaxAge(Long maxAge) {
         this.maxAge = maxAge;
+    }
+
+    @PostConstruct
+    public void warnOnInsecureDefaults() {
+        if (allowCredentials && allowedOrigins.stream()
+                .anyMatch(o -> o.contains("localhost") || o.contains("127.0.0.1"))) {
+            log.warn("CORS: allowCredentials=true with localhost origins - ensure UNIEVENT_SECURITY_CORS_ALLOWED_ORIGINS is set in production");
+        }
     }
 
     @Bean

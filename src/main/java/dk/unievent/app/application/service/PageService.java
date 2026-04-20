@@ -12,6 +12,7 @@ import dk.unievent.app.db.model.MediaEntity;
 import dk.unievent.app.db.model.PageEntity;
 import dk.unievent.app.db.repository.MediaRepository;
 import dk.unievent.app.db.repository.PageRepository;
+import dk.unievent.app.infrastructure.config.ConstantsConfig;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
@@ -67,7 +68,11 @@ public class PageService {
     }
 
     public Page<PageEntity> getPagesToRefresh(Pageable pageable) {
-        return pageRepository.findPagesToRefresh(LocalDateTime.now(), pageable);
+        return pageRepository.findPagesToRefresh(LocalDateTime.now().plusDays(ConstantsConfig.REFRESH_WINDOW_DAYS), pageable);
+    }
+
+    public Page<PageEntity> getAllPageEntities(Pageable pageable) {
+        return pageRepository.findAllByOrderByNameAsc(pageable);
     }
 
     public Page<PageDTO> getExpiredPages(Pageable pageable) {
@@ -95,6 +100,17 @@ public class PageService {
         PageEntity saved = pageRepository.save(entity);
         log.info("Page saved successfully with id: {}", saved.getId());
         return pageMapper.toDTO(saved);
+    }
+
+    public Optional<PageDTO> updatePage(String id, PageDTO pageDTO) {
+        return pageRepository.findById(id).map(existing -> {
+            existing.setName(pageDTO.getName());
+            if (pageDTO.getPictureId() != null) {
+                MediaEntity picture = mediaRepository.findById(pageDTO.getPictureId()).orElse(null);
+                existing.setPicture(picture);
+            }
+            return pageMapper.toDTO(pageRepository.save(existing));
+        });
     }
 
     public void updatePageToken(String pageId, String tokenStatus, LocalDateTime expiresAt, Integer expiresInDays) {
@@ -146,22 +162,40 @@ public class PageService {
         MediaEntity saved = mediaRepository.save(mediaEntity);
 
         PageEntity page = existing.get();
+        MediaEntity oldMedia = page.getPicture();
         page.setPicture(saved);
         PageEntity updated = pageRepository.save(page);
-        log.info("Picture uploaded successfully for page: {}", id);
 
+        if (oldMedia != null) {
+            try {
+                mediaService.delete(oldMedia.getFileId());
+            } catch (IOException e) {
+                log.warn("Failed to delete old picture from SeaweedFS: {}", oldMedia.getFileId(), e);
+            }
+        }
+
+        log.info("Picture uploaded successfully for page: {}", id);
         return Optional.of(pageMapper.toDTO(updated));
     }
 
     public boolean deletePage(String id) {
         log.info("Deleting page with id: {}", id);
-        if (pageRepository.existsById(id)) {
-            pageRepository.deleteById(id);
-            log.info("Page deleted successfully: {}", id);
-            return true;
+        Optional<PageEntity> page = pageRepository.findById(id);
+        if (page.isEmpty()) {
+            log.warn("Page not found for deletion with id: {}", id);
+            return false;
         }
-        log.warn("Page not found for deletion with id: {}", id);
-        return false;
+        MediaEntity picture = page.get().getPicture();
+        pageRepository.deleteById(id);
+        if (picture != null) {
+            try {
+                mediaService.delete(picture.getFileId());
+            } catch (java.io.IOException e) {
+                log.warn("Failed to delete picture from SeaweedFS: {}", picture.getFileId(), e);
+            }
+        }
+        log.info("Page deleted successfully: {}", id);
+        return true;
     }
 
     /**
@@ -194,7 +228,7 @@ public class PageService {
         pageEntity.setLastRefreshAttempt(LocalDateTime.now());
 
         // Token expiration: Facebook long-lived tokens expire in ~60 days
-        LocalDateTime expirationTime = LocalDateTime.now().plusDays(60);
+        LocalDateTime expirationTime = LocalDateTime.now().plusDays(ConstantsConfig.TOKEN_EXPIRATION_DAYS);
         pageEntity.setTokenExpiresAt(expirationTime);
         pageEntity.setTokenExpiresInDays(60);
 
@@ -264,7 +298,7 @@ public class PageService {
             page.setLastRefreshAttempt(LocalDateTime.now());
 
             // Update expiration: refresh adds another ~60 days
-            LocalDateTime expirationTime = LocalDateTime.now().plusDays(60);
+            LocalDateTime expirationTime = LocalDateTime.now().plusDays(ConstantsConfig.TOKEN_EXPIRATION_DAYS);
             page.setTokenExpiresAt(expirationTime);
             page.setTokenExpiresInDays(60);
 

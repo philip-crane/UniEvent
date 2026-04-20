@@ -5,6 +5,7 @@ import org.springframework.stereotype.Component;
 import dk.unievent.app.application.dto.LocationDTO;
 import dk.unievent.app.application.dto.PlaceDTO;
 import dk.unievent.app.db.model.PlaceEntity;
+import java.util.UUID;
 
 @Component
 public class PlaceMapper {
@@ -40,7 +41,7 @@ public class PlaceMapper {
         }
         
         PlaceEntity.PlaceEntityBuilder builder = PlaceEntity.builder()
-                .id(dto.getId())
+                .id(dto.getId() != null ? dto.getId() : UUID.randomUUID().toString())
                 .name(dto.getName());
         
         if (dto.getLocation() != null) {

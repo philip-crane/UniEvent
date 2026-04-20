@@ -8,6 +8,7 @@ import dk.unievent.app.infrastructure.exception.UnauthorizedTokenException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.charset.StandardCharsets;
@@ -61,7 +62,9 @@ public class RefreshTokenService {
         RefreshTokenEntity stored = refreshTokenRepository.findByTokenId(tokenId)
                 .orElseThrow(() -> revokeAndFail(familyId, "Refresh token not recognized."));
 
-        if (stored.getRevokedAt() != null || stored.getExpiresAt().isBefore(Instant.now()) || !stored.getTokenHash().equals(hashToken(refreshToken))) {
+        if (stored.getRevokedAt() != null || stored.getExpiresAt().isBefore(Instant.now())
+                || !MessageDigest.isEqual(stored.getTokenHash().getBytes(StandardCharsets.UTF_8),
+                        hashToken(refreshToken).getBytes(StandardCharsets.UTF_8))) {
             revokeFamily(familyId);
             throw new UnauthorizedTokenException("Refresh token has been revoked or replayed.");
         }
@@ -106,6 +109,7 @@ public class RefreshTokenService {
         revokeFamily(familyId);
     }
 
+    @Scheduled(cron = "0 0 * * * *")
     @Transactional
     public void cleanupExpiredTokens() {
         List<RefreshTokenEntity> expiredTokens = refreshTokenRepository.findAllByExpiresAtBefore(Instant.now());
@@ -129,11 +133,9 @@ public class RefreshTokenService {
                 .build();
     }
 
+    @Transactional
     private void revokeFamily(String familyId) {
-        List<RefreshTokenEntity> activeTokens = refreshTokenRepository.findAllByFamilyIdAndRevokedAtIsNull(familyId);
-        Instant now = Instant.now();
-        activeTokens.forEach(token -> token.setRevokedAt(now));
-        refreshTokenRepository.saveAll(activeTokens);
+        refreshTokenRepository.revokeByFamilyId(familyId, Instant.now());
     }
 
     private UnauthorizedTokenException revokeAndFail(String familyId, String message) {

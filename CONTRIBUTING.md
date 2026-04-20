@@ -23,68 +23,70 @@ UniEventServer currently runs as a Java/Spring backend with Dockerized infrastru
 - **SeaweedFS** (Media Storage)
 - **HashiCorp Vault** (Secret Storage)
 
+## Setup
+
+Run `pwsh ./tools.ps1 setup`. If you're on Mac/Linux, install PowerShell and restart terminal (login and logout/restart computer if that doesn't work). The command will:
+- Check check whether you have installed the right dependencies (Java, Maven, cURL, Docker)
+- Check for an `.env` file in root. If not there, ask from dev team.
+- Set up HTTPS/TLS self-certs by creating files (`docker-compose.override.yml`, OpenSSL certs in `/certs`)
+- Add "tools" environmental variable (Windows: As user PATH in the directory ~/.local/bin) so you no longer have to prefix the dev tools with `./tools`, but now just with `setup`
+- Optionally begin Docker Compose
+
+## Tools
+
+After running `pwsh ./tools.ps1 setup`, you will be able to type `tools` to run the following commands from our cli folder:
+
+```text
+cli/
+├── setup.ps1      # tools setup
+├── ingest.ps1     # tools ingest [-p <pageId>]
+├── refresh.ps1    # tools refresh [-p <pageId>]
+├── seed.ps1       # tools seed, tools clear
+├── vault.ps1      # tools vault, tools unseal
+└── shared.ps1     # (helpers)
+```
+
 ## TODO
 
 ### Backend Big Tasks
 - [in progress] Implement real JWT auth (signed token, expiry, validation filter) and protect non-public API routes
 - [ ] Port /web directory in old repo to new repo (entire frontend currently missing)
 - [ ] Mount frontend dist as volume to avoid having to --build when changes are made
-- [ ] Create Page functionality. Also Split create/update logic so `PUT /api/pages/{id}` returns `404` when page does not exist. Prevent client-controlled ID abuse on create flows (server-side ID policy and validation)
+- [x] Split create/update logic so `PUT /api/pages/{id}` returns `404` when page does not exist
 - [in progress] Fix (auto) token refresh if possible lol
-- [ ] Proper admin tool framework 
+- [x] Proper admin tool framework 
 
 ### Frontend Big Tasks
 - [in progress] Facebook Page Organizer Onboarding Flow
-- [ ] Make more mobile-friendly
+- [in progress] Make more mobile-friendly
 - [ ] FB authentication (Facebook OAuth)
 - [ ] Page admin dashboard for managing event sync
 - [ ] Create Event Page
 - [ ] Business Manager integration for stable API access
 - [ ] User favorites and personalization
 
-### DB
-- [ ] Align place deletion behavior with docs (nullify place in events OR document cascading delete)
-- [ ] Add deterministic media replacement lifecycle (cleanup old DB record and SeaweedFS file on replace)
+### TODO
+- [ ] Move SeaweedFS to authenticated access and internal-only network; do not rely solely on Docker network isolation
 
 ### Serverless Functions
 - [ ] FB Callback
 - [ ] FB -> DB Ingest
 - [ ] Tokens
 
-### API
-- [x] Restrict `/admin/seed` endpoints to local/dev only (profile and/or role guard)
-- [x] Fix page/place search to do true partial matching (`contains`/`like`) instead of exact match
-- [ ] Add integration tests for auth guardrails, seed endpoint access control, and update-not-found behavior
-- [ ] Make actuator `health/info` access strategy explicit for Docker probes + production security
-
-### Nice-To-Have Code 
-- [ ] DB Replace `ddl-auto: update` with Flyway or Liquibase migrations
+### Nice-To-Have Frameworks
+- [ ] DB Replace `ddl-auto: update` with Flyway or Liquibase migrations (move to `ddl-auto: validate`)
 - [ ] Quartz scheduler
-- [ ] Replace field injection with constructor injection for consistency and testability
+- [ ] PicoCLI for proper tool CLI integration
 - [ ] Pin Docker image versions (avoid `latest` tags for reproducibility)
-- [ ] Harden media download content-type handling with safe fallback on invalid metadata
 
 ### Nice-To-Have Features
 - [ ] Location mapping (A literal google maps with the events placed)
-- [ ] Manual event submission (fallback for pages without dedicated event)
+- [ ] Manual event submission (fallback for pages without dedicated event). Includes backend Create Page functionality. Prevent client-controlled ID abuse on create flows (server-side ID policy and validation)
 - [ ] Event categorization (academic, social, etc.)
 - [ ] Event moderation and approval system
 - [ ] Analytics dashboard for event engagement
 - [ ] Notification system for page admins (event sync status, token expiration)
 - [ ] Save likes to local-storage which can be transferred upon login (possibly with a dilogue box asking you "You have saved likes while not logged in. Would you like to transfer them?")
-
-### Testing
-- [ ] Add `AuthControllerTests` for register/login success, validation errors, and invalid credentials
-- [ ] Add `JwtServiceTests` for token generation format, uniqueness, and edge-case inputs
-- [ ] Add `UserServiceTests` for duplicate email/username rejection, password encoding, and lookup failures
-- [ ] Add `UserRepositoryTests` and `UserEntityTests` for persistence/constraints coverage
-- [ ] Add `SeedDataControllerTests` (dev profile exposure, success/error status mapping for POST/DELETE)
-- [ ] Add `DataSeederServiceTests` (seed and clear behavior, `SEED_` filtering safety, error paths)
-- [ ] Add repository/integration tests for true partial search semantics (contains/like) for pages and places
-- [ ] Add integration tests for `PUT /api/pages/{id}` returning `404` when page does not exist
-- [ ] Add media replacement lifecycle tests (old DB record + SeaweedFS cleanup on replace)
-- [ ] Add config tests for `RestClientConfig` and `PaginationConstantsConfig`
-- [ ] Fix `PageControllerTests.getPageByIdShouldReturnNotFoundWhenMissing` to use `Optional.empty()` (not `null`)
 
 ## Endpoints
 

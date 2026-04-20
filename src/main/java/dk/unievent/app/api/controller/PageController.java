@@ -2,6 +2,7 @@ package dk.unievent.app.api.controller;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -33,7 +34,7 @@ public class PageController {
     @GetMapping
     @Operation(summary = "Get all pages", description = "Retrieve all event organizer pages ordered by name")
     @ApiResponse(responseCode = "200", description = "Page of pages")
-    public ResponseEntity<Page<PageDTO>> getAllPages(Pageable pageable) {
+    public ResponseEntity<Page<PageDTO>> getAllPages(@PageableDefault(size = 20) Pageable pageable) {
         log.debug("Fetching all pages with pagination: page={}, size={}", pageable.getPageNumber(), pageable.getPageSize());
         Page<PageDTO> pages = pageService.getAllPages(pageable);
         log.debug("Retrieved {} pages", pages.getTotalElements());
@@ -43,7 +44,7 @@ public class PageController {
     @GetMapping("/active")
     @Operation(summary = "Get active pages", description = "Retrieve only pages with valid Facebook tokens")
     @ApiResponse(responseCode = "200", description = "Page of active pages")
-    public ResponseEntity<Page<PageDTO>> getActivePages(Pageable pageable) {
+    public ResponseEntity<Page<PageDTO>> getActivePages(@PageableDefault(size = 20) Pageable pageable) {
         log.debug("Fetching active pages with pagination: page={}, size={}", pageable.getPageNumber(), pageable.getPageSize());
         Page<PageDTO> pages = pageService.getActivePages(pageable);
         log.debug("Retrieved {} active pages", pages.getTotalElements());
@@ -70,7 +71,7 @@ public class PageController {
     @ApiResponse(responseCode = "200", description = "Page of matching pages")
     public ResponseEntity<Page<PageDTO>> searchPages(
             @RequestParam(name = "name") @Parameter(description = "Partial page name to search for") String name,
-            Pageable pageable) {
+            @PageableDefault(size = 20) Pageable pageable) {
         log.debug("Searching pages by name: {}", name);
         Page<PageDTO> pages = pageService.searchPagesByName(name, pageable);
         log.debug("Found {} pages matching: {}", pages.getTotalElements(), name);
@@ -96,9 +97,13 @@ public class PageController {
             @Valid @RequestBody PageDTO pageDTO) {
         log.info("Updating page with id: {}", id);
         pageDTO.setId(id);
-        PageDTO updated = pageService.savePage(pageDTO);
+        Optional<PageDTO> updated = pageService.updatePage(id, pageDTO);
+        if (updated.isEmpty()) {
+            log.warn("Page not found for update with id: {}", id);
+            return ResponseEntity.notFound().build();
+        }
         log.info("Page updated successfully: {}", id);
-        return ResponseEntity.ok(updated);
+        return ResponseEntity.ok(updated.get());
     }
 
     @PostMapping("/{id}/picture")

@@ -48,8 +48,8 @@ services:
 
   app:
     build:
-      context: ..
-      dockerfile: UniEventServer/Dockerfile
+      context: .
+      dockerfile: Dockerfile
     container_name: unievent-app
     restart: on-failure
     depends_on:
@@ -60,6 +60,7 @@ services:
       weed-master:
         condition: service_healthy
     environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
       SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL:-jdbc:mysql://mysql:3306/unievent?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true}
       SPRING_DATASOURCE_USERNAME: ${MYSQL_USER}
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD}
@@ -72,16 +73,27 @@ services:
       FACEBOOK_ENABLED: ${FACEBOOK_ENABLED}
       FACEBOOK_APP_ID: ${FACEBOOK_APP_ID}
       FACEBOOK_APP_SECRET: ${FACEBOOK_APP_SECRET}
-      FACEBOOK_REDIRECT_URI: ${FACEBOOK_REDIRECT_URI}
-      FACEBOOK_GRAPH_VERSION: ${FACEBOOK_GRAPH_VERSION}
+      FACEBOOK_REDIRECT_URI: ${FACEBOOK_REDIRECT_URI:-http://localhost:8080/api/facebook/callback}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      FACEBOOK_GRAPH_VERSION: ${FACEBOOK_GRAPH_VERSION:-v25.0}
       VAULT_ENABLED: ${VAULT_ENABLED:-true}
       VAULT_URI: ${VAULT_URI:-https://vault:8200}
       VAULT_TOKEN: ${VAULT_TOKEN:-}
       VAULT_SECRET_PATH: ${VAULT_SECRET_PATH:-secret/data/unievent}
+      VAULT_CACERT_PATH: /etc/vault-ca/vault.crt
+    volumes:
+      - ./certs/vault.crt:/etc/vault-ca/vault.crt:ro
     ports:
       - "127.0.0.1:8080:8080"
     networks:
       - unievent-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health | grep -q UP || exit 1"]
+      start_period: 60s
+      interval: 15s
+      timeout: 5s
+      retries: 5
 
   certbot:
     image: certbot/certbot:latest
@@ -127,12 +139,29 @@ services:
     networks:
       - unievent-network
 
+  frontend:
+    build:
+      context: ../UniEventClient/web
+      dockerfile: Dockerfile
+    container_name: unievent-frontend
+    restart: on-failure
+    ports:
+      - "127.0.0.1:3000:3000"
+    networks:
+      - unievent-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health | grep -q healthy || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   vault:
     image: hashicorp/vault:latest
     container_name: unievent-vault
     command: vault server -config=/vault/config/vault.hcl
     environment:
-      VAULT_ADDR: http://0.0.0.0:8200
+      VAULT_ADDR: https://127.0.0.1:8200
+      VAULT_CACERT: /vault/tls/tls.crt
       SKIP_CHOWN: "true"
       SKIP_SETCAP: "true"
     ports:
@@ -141,6 +170,8 @@ services:
       - IPC_LOCK
     volumes:
       - ./vault/config:/vault/config:ro
+      - ./certs/vault.crt:/vault/tls/tls.crt:ro
+      - ./certs/vault.key:/vault/tls/tls.key:ro
       - vault-data:/vault/file
     networks:
       - unievent-network

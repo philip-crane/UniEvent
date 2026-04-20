@@ -1,8 +1,8 @@
 package dk.unievent.app.api.controller;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -15,14 +15,15 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.Parameter;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 /**
  * REST Controller for Place endpoints (Venues/Locations)
  * All endpoints are prefixed with /api/places
- * 
+ *
  * Places are the VENUES where events happen (bars, cafes, restaurants, etc.)
- * 
+ *
  * Example requests:
  * GET  /api/places/{id}                    - Get place by ID
  * GET  /api/places/city/{city}             - Find venues in a city
@@ -33,10 +34,10 @@ import lombok.extern.slf4j.Slf4j;
 @RestController
 @RequestMapping("/api/places")
 @Tag(name = "Places", description = "Manage and search venues/locations for events")
+@RequiredArgsConstructor
 public class PlaceController {
-    
-    @Autowired
-    private PlaceService placeService;
+
+    private final PlaceService placeService;
     
     /**
      * GET /api/places/{id}
@@ -89,7 +90,7 @@ public class PlaceController {
     @GetMapping("/city/{city}")
     @Operation(summary = "Get places by city", description = "Find all venues in a specific city")
     @ApiResponse(responseCode = "200", description = "Page of places in the city")
-    public ResponseEntity<Page<PlaceDTO>> getPlacesByCity(@PathVariable @Parameter(description = "City name") String city, Pageable pageable) {
+    public ResponseEntity<Page<PlaceDTO>> getPlacesByCity(@PathVariable @Parameter(description = "City name") String city, @PageableDefault(size = 20) Pageable pageable) {
         log.debug("Fetching places for city: {}, page: {}, size: {}", city, pageable.getPageNumber(), pageable.getPageSize());
         Page<PlaceDTO> places = placeService.getPlacesByCity(city, pageable);
         log.debug("Found {} places in city: {}", places.getTotalElements(), city);
@@ -109,7 +110,7 @@ public class PlaceController {
     @GetMapping("/country/{country}")
     @Operation(summary = "Get places by country", description = "Find all venues in a specific country")
     @ApiResponse(responseCode = "200", description = "Page of places in the country")
-    public ResponseEntity<Page<PlaceDTO>> getPlacesByCountry(@PathVariable @Parameter(description = "Country name") String country, Pageable pageable) {
+    public ResponseEntity<Page<PlaceDTO>> getPlacesByCountry(@PathVariable @Parameter(description = "Country name") String country, @PageableDefault(size = 20) Pageable pageable) {
         log.debug("Fetching places for country: {}, page: {}, size: {}", country, pageable.getPageNumber(), pageable.getPageSize());
         Page<PlaceDTO> places = placeService.getPlacesByCountry(country, pageable);
         log.debug("Found {} places in country: {}", places.getTotalElements(), country);
@@ -132,7 +133,7 @@ public class PlaceController {
     public ResponseEntity<Page<PlaceDTO>> getPlacesByLocation(
             @PathVariable @Parameter(description = "City name") String city,
             @PathVariable @Parameter(description = "Country name") String country,
-            Pageable pageable) {
+            @PageableDefault(size = 20) Pageable pageable) {
         log.debug("Fetching places for city: {}, country: {}, page: {}, size: {}", city, country, pageable.getPageNumber(), pageable.getPageSize());
         Page<PlaceDTO> places = placeService.getPlacesByCityAndCountry(city, country, pageable);
         log.debug("Found {} places in {}, {}", places.getTotalElements(), city, country);
@@ -154,7 +155,7 @@ public class PlaceController {
     @ApiResponse(responseCode = "200", description = "Page of matching places")
     public ResponseEntity<Page<PlaceDTO>> searchPlaces(
             @RequestParam(name = "name") @Parameter(description = "Partial place name to search for") String name,
-            Pageable pageable) {
+            @PageableDefault(size = 20) Pageable pageable) {
         log.debug("Searching places by name: {}", name);
         Page<PlaceDTO> places = placeService.searchByName(name, pageable);
         log.debug("Search found {} places matching: {}", places.getTotalElements(), name);

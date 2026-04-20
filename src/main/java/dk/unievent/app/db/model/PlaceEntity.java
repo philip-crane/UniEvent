@@ -10,7 +10,15 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @Entity
-@Table(name = "places")
+@Table(name = "places",
+    uniqueConstraints = {
+        @UniqueConstraint(name = "uk_place_name_city_country", columnNames = {"name", "city", "country"})
+    },
+    indexes = {
+        @Index(name = "idx_place_city", columnList = "city"),
+        @Index(name = "idx_place_country", columnList = "country")
+    }
+)
 @Getter
 @Setter
 @NoArgsConstructor
@@ -36,7 +44,7 @@ public class PlaceEntity {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    @OneToMany(mappedBy = "place", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "place")
     private List<EventEntity> events;
 
     @PrePersist

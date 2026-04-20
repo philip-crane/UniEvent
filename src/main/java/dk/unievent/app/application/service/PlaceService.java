@@ -1,27 +1,31 @@
 package dk.unievent.app.application.service;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import dk.unievent.app.application.dto.PlaceDTO;
 import dk.unievent.app.application.mapper.PlaceMapper;
+import dk.unievent.app.db.model.EventEntity;
 import dk.unievent.app.db.model.PlaceEntity;
+import dk.unievent.app.db.repository.EventRepository;
 import dk.unievent.app.db.repository.PlaceRepository;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.List;
 import java.util.Optional;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class PlaceService {
-    
-    @Autowired
-    private PlaceRepository placeRepository;
-    
-    @Autowired
-    private PlaceMapper placeMapper;
+
+    private final PlaceRepository placeRepository;
+    private final PlaceMapper placeMapper;
+    private final EventRepository eventRepository;
     
     /**
      * Get a place by ID
@@ -121,16 +125,27 @@ public class PlaceService {
     
     /**
      * Delete a place
+     * 
+     * This operation is wrapped in a transaction to ensure atomicity. If any step fails,
+     * the entire operation is rolled back to prevent partial updates and FK constraint failures.
+     * Uses a bulk update query to avoid loading all events into memory.
      */
+    @Transactional
     public boolean deletePlace(String id) {
         log.info("Deleting place with id: {}", id);
-        if (placeRepository.existsById(id)) {
-            placeRepository.deleteById(id);
-            log.info("Place deleted successfully: {}", id);
-            return true;
+        if (!placeRepository.existsById(id)) {
+            log.warn("Place not found for deletion with id: {}", id);
+            return false;
         }
-        log.warn("Place not found for deletion with id: {}", id);
-        return false;
+        
+        // Bulk update to nullify place reference for all associated events
+        int affectedCount = eventRepository.nullifyEventsByPlaceId(id);
+        
+        // Delete the place
+        placeRepository.deleteById(id);
+        
+        log.info("Place deleted, nullified place on {} event(s): {}", affectedCount, id);
+        return true;
     }
 
     /**
@@ -146,40 +161,31 @@ public class PlaceService {
      */
     public PlaceEntity createOrFindPlace(String name, String street, String city, String zip, String country) {
         log.debug("Searching for place: {} in {}, {}", name, city, country);
-        
-        // Try to find an existing place by scanning all candidates in the same city and country
-        int pageNumber = 0;
-        int pageSize = 50;
-        Page<PlaceEntity> existing;
-        
-        do {
-            existing = placeRepository.findByCityAndCountry(
-                    city,
-                    country,
-                    org.springframework.data.domain.PageRequest.of(pageNumber, pageSize));
-            
-            for (PlaceEntity place : existing.getContent()) {
-                if (place.getName() != null && place.getName().equalsIgnoreCase(name)) {
-                    log.debug("Found existing place: {} (id: {})", name, place.getId());
-                    return place;
-                }
-            }
-            
-            pageNumber++;
-        } while (existing.hasNext());
-        
+
+        java.util.Optional<PlaceEntity> found = placeRepository.findByNameIgnoreCaseAndCityAndCountry(name, city, country);
+        if (found.isPresent()) {
+            log.debug("Found existing place: {} (id: {})", name, found.get().getId());
+            return found.get();
+        }
+
         // Place not found, create new one
         log.debug("Place not found, creating new: {} in {}, {}", name, city, country);
         PlaceEntity newPlace = PlaceEntity.builder()
+                .id(java.util.UUID.randomUUID().toString())
                 .name(name)
                 .street(street)
                 .city(city)
                 .zip(zip)
                 .country(country)
                 .build();
-        
-        PlaceEntity saved = placeRepository.save(newPlace);
-        log.info("New place created: {} (id: {})", name, saved.getId());
-        return saved;
+        try {
+            PlaceEntity saved = placeRepository.save(newPlace);
+            log.info("New place created: {} (id: {})", name, saved.getId());
+            return saved;
+        } catch (DataIntegrityViolationException e) {
+            // Concurrent insertion - another thread won the race; return the existing row
+            return placeRepository.findByNameIgnoreCaseAndCityAndCountry(name, city, country)
+                    .orElseThrow(() -> new RuntimeException("Place conflict but not found: " + name, e));
+        }
     }
 }

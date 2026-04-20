@@ -73,7 +73,7 @@ class EventControllerTests {
 
     @Test
     void getEventByIdShouldReturnNotFoundWhenMissing() throws Exception {
-        when(eventService.getEventById("missing")).thenReturn(null);
+        when(eventService.getEventById("missing")).thenReturn(java.util.Optional.empty());
 
         mockMvc.perform(get("/api/events/missing"))
             .andExpect(status().isNotFound());
@@ -95,7 +95,7 @@ class EventControllerTests {
 
     @Test
     void updateEventShouldReturnNotFoundWhenMissing() throws Exception {
-        when(eventService.updateEvent(eq("evt-404"), any(EventDTO.class))).thenReturn(null);
+        when(eventService.updateEvent(eq("evt-404"), any(EventDTO.class))).thenReturn(java.util.Optional.empty());
 
         mockMvc.perform(put("/api/events/evt-404")
                 .contentType(MediaType.APPLICATION_JSON)

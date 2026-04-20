@@ -38,7 +38,7 @@ public class UserEntity {
 
     @Column(nullable = false, length = 20)
     @Builder.Default
-    private String role = "USER";
+    private String role = "user";
 
     @Column(nullable = false, updatable = false)
     private Instant createdAt;

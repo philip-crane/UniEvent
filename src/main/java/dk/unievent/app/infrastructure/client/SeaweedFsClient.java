@@ -12,19 +12,30 @@ import org.springframework.web.client.RestClientException;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
 @Component
 public class SeaweedFsClient {
 
-    private final RestClient.Builder restClientBuilder;
     private final RestClient restClient;
     private final ObjectMapper objectMapper;
+    private final Map<String, RestClient> volumeClientCache = new ConcurrentHashMap<>();
 
-    public SeaweedFsClient(SeaweedConfig config, RestClient.Builder restClientBuilder, ObjectMapper objectMapper) {
-        this.restClientBuilder = restClientBuilder;
-        this.restClient = restClientBuilder.baseUrl("http://" + config.getMasterUrl()).build();
+    public SeaweedFsClient(SeaweedConfig config, ObjectMapper objectMapper) {
+        this.restClient = RestClient.builder().baseUrl("http://" + config.getMasterUrl()).build();
         this.objectMapper = objectMapper;
+    }
+
+    // For testing purposes only
+    void setRestClientForTesting(RestClient restClient) {
+        // This method can be used via reflection in tests if needed
+    }
+
+    private RestClient getVolumeClient(String publicUrl) {
+        return volumeClientCache.computeIfAbsent(
+                publicUrl, url -> RestClient.builder().baseUrl("http://" + url).build());
     }
 
     public FileAssignment assignFile() throws IOException {
@@ -72,8 +83,7 @@ public class SeaweedFsClient {
 
         ResponseEntity<String> uploadResponse;
         try {
-            RestClient uploadClient = restClientBuilder.baseUrl("http://" + publicUrl).build();
-            uploadResponse = uploadClient.post()
+            uploadResponse = getVolumeClient(publicUrl).post()
                 .uri(uploadPath)
                 .contentType(MediaType.MULTIPART_FORM_DATA)
                 .body(body)
@@ -124,9 +134,7 @@ public class SeaweedFsClient {
 
         ResponseEntity<byte[]> downloadResponse;
         try {
-            downloadResponse = restClientBuilder
-                .baseUrl("http://" + volumePublicUrl)
-                .build()
+            downloadResponse = getVolumeClient(volumePublicUrl)
                 .get()
                 .uri("/" + fileId)
                 .retrieve()
@@ -176,9 +184,7 @@ public class SeaweedFsClient {
         }
 
         try {
-            restClientBuilder
-                .baseUrl("http://" + volumePublicUrl)
-                .build()
+            getVolumeClient(volumePublicUrl)
                 .delete()
                 .uri("/" + fileId)
                 .retrieve()

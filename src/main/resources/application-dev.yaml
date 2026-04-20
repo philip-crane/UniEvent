@@ -3,3 +3,12 @@ logging:
     root: INFO
     dk.unievent.app: DEBUG
     dk.unievent.app.infrastructure.client: DEBUG
+
+unievent:
+  media:
+    ssrf:
+      extra-allowed-hosts: placehold.co
+  security:
+    jwt:
+      secret: dev-secret-key-this-must-be-changed-in-production
+      refresh-secret: dev-refresh-secret-key-this-must-be-changed-in-production

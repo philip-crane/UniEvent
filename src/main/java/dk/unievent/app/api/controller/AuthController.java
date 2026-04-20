@@ -9,11 +9,14 @@ import dk.unievent.app.api.dto.LogoutRequest;
 import dk.unievent.app.api.dto.LoginRequest;
 import dk.unievent.app.api.dto.RefreshRequest;
 import dk.unievent.app.api.dto.RegisterRequest;
+import dk.unievent.app.infrastructure.security.UserDetailsAdapter;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -30,7 +33,7 @@ public class AuthController {
 
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
-        UserEntity user = userService.register(new UserDTO(request.username(), request.email(), request.password()));
+        UserEntity user = userService.register(new UserDTO(request.username(), request.email(), request.password(), request.role()));
         RefreshTokenService.TokenPair tokenPair = refreshTokenService.issueTokenPair(user);
         return ResponseEntity.ok(new AuthResponse(
                 tokenPair.accessToken(),
@@ -44,10 +47,10 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
-        authenticationManager.authenticate(
+        Authentication auth = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.email(), request.password())
         );
-        UserEntity user = userService.findByEmail(request.email());
+        UserEntity user = ((UserDetailsAdapter) auth.getPrincipal()).getUser();
         RefreshTokenService.TokenPair tokenPair = refreshTokenService.issueTokenPair(user);
         return ResponseEntity.ok(new AuthResponse(
                 tokenPair.accessToken(),
@@ -60,8 +63,11 @@ public class AuthController {
     }
 
     @PostMapping("/refresh")
-    public ResponseEntity<AuthResponse> refresh(@Valid @RequestBody RefreshRequest request) {
-        RefreshTokenService.TokenPair tokenPair = refreshTokenService.rotate(request.refreshToken());
+    public ResponseEntity<AuthResponse> refresh(@Valid @RequestBody RefreshRequest request,
+                                                HttpServletRequest httpRequest) {
+        String userAgent = httpRequest.getHeader("User-Agent");
+        String ipAddress = httpRequest.getRemoteAddr();
+        RefreshTokenService.TokenPair tokenPair = refreshTokenService.rotate(request.refreshToken(), userAgent, ipAddress);
         return ResponseEntity.ok(new AuthResponse(
                 tokenPair.accessToken(),
                 tokenPair.refreshToken(),

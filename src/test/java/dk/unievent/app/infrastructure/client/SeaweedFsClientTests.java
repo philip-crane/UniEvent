@@ -3,15 +3,18 @@ package dk.unievent.app.infrastructure.client;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mockStatic;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
 import java.io.IOException;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -26,17 +29,30 @@ import dk.unievent.app.infrastructure.config.SeaweedConfig;
 class SeaweedFsClientTests {
 
     private MockRestServiceServer server;
-
     private SeaweedFsClient seaweedFsClient;
+    private MockedStatic<RestClient> restClientMock;
+    private RestClient.Builder restClientBuilder;
 
     @BeforeEach
     void setUp() {
-        RestClient.Builder restClientBuilder = RestClient.builder();
+        // Create a real RestClient.Builder for the mock server
+        restClientBuilder = RestClient.builder();
         server = MockRestServiceServer.bindTo(restClientBuilder).build();
-
+        
+        // Mock RestClient.builder() to return our builder
+        restClientMock = mockStatic(RestClient.class);
+        restClientMock.when(RestClient::builder).thenReturn(restClientBuilder);
+        
         SeaweedConfig config = new SeaweedConfig();
         config.setMasterUrl("localhost:9333");
-        seaweedFsClient = new SeaweedFsClient(config, restClientBuilder, new ObjectMapper());
+        seaweedFsClient = new SeaweedFsClient(config, new ObjectMapper());
+    }
+
+    @AfterEach
+    void tearDown() {
+        if (restClientMock != null) {
+            restClientMock.close();
+        }
     }
 
     @Test
