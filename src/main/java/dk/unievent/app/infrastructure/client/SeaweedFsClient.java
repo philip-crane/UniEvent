@@ -28,6 +28,11 @@ public class SeaweedFsClient {
         this.objectMapper = objectMapper;
     }
 
+    // For testing purposes only
+    void setRestClientForTesting(RestClient restClient) {
+        // This method can be used via reflection in tests if needed
+    }
+
     private RestClient getVolumeClient(String publicUrl) {
         return volumeClientCache.computeIfAbsent(
                 publicUrl, url -> RestClient.builder().baseUrl("http://" + url).build());
