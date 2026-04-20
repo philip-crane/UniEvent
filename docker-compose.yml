@@ -48,8 +48,8 @@ services:
 
   app:
     build:
-      context: ..
-      dockerfile: UniEventServer/Dockerfile
+      context: .
+      dockerfile: Dockerfile
     container_name: unievent-app
     restart: on-failure
     depends_on:
@@ -138,6 +138,22 @@ services:
       - /var/run
     networks:
       - unievent-network
+
+  frontend:
+    build:
+      context: ../UniEventClient/web
+      dockerfile: Dockerfile
+    container_name: unievent-frontend
+    restart: on-failure
+    ports:
+      - "127.0.0.1:3000:3000"
+    networks:
+      - unievent-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health | grep -q healthy || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   vault:
     image: hashicorp/vault:latest

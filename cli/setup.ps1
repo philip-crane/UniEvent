@@ -132,14 +132,11 @@ function Invoke-Setup {
 
         Write-Info "Generating self-signed certificate..."
         $subject = "/CN=localhost"
-        try {
-            & $opensslPath req -x509 -nodes -days 3650 -newkey rsa:2048 `
-                -keyout $keyFile -out $certFile `
-                -subj $subject 2>&1 | Out-Null
-        } catch {
-            Write-Err "OpenSSL failed: $($_.Exception.Message)"
-            exit 1
-        }
+        $ErrorActionPreference = "Continue"
+        & $opensslPath req -x509 -nodes -days 3650 -newkey rsa:2048 `
+            -keyout $keyFile -out $certFile `
+            -subj $subject 2>$null
+        $ErrorActionPreference = "Stop"
 
         if ((Test-Path $certFile) -and (Test-Path $keyFile)) {
             Write-Ok "Self-signed certificate generated (valid 10 years)"
@@ -176,17 +173,12 @@ subjectAltName = DNS:vault,DNS:localhost,IP:127.0.0.1
         $tempConf = [System.IO.Path]::GetTempFileName() + ".cnf"
         $sanConf | Set-Content -Path $tempConf -Encoding ASCII
 
-        try {
-            & $opensslPath req -x509 -nodes -days 3650 -newkey rsa:2048 `
-                -keyout $vaultKeyFile -out $vaultCertFile `
-                -config $tempConf 2>&1 | Out-Null
-        } catch {
-            Write-Err "OpenSSL failed generating Vault cert: $($_.Exception.Message)"
-            Remove-Item $tempConf -ErrorAction SilentlyContinue
-            exit 1
-        } finally {
-            Remove-Item $tempConf -ErrorAction SilentlyContinue
-        }
+        $ErrorActionPreference = "Continue"
+        & $opensslPath req -x509 -nodes -days 3650 -newkey rsa:2048 `
+            -keyout $vaultKeyFile -out $vaultCertFile `
+            -config $tempConf 2>$null
+        $ErrorActionPreference = "Stop"
+        Remove-Item $tempConf -ErrorAction SilentlyContinue
 
         if ((Test-Path $vaultCertFile) -and (Test-Path $vaultKeyFile)) {
             Write-Ok "Vault TLS certificate generated (valid 10 years)"
