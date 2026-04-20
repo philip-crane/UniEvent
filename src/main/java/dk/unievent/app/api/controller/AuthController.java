@@ -33,7 +33,7 @@ public class AuthController {
 
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
-        UserEntity user = userService.register(new UserDTO(request.username(), request.email(), request.password()));
+        UserEntity user = userService.register(new UserDTO(request.username(), request.email(), request.password(), request.role()));
         RefreshTokenService.TokenPair tokenPair = refreshTokenService.issueTokenPair(user);
         return ResponseEntity.ok(new AuthResponse(
                 tokenPair.accessToken(),

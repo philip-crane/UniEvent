@@ -72,11 +72,12 @@ public class UserService implements UserDetailsService, ApplicationRunner {
         if (userRepository.existsByUsername(user.getUsername())) {
             throw new IllegalArgumentException("Username is already taken.");
         }
+        String role = user.getRole() != null && !user.getRole().isBlank() ? user.getRole() : "user";
         UserEntity account = UserEntity.builder()
                 .username(user.getUsername())
                 .email(user.getEmail())
                 .password(passwordEncoder.encode(user.getPassword()))
-                .role("USER")
+                .role(role)
                 .build();
         return userRepository.save(account);
     }

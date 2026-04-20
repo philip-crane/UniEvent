@@ -50,7 +50,7 @@ class UserServiceTests {
         when(passwordEncoder.encode("rawpassword")).thenReturn("encodedpassword");
         when(userRepository.save(any(UserEntity.class))).thenReturn(testUser);
 
-        UserEntity result = userService.register(new UserDTO("testuser", "test@example.com", "rawpassword"));
+        UserEntity result = userService.register(new UserDTO("testuser", "test@example.com", "rawpassword", "user"));
 
         assertNotNull(result);
         assertEquals("testuser", result.getUsername());
@@ -64,7 +64,7 @@ class UserServiceTests {
         when(userRepository.existsByEmail("test@example.com")).thenReturn(true);
 
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
-            () -> userService.register(new UserDTO("testuser", "test@example.com", "password")));
+            () -> userService.register(new UserDTO("testuser", "test@example.com", "password", "user")));
 
         assertEquals("Email is already registered.", ex.getMessage());
         verify(userRepository, never()).save(any());
@@ -76,7 +76,7 @@ class UserServiceTests {
         when(userRepository.existsByUsername("testuser")).thenReturn(true);
 
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
-            () -> userService.register(new UserDTO("testuser", "test@example.com", "password")));
+            () -> userService.register(new UserDTO("testuser", "test@example.com", "password", "user")));
 
         assertEquals("Username is already taken.", ex.getMessage());
         verify(userRepository, never()).save(any());
@@ -116,5 +116,38 @@ class UserServiceTests {
 
         assertThrows(UsernameNotFoundException.class,
             () -> userService.loadUserByUsername("missing@example.com"));
+    }
+
+    @Test
+    void registerShouldSaveCustomRole() {
+        UserEntity organizerUser = UserEntity.builder()
+            .username("organizer")
+            .email("organizer@example.com")
+            .password("encodedpassword")
+            .role("organizer")
+            .build();
+
+        when(userRepository.existsByEmail("organizer@example.com")).thenReturn(false);
+        when(userRepository.existsByUsername("organizer")).thenReturn(false);
+        when(passwordEncoder.encode("rawpassword")).thenReturn("encodedpassword");
+        when(userRepository.save(any(UserEntity.class))).thenReturn(organizerUser);
+
+        UserEntity result = userService.register(new UserDTO("organizer", "organizer@example.com", "rawpassword", "organizer"));
+
+        assertNotNull(result);
+        assertEquals("organizer", result.getRole());
+    }
+
+    @Test
+    void registerShouldDefaultToUserRoleWhenNull() {
+        when(userRepository.existsByEmail("test@example.com")).thenReturn(false);
+        when(userRepository.existsByUsername("testuser")).thenReturn(false);
+        when(passwordEncoder.encode("rawpassword")).thenReturn("encodedpassword");
+        when(userRepository.save(any(UserEntity.class))).thenReturn(testUser);
+
+        UserEntity result = userService.register(new UserDTO("testuser", "test@example.com", "rawpassword", null));
+
+        assertNotNull(result);
+        assertEquals("user", result.getRole());
     }
 }
