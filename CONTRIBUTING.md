@@ -50,8 +50,8 @@ cli/
 
 ### Backend Big Tasks
 - [in progress] Implement real JWT auth (signed token, expiry, validation filter) and protect non-public API routes
-- [ ] Port /web directory in old repo to new repo (entire frontend currently missing)
-- [ ] Mount frontend dist as volume to avoid having to --build when changes are made
+- [X] Port /web directory in old repo to new repo (entire frontend currently missing)
+- [X] Mount frontend dist as volume to avoid having to --build when changes are made
 - [x] Split create/update logic so `PUT /api/pages/{id}` returns `404` when page does not exist
 - [in progress] Fix (auto) token refresh if possible lol
 - [x] Proper admin tool framework 
@@ -69,8 +69,8 @@ cli/
 - [ ] Move SeaweedFS to authenticated access and internal-only network; do not rely solely on Docker network isolation
 
 ### Serverless Functions
-- [ ] FB Callback
-- [ ] FB -> DB Ingest
+- [X] FB Callback
+- [X] FB -> DB Ingest
 - [ ] Tokens
 
 ### Nice-To-Have Frameworks
