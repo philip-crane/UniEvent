@@ -124,19 +124,35 @@ function Invoke-Web {
         return Invoke-WebRequest -Uri $Uri -Method $Method -Headers $Headers `
             -TimeoutSec $TimeoutSec -ErrorAction Stop -SkipCertificateCheck:$skipCert
     }
-    # PS 5: use a properly typed delegate - plain scriptblock coercion is unreliable
-    try {
-        if ($skipCert) {
-            [System.Net.ServicePointManager]::ServerCertificateValidationCallback =
-                [System.Net.Security.RemoteCertificateValidationCallback]{ param($s, $c, $ch, $e) $true }
+    
+    # PS 5: Cannot use scriptblock callbacks for cert validation (no runspace in .NET callback)
+    # Solution: use compiled C# delegate instead of scriptblock
+    if ($skipCert) {
+        # Create compiled delegate for cert validation bypass (only once, cached by .NET runtime)
+        if (-not ("CertificateBypass" -as [type])) {
+            Add-Type -TypeDefinition @"
+                using System;
+                using System.Net.Security;
+                using System.Security.Cryptography.X509Certificates;
+                public class CertificateBypass {
+                    public static bool IgnoreSSLErrors(object sender, X509Certificate certificate, X509Chain chain, SslPolicyErrors sslPolicyErrors) {
+                        return true;
+                    }
+                }
+"@
         }
+        $old = [System.Net.ServicePointManager]::ServerCertificateValidationCallback
+        [System.Net.ServicePointManager]::ServerCertificateValidationCallback = [System.Net.Security.RemoteCertificateValidationCallback]::CreateDelegate([System.Net.Security.RemoteCertificateValidationCallback], [CertificateBypass], 'IgnoreSSLErrors')
+    }
+    
+    try {
         if ($null -ne $Body -and $Body -ne "") {
             return Invoke-WebRequest -Uri $Uri -Method $Method -Headers $Headers -Body $Body `
                 -TimeoutSec $TimeoutSec -ErrorAction Stop
         }
         return Invoke-WebRequest -Uri $Uri -Method $Method -Headers $Headers -TimeoutSec $TimeoutSec -ErrorAction Stop
     } finally {
-        if ($skipCert) { [System.Net.ServicePointManager]::ServerCertificateValidationCallback = $null }
+        if ($skipCert) { [System.Net.ServicePointManager]::ServerCertificateValidationCallback = $old }
     }
 }
 
@@ -148,11 +164,28 @@ function Test-ServerHealth {
         return $true
     } catch {
         $ex = $_.Exception
+        
+        # DEBUG: Log what exception type we're actually getting
+        if ($VerboseOutput) {
+            Write-Info "Exception type: $($ex.GetType().FullName)"
+            Write-Info "Exception message: $($ex.Message)"
+            if ($ex.InnerException) {
+                Write-Info "Inner exception: $($ex.InnerException.GetType().FullName): $($ex.InnerException.Message)"
+            }
+        }
+        
         # PS7: HttpRequestException wraps an inner HttpRequestError for non-2xx
         # PS5: WebException with a Response means the server replied (even 401/403)
         if ($ex -is [System.Net.WebException] -and $null -ne $ex.Response) { return $true }
         if ($ex -is [System.Net.WebException] -and $ex.Status -eq [System.Net.WebExceptionStatus]::TrustFailure) { return $true }
         if ($ex.GetType().Name -eq "HttpResponseException") { return $true }
+        
+        # Fallback: if we got ANY Response object, server is responding
+        if ($null -ne $ex.Response) { return $true }
+        
+        # PS5: also check for ConnectFailure which means server is down
+        if ($ex -is [System.Net.WebException] -and $ex.Status -eq [System.Net.WebExceptionStatus]::ConnectFailure) { return $false }
+        
         return $false
     }
 }
