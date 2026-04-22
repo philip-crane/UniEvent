@@ -24,11 +24,10 @@ args=()
 for arg in "$@"; do
   case "$arg" in
     --verbose) args+=("-v") ;;
-    --clear)   args+=("-c") ;;
     --down)    args+=("-d") ;;
     --wipe)    args+=("-w") ;;
+    --yes)     args+=("-y") ;;
     --page)    args+=("-p") ;;
-    --remote)  args+=("-r") ;;
     --help)    args+=("-h") ;;
     --*)       args+=("-${arg#--}") ;;
     *)         args+=("$arg") ;;

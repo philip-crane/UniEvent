@@ -15,8 +15,9 @@ function Invoke-ComposeUp {
     $ErrorActionPreference = "Continue"
 
     $allArgs = @("compose", "up", "-d", "--build") + $ExtraArgs
+    $composeOutput = @()
     if ($Quiet) {
-        & $DockerPath @allArgs 2>&1 | Out-Null
+        $composeOutput = @(& $DockerPath @allArgs 2>&1)
     } else {
         & $DockerPath @allArgs
     }
@@ -32,14 +33,28 @@ function Invoke-ComposeUp {
         Write-Warn "'docker compose' failed - retrying with legacy 'docker-compose' CLI"
         $legacyArgs = @("up", "-d", "--build") + $ExtraArgs
         $ErrorActionPreference = "Continue"
+        $legacyOutput = @()
         if ($Quiet) {
-            & docker-compose @legacyArgs 2>&1 | Out-Null
+            $legacyOutput = @(& docker-compose @legacyArgs 2>&1)
         } else {
             & docker-compose @legacyArgs
         }
         $exitCode = $LASTEXITCODE
         $ErrorActionPreference = $prev
+        if ($exitCode -ne 0 -and $Quiet) {
+            $tail = @($legacyOutput | Select-Object -Last 8)
+            if ($tail.Count -gt 0) {
+                Write-Warn ("docker-compose output: " + ($tail -join " | "))
+            }
+        }
         return ($exitCode -eq 0)
+    }
+
+    if ($Quiet) {
+        $tail = @($composeOutput | Select-Object -Last 8)
+        if ($tail.Count -gt 0) {
+            Write-Warn ("docker compose output: " + ($tail -join " | "))
+        }
     }
 
     return $false
@@ -110,7 +125,31 @@ function Get-VaultStatus {
     return "unavailable"
 }
 
+function Write-VaultStatusDetails {
+    param(
+        [string]$DockerPath,
+        [switch]$VerboseOutput
+    )
+
+    $status = Get-VaultStatus -DockerPath $DockerPath
+    Write-Info "Vault status: $status"
+
+    if (-not $VerboseOutput) { return }
+
+    try {
+        $lines = @(& $DockerPath compose exec -T vault vault status -format=json 2>&1)
+        if ($lines.Count -gt 0) {
+            Write-Info "Vault raw status output:"
+            Write-Host ($lines -join "`n") -ForegroundColor DarkGray
+        }
+    } catch {
+        Write-Warn "Could not read detailed Vault status: $($_.Exception.Message)"
+    }
+}
+
 function Invoke-VaultSetup {
+    param([switch]$VerboseOutput)
+
     $DockerPath = Find-Executable -Name "docker" -Fallbacks $script:KnownPaths.docker
     if (-not $DockerPath) {
         Write-Err "Docker not found"
@@ -125,15 +164,21 @@ function Invoke-VaultSetup {
         Write-Info "Starting Vault container..."
         $prev = $ErrorActionPreference
         $ErrorActionPreference = "Continue"
-        & $DockerPath compose up -d --build vault 2>&1 | Out-Null
+        $startOutput = @(& $DockerPath compose up -d --build vault 2>&1)
         $exitCode = $LASTEXITCODE
         $ErrorActionPreference = $prev
         if ($exitCode -ne 0) {
             Write-Err "Failed to start Vault container"
+            if ($startOutput.Count -gt 0) {
+                $tail = @($startOutput | Select-Object -Last 8)
+                Write-Warn ("docker compose output: " + ($tail -join " | "))
+            }
             exit 1
         }
         if (-not (Test-VaultContainerRunning -DockerPath $DockerPath)) { exit 1 }
     }
+
+    Write-VaultStatusDetails -DockerPath $DockerPath -VerboseOutput:$VerboseOutput
 
     Write-Step "Configuring Vault..."
 
@@ -179,10 +224,14 @@ function Invoke-VaultSetup {
         Write-Ok "Vault initialized"
 
         Write-Info "Unsealing Vault..."
-        & $DockerPath compose exec -T vault vault operator unseal $unsealKey 2>&1 | Out-Null
+        $unsealOutput = @(& $DockerPath compose exec -T vault vault operator unseal $unsealKey 2>&1)
         if ($LASTEXITCODE -ne 0) {
             Write-Err "Failed to unseal Vault"
-            Write-Warn "Unseal key is saved in .env as VAULT_UNSEAL_TOKEN"
+            if ($unsealOutput.Count -gt 0) {
+                $tail = @($unsealOutput | Select-Object -Last 8)
+                Write-Warn ("vault output: " + ($tail -join " | "))
+            }
+            Write-Warn "Use your securely stored unseal key to retry: docker compose exec vault vault operator unseal <KEY>"
             return
         }
         Write-Ok "Vault unsealed"
@@ -203,9 +252,13 @@ function Invoke-VaultSetup {
         }
 
         Write-Info "Writing application policy..."
-        & $DockerPath compose exec -T -e "VAULT_TOKEN=$rootToken" vault vault policy write unievent-app /vault/config/policies/unievent-app.hcl 2>&1 | Out-Null
+        $policyOut = @(& $DockerPath compose exec -T -e "VAULT_TOKEN=$rootToken" vault vault policy write unievent-app /vault/config/policies/unievent-app.hcl 2>&1)
         if ($LASTEXITCODE -ne 0) {
             Write-Err "Failed to write Vault policy"
+            if ($policyOut.Count -gt 0) {
+                $tail = @($policyOut | Select-Object -Last 8)
+                Write-Warn ("vault output: " + ($tail -join " | "))
+            }
             return
         }
         Write-Ok "Policy 'unievent-app' written"
@@ -225,17 +278,15 @@ function Invoke-VaultSetup {
         $appToken = $tokenData.auth.client_token
         Write-Ok "Application token created"
 
-        Update-EnvVar -Key "VAULT_UNSEAL_TOKEN" -Value $unsealKey
-        Update-EnvVar -Key "VAULT_ROOT_TOKEN" -Value $rootToken
-        Update-EnvVar -Key "VAULT_TOKEN" -Value $appToken
-        Write-Ok "Vault credentials saved to .env"
+        Update-EnvVars -Pairs @{ "VAULT_TOKEN" = $appToken }
+        Write-Ok "Vault application token saved to .env"
 
         Write-Info "Restarting app with new Vault token..."
         Invoke-ComposeUp -DockerPath $DockerPath -ExtraArgs @("app") -Quiet | Out-Null
         Write-Ok "App container updated"
 
         Write-Host ""
-        Write-Warn "Vault credentials saved to .env - back up that file securely (keep it off version control)."
+        Write-Warn "Bootstrap secrets were not persisted (safest default). Store root token and unseal key in a secure secret manager."
 
     } elseif ($statusJson.sealed) {
         Write-Info "Vault is sealed - unsealing..."
@@ -245,14 +296,18 @@ function Invoke-VaultSetup {
 
         if (-not $unsealKey) {
             Write-Err "VAULT_UNSEAL_TOKEN is not set in .env"
-            Write-Warn "Add your unseal key to .env or unseal manually:"
+            Write-Warn "Bootstrap secrets are not persisted by default. Provide the unseal key manually or from your secret manager:"
             Write-Warn "  docker compose exec vault vault operator unseal <KEY>"
             return
         }
 
-        & $DockerPath compose exec -T vault vault operator unseal $unsealKey 2>&1 | Out-Null
+        $unsealOutput = @(& $DockerPath compose exec -T vault vault operator unseal $unsealKey 2>&1)
         if ($LASTEXITCODE -ne 0) {
             Write-Err "Unseal failed - check VAULT_UNSEAL_TOKEN in .env"
+            if ($unsealOutput.Count -gt 0) {
+                $tail = @($unsealOutput | Select-Object -Last 8)
+                Write-Warn ("vault output: " + ($tail -join " | "))
+            }
             return
         }
         Write-Ok "Vault unsealed"
@@ -263,13 +318,19 @@ function Invoke-VaultSetup {
 }
 
 function Invoke-VaultWipe {
+    param([switch]$VerboseOutput, [switch]$Yes)
+
     $dockerPath = Find-Executable -Name "docker" -Fallbacks $script:KnownPaths.docker
     if (-not $dockerPath) { Write-Err "Docker not found"; exit 1 }
     if (-not (Test-DockerDaemon -DockerPath $dockerPath)) { exit 1 }
 
     Write-Warn "This will delete all Vault data and clear credentials from .env. You will need to re-initialize Vault afterwards."
-    $answer = Read-Host "  Are you sure? [y/N]"
-    if ($answer -notmatch "^[Yy]") { Write-Info "Cancelled."; return }
+    if (-not $Yes) {
+        $answer = Read-Host "  Are you sure? [y/N]"
+        if ($answer -notmatch "^[Yy]") { Write-Info "Cancelled."; return }
+    } else {
+        Write-Info "Auto-approved with -y/--yes"
+    }
 
     Write-Info "Stopping and removing Vault container..."
     $prev = $ErrorActionPreference
@@ -298,13 +359,15 @@ function Invoke-VaultWipe {
 }
 
 function Invoke-Unseal {
+    param([switch]$VerboseOutput)
+
     $envVars = Load-DotEnv
     $unsealKey = if ($envVars.ContainsKey("VAULT_UNSEAL_TOKEN")) { $envVars["VAULT_UNSEAL_TOKEN"] } else { "" }
 
     if (-not $unsealKey) {
         Write-Err "VAULT_UNSEAL_TOKEN is not set in .env"
-        Write-Warn "Add your Vault unseal key to .env:"
-        Write-Warn "  VAULT_UNSEAL_TOKEN=<your-key>"
+        Write-Warn "Bootstrap secrets are not persisted by default. Unseal manually with your secure copy:"
+        Write-Warn "  docker compose exec vault vault operator unseal <KEY>"
         exit 1
     }
 
@@ -322,10 +385,16 @@ function Invoke-Unseal {
         exit 1
     }
 
+    Write-VaultStatusDetails -DockerPath $dockerPath -VerboseOutput:$VerboseOutput
+
     Write-Info "Unsealing Vault..."
-    & $dockerPath compose exec -T vault vault operator unseal $unsealKey 2>&1 | Out-Null
+    $unsealOutput = @(& $dockerPath compose exec -T vault vault operator unseal $unsealKey 2>&1)
     if ($LASTEXITCODE -ne 0) {
         Write-Err "Failed to unseal Vault - is the container running?"
+        if ($unsealOutput.Count -gt 0) {
+            $tail = @($unsealOutput | Select-Object -Last 8)
+            Write-Warn ("vault output: " + ($tail -join " | "))
+        }
         Write-Warn "Start the stack first: docker compose up -d --build"
         exit 1
     }

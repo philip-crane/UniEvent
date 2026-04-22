@@ -20,7 +20,7 @@ function Get-PageList {
 }
 
 function Select-PageInteractive {
-    param([object[]]$Pages)
+    param([object[]]$Pages, [switch]$VerboseOutput)
 
     if ($Pages.Count -eq 0) {
         Write-Err "No pages are tracked on this server."
@@ -64,13 +64,14 @@ function Invoke-Ingest {
     if (-not $pageId) {
         Write-Info "Fetching tracked pages..."
         $pages = @(Get-PageList -BaseUrl $BaseUrl -VerboseOutput:$VerboseOutput)
-        $chosen = Select-PageInteractive -Pages $pages
+        $chosen = Select-PageInteractive -Pages $pages -VerboseOutput:$VerboseOutput
         $pageId = $chosen.id
         $pageName = "$($chosen.name) ($pageId)"
     }
 
     Write-Info "Ingesting events for page: $pageName"
-    $resp = Invoke-AdminRequest -Method "POST" -Url "$BaseUrl/admin/tools/ingest/$pageId" -VerboseOutput:$VerboseOutput
+    $encodedPageId = [System.Uri]::EscapeDataString("$pageId")
+    $resp = Invoke-AdminRequest -Method "POST" -Url "$BaseUrl/admin/tools/ingest/$encodedPageId" -VerboseOutput:$VerboseOutput
 
     switch ($resp.StatusCode) {
         200 {
@@ -94,17 +95,17 @@ function Invoke-Ingest {
         }
         502 {
             Write-Err "Facebook API error (502)"
-            if ($resp.Body) { Write-Warn $resp.Body }
+            if ($resp.Body) { Write-Warn (Redact-SensitiveText -Text $resp.Body) }
             exit 1
         }
         500 {
             Write-Err "Server error during ingest (500)"
-            if ($resp.Body) { Write-Warn $resp.Body }
+            if ($resp.Body) { Write-Warn (Redact-SensitiveText -Text $resp.Body) }
             exit 1
         }
         default {
             Write-Err "Unexpected response: $($resp.StatusCode)"
-            if ($resp.Body) { Write-Warn $resp.Body }
+            if ($resp.Body) { Write-Warn (Redact-SensitiveText -Text $resp.Body) }
             exit 1
         }
     }

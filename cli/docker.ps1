@@ -4,7 +4,7 @@
 # --wipe:  docker compose down -v (removes containers AND volumes). Prompts for confirmation.
 
 function Invoke-Docker {
-    param([switch]$Down, [switch]$Wipe, [switch]$VerboseOutput, [switch]$SkipVaultSetup)
+    param([switch]$Down, [switch]$Wipe, [switch]$VerboseOutput, [switch]$SkipVaultSetup, [switch]$Yes)
 
     $dockerPath = Find-Executable -Name "docker" -Fallbacks $script:KnownPaths.docker
     if (-not $dockerPath) {
@@ -17,8 +17,12 @@ function Invoke-Docker {
 
     if ($Wipe) {
         Write-Warn "This will remove all containers AND volumes (database, Vault data, media). All data will be lost."
-        $answer = Read-Host "  Are you sure? [y/N]"
-        if ($answer -notmatch "^[Yy]") { Write-Info "Cancelled."; return }
+        if (-not $Yes) {
+            $answer = Read-Host "  Are you sure? [y/N]"
+            if ($answer -notmatch "^[Yy]") { Write-Info "Cancelled."; return }
+        } else {
+            Write-Info "Auto-approved with -y/--yes"
+        }
         Write-Info "Wiping stack..."
         $prev = $ErrorActionPreference
         $ErrorActionPreference = "Continue"

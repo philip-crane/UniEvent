@@ -1,11 +1,11 @@
-# tools seed [--clear]
+# tools seed [--wipe]
 # Default: clear existing seed data, then re-seed.
-# --clear (-c): only clear, do not re-seed.
+# --wipe (-w): only clear, do not re-seed.
 
 function Invoke-Seed {
-    param([string]$BaseUrl, [switch]$Clear, [switch]$VerboseOutput)
+    param([string]$BaseUrl, [switch]$Wipe, [switch]$VerboseOutput)
 
-    if ($Clear) {
+    if ($Wipe) {
         Write-Info "Clearing seed data..."
         $resp = Invoke-AdminRequest -Method "DELETE" -Url "$BaseUrl/admin/tools/seed" -VerboseOutput:$VerboseOutput
         Handle-Response -Response $resp -SuccessMsg "Seed data cleared" -VerboseOutput:$VerboseOutput

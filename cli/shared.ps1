@@ -9,6 +9,26 @@ function Write-Warn  { param([string]$Msg) Write-Host "  WARN: $Msg" -Foreground
 function Write-Sep   { Write-Host ("-" * 50) -ForegroundColor DarkGray }
 function Write-Step  { param([string]$Msg) Write-Host "`n  $Msg" -ForegroundColor White }
 
+function Redact-SensitiveText {
+    param([string]$Text)
+
+    if (-not $Text) { return $Text }
+
+    $redacted = $Text
+    $patterns = @(
+        '(?im)((?:token|password|secret|authorization|client_secret|access_token|refresh_token)\s*[:=]\s*)([^\s,;]+)',
+        '(?im)("(?:token|password|secret|authorization|client_secret|access_token|refresh_token)"\s*:\s*")([^"]+)(")',
+        '(?im)(Bearer\s+)([A-Za-z0-9\-\._~\+/=]+)',
+        '(?im)((?:VAULT_TOKEN|VAULT_ROOT_TOKEN|VAULT_UNSEAL_TOKEN)\s*=\s*)([^\s]+)'
+    )
+
+    foreach ($pattern in $patterns) {
+        $redacted = [regex]::Replace($redacted, $pattern, '$1***REDACTED***')
+    }
+
+    return $redacted
+}
+
 function Show-Help {
     $cli = if ($IsLinux -or $IsMacOS) { "./tools.sh" } else { "./tools" }
 
@@ -27,11 +47,10 @@ function Show-Help {
     Write-Host "  ingest             Manually ingest from a Facebook page (interactive or -p)"
     Write-Host ""
     Write-Host "Flags:"
-    Write-Host "  -r, --remote <url>   Target a remote server (default: https://localhost)"
     Write-Host "  -p, --page <id>      Scope to a single page (refresh, ingest)"
-    Write-Host "  -c, --clear          seed: only clear, skip re-seed"
+    Write-Host "  -w, --wipe           seed: only clear, skip re-seed; docker/vault: destroy data volumes"
     Write-Host "  -d, --down           docker: stop the stack"
-    Write-Host "  -w, --wipe           docker/vault: destroy data volumes (prompts for confirmation)"
+    Write-Host "  -y, --yes            Non-interactive approval for prompts"
     Write-Host "  -v, --verbose        Show extra output"
     Write-Host "  -h, --help           Show this help"
     Write-Host ""
@@ -41,12 +60,11 @@ function Show-Help {
     Write-Host "  $cli docker -d                # stop"
     Write-Host "  $cli docker -v                # start with full compose output"
     Write-Host "  $cli seed                     # clear + re-seed"
-    Write-Host "  $cli seed -c                  # clear only"
+    Write-Host "  $cli seed -w                  # clear only"
     Write-Host "  $cli refresh"
     Write-Host "  $cli refresh -p 1234567890"
     Write-Host "  $cli ingest"
     Write-Host "  $cli ingest -p 1234567890 -v"
-    Write-Host "  $cli seed -r https://staging.example.com"
     Write-Host ""
 }
 
@@ -93,20 +111,46 @@ function Load-DotEnv {
 
 function Update-EnvVar {
     param([string]$Key, [string]$Value)
+
+    Update-EnvVars -Pairs @{ $Key = $Value }
+}
+
+function Write-TextFileUtf8NoBom {
+    param(
+        [string]$Path,
+        [string[]]$Lines
+    )
+
+    $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+    $tmpPath = "$Path.tmp"
+    [System.IO.File]::WriteAllLines($tmpPath, $Lines, $utf8NoBom)
+    Move-Item -Path $tmpPath -Destination $Path -Force
+}
+
+function Update-EnvVars {
+    param([hashtable]$Pairs)
+
+    if (-not $Pairs -or $Pairs.Count -eq 0) { return }
+
     $envFile = Join-Path (Get-RepoRoot) ".env"
     if (-not (Test-Path $envFile)) { return }
 
     $lines = @(Get-Content $envFile)
-    $found = $false
-    for ($i = 0; $i -lt $lines.Count; $i++) {
-        if ($lines[$i] -match "^$([regex]::Escape($Key))=") {
-            $lines[$i] = "$Key=$Value"
-            $found = $true
-            break
+
+    foreach ($key in $Pairs.Keys) {
+        $value = "$($Pairs[$key])"
+        $found = $false
+        for ($i = 0; $i -lt $lines.Count; $i++) {
+            if ($lines[$i] -match "^$([regex]::Escape($key))=") {
+                $lines[$i] = "$key=$value"
+                $found = $true
+                break
+            }
         }
+        if (-not $found) { $lines += "$key=$value" }
     }
-    if (-not $found) { $lines += "$Key=$Value" }
-    $lines | Set-Content $envFile
+
+    Write-TextFileUtf8NoBom -Path $envFile -Lines $lines
 }
 
 # ── HTTP ──────────────────────────────────────────────────────────────────────
@@ -115,7 +159,15 @@ function Update-EnvVar {
 
 function Invoke-Web {
     param([string]$Method = "GET", [string]$Uri, [hashtable]$Headers = @{}, [int]$TimeoutSec = 30, [string]$Body = $null)
-    $skipCert = $Uri -match "^https://localhost"
+    $skipCert = $false
+    try {
+        $parsedUri = [System.Uri]$Uri
+        $host = $parsedUri.Host.ToLowerInvariant()
+        $isLocalHost = ($host -eq "localhost" -or $host -eq "127.0.0.1" -or $host -eq "::1")
+        $skipCert = $parsedUri.Scheme -eq "https" -and $isLocalHost
+    } catch {
+        $skipCert = $false
+    }
     if ($PSVersionTable.PSVersion.Major -ge 6) {
         if ($null -ne $Body -and $Body -ne "") {
             return Invoke-WebRequest -Uri $Uri -Method $Method -Headers $Headers -Body $Body `
@@ -157,37 +209,54 @@ function Invoke-Web {
 }
 
 function Test-ServerHealth {
-    param([string]$BaseUrl, [switch]$VerboseOutput)
-    if ($VerboseOutput) { Write-Info "Checking server at $BaseUrl" }
-    try {
-        Invoke-Web -Uri "$BaseUrl/actuator/health" -TimeoutSec 5 | Out-Null
-        return $true
-    } catch {
-        $ex = $_.Exception
-        
-        # DEBUG: Log what exception type we're actually getting
-        if ($VerboseOutput) {
-            Write-Info "Exception type: $($ex.GetType().FullName)"
-            Write-Info "Exception message: $($ex.Message)"
-            if ($ex.InnerException) {
-                Write-Info "Inner exception: $($ex.InnerException.GetType().FullName): $($ex.InnerException.Message)"
+    param([string]$BaseUrl, [switch]$VerboseOutput, [int]$Retries = 3)
+
+    if ($Retries -lt 1) { $Retries = 1 }
+    if ($VerboseOutput) { Write-Info "Checking server health at $BaseUrl" }
+
+    for ($attempt = 1; $attempt -le $Retries; $attempt++) {
+        try {
+            $resp = Invoke-Web -Uri "$BaseUrl/actuator/health" -TimeoutSec 5
+            $statusCode = [int]$resp.StatusCode
+            if ($statusCode -lt 200 -or $statusCode -ge 300) {
+                if ($VerboseOutput) { Write-Warn "Health endpoint returned HTTP $statusCode" }
+            } else {
+                $healthIsUp = $true
+                if ($resp.Content) {
+                    try {
+                        $payload = $resp.Content | ConvertFrom-Json
+                        if ($payload.PSObject.Properties.Name -contains 'status') {
+                            $healthIsUp = ("$($payload.status)".ToUpperInvariant() -eq 'UP')
+                        }
+                    } catch {
+                        if ($VerboseOutput) {
+                            Write-Warn "Health response is not valid JSON; accepting HTTP success"
+                        }
+                    }
+                }
+
+                if ($healthIsUp) {
+                    return $true
+                }
+
+                if ($VerboseOutput) {
+                    Write-Warn "Health endpoint reachable but status is not UP"
+                }
+            }
+        } catch {
+            if ($VerboseOutput) {
+                $ex = $_.Exception
+                Write-Info "Health check attempt $attempt/$Retries failed: $($ex.GetType().Name): $($ex.Message)"
             }
         }
-        
-        # PS7: HttpRequestException wraps an inner HttpRequestError for non-2xx
-        # PS5: WebException with a Response means the server replied (even 401/403)
-        if ($ex -is [System.Net.WebException] -and $null -ne $ex.Response) { return $true }
-        if ($ex -is [System.Net.WebException] -and $ex.Status -eq [System.Net.WebExceptionStatus]::TrustFailure) { return $true }
-        if ($ex.GetType().Name -eq "HttpResponseException") { return $true }
-        
-        # Fallback: if we got ANY Response object, server is responding
-        if ($null -ne $ex.Response) { return $true }
-        
-        # PS5: also check for ConnectFailure which means server is down
-        if ($ex -is [System.Net.WebException] -and $ex.Status -eq [System.Net.WebExceptionStatus]::ConnectFailure) { return $false }
-        
-        return $false
+
+        if ($attempt -lt $Retries) {
+            $delay = [math]::Min(2 * $attempt, 5)
+            Start-Sleep -Seconds $delay
+        }
     }
+
+    return $false
 }
 
 $script:_adminToken = $null
@@ -284,9 +353,10 @@ function Handle-Response {
                 Write-Info "Response:"
                 try {
                     $json = $Response.Body | ConvertFrom-Json
-                    Write-Host ($json | ConvertTo-Json -Depth 5) -ForegroundColor Gray
+                    $output = $json | ConvertTo-Json -Depth 5
+                    Write-Host (Redact-SensitiveText -Text $output) -ForegroundColor Gray
                 } catch {
-                    Write-Host $Response.Body -ForegroundColor Gray
+                    Write-Host (Redact-SensitiveText -Text $Response.Body) -ForegroundColor Gray
                 }
             }
         }
@@ -298,12 +368,12 @@ function Handle-Response {
         }
         500 {
             Write-Err "Server error (500)"
-            if ($Response.Body) { Write-Warn $Response.Body }
+            if ($Response.Body) { Write-Warn (Redact-SensitiveText -Text $Response.Body) }
             exit 1
         }
         default {
             Write-Err "Unexpected response: $($Response.StatusCode)"
-            if ($Response.Body) { Write-Warn $Response.Body }
+            if ($Response.Body) { Write-Warn (Redact-SensitiveText -Text $Response.Body) }
             exit 1
         }
     }

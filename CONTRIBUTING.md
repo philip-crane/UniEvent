@@ -26,10 +26,10 @@ UniEventServer currently runs as a Java/Spring backend with Dockerized infrastru
 ## Setup
 
 Run `pwsh ./tools.ps1 setup`. If you're on Mac/Linux, install PowerShell and restart terminal (login and logout/restart computer if that doesn't work). The command will:
-- Check check whether you have installed the right dependencies (Java, Maven, cURL, Docker)
+- Check whether you have installed the right dependencies (Java, Maven, cURL, Docker)
 - Check for an `.env` file in root. If not there, ask from dev team.
 - Set up HTTPS/TLS self-certs by creating files (`docker-compose.override.yml`, OpenSSL certs in `/certs`)
-- Add "tools" environmental variable (Windows: As user PATH in the directory ~/.local/bin) so you no longer have to prefix the dev tools with `./tools`, but now just with `setup`
+- Add the `tools` command to your PATH (Windows: user PATH includes `~/.local/bin`) so you can run commands directly (for example `tools setup`)
 - Optionally begin Docker Compose
 
 ## Tools
@@ -41,7 +41,7 @@ cli/
 ├── setup.ps1      # tools setup
 ├── ingest.ps1     # tools ingest [-p <pageId>]
 ├── refresh.ps1    # tools refresh [-p <pageId>]
-├── seed.ps1       # tools seed, tools clear
+├── seed.ps1       # tools seed, tools seed --wipe
 ├── vault.ps1      # tools vault, tools unseal
 └── shared.ps1     # (helpers)
 ```

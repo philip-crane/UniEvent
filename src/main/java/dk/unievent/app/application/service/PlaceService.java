@@ -8,14 +8,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 import dk.unievent.app.application.dto.PlaceDTO;
 import dk.unievent.app.application.mapper.PlaceMapper;
-import dk.unievent.app.db.model.EventEntity;
 import dk.unievent.app.db.model.PlaceEntity;
 import dk.unievent.app.db.repository.EventRepository;
 import dk.unievent.app.db.repository.PlaceRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.List;
 import java.util.Optional;
 
 @Slf4j
