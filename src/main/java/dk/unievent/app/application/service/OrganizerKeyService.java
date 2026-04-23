@@ -63,9 +63,6 @@ public class OrganizerKeyService {
         organizerKeyRepository.save(keyEntity);
         log.info("Generated organizer key for email: {}", email);
 
-        // Send invitation email asynchronously
-        emailService.sendOrganizerInvitationEmailAsync(email, keyValue);
-
         return keyValue;
     }
 

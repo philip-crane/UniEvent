@@ -17,6 +17,7 @@ import dk.unievent.app.api.dto.OrganizerRegisterWithKeyRequest;
 import dk.unievent.app.api.dto.GenerateOrganizerKeyRequest;
 import dk.unievent.app.api.dto.GenerateOrganizerKeyResponse;
 import dk.unievent.app.infrastructure.security.UserDetailsAdapter;
+import dk.unievent.app.application.service.EmailService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -48,6 +49,7 @@ public class AuthController {
     private final AuthenticationManager authenticationManager;
     private final OrganizerKeyService organizerKeyService;
     private final UserRepository userRepository;
+    private final EmailService emailService;
 
     @PostMapping("/register")
     @Operation(summary = "Register a new user", description = "Create a new user account with email, username, and password. All self-registered users get the 'user' role. To register as an organizer, use the invitation key flow.")
@@ -144,8 +146,8 @@ public class AuthController {
                 .orElseThrow(() -> new IllegalStateException("Admin user not found"));
         String key = organizerKeyService.generateOrganizerKey(request.email(), admin.getId());
         
-        // TODO: Send key via email
-        // emailService.sendOrganizerInvitation(request.email(), key, request.organizationName());
+        // Send invitation email asynchronously
+        emailService.sendOrganizerInvitationEmailAsync(request.email(), key);
 
         return ResponseEntity.ok(new GenerateOrganizerKeyResponse(
                 "Invitation key has been sent to " + request.email(),
