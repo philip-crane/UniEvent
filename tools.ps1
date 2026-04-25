@@ -7,16 +7,18 @@
     ./tools.ps1 <command> [flags]
 
 .COMMANDS
-    setup              Check dependencies and configure the local dev environment
-    docker             Start (or rebuild/restart) the Docker stack
-    vault              Initialize and/or unseal Vault
-    unseal             Quick unseal Vault (shortcut for restart)
-    status             Read-only health/status summary for local services
-    seed               Clear and re-seed test data
-    refresh            Refresh Facebook page tokens (all, or one with -p)
-    ingest             Manually ingest from a Facebook page (interactive picker or -p)
+    setup                  Check dependencies and configure the local dev environment
+    docker                 Start (or rebuild/restart) the Docker stack
+    vault                  Initialize and/or unseal Vault
+    unseal                 Quick unseal Vault (shortcut for restart)
+    seed                   Clear and re-seed test data
+    refresh                Refresh Facebook page tokens (all, or one with -p)
+    ingest                 Manually ingest from a Facebook page (interactive picker or -p)
+    invite                 Send organizer invite key and test registration flow
 
 .FLAGS
+    -r, --remote <url>   Target server URL (default: https://localhost)
+    -e, --email <email>  invite: Email for organizer invite (default: test@example.com)
     -p, --page <id>      Scope to a single page (refresh, ingest)
     -d, --down           docker: stop the stack
     -w, --wipe           seed: only clear, skip re-seed; docker/vault: destroy data volumes
@@ -33,6 +35,12 @@
 param(
     [Parameter(Position = 0)]
     [string]$Command,
+
+    [Alias("r")]
+    [string]$Remote = "",
+
+    [Alias("e")]
+    [string]$Email = "",
 
     [Alias("p")]
     [string]$Page = "",
@@ -78,7 +86,7 @@ if ($Help -or $Command -eq "" -or $Command -eq "-h" -or $Command -eq "--help") {
 # ── Dispatch: commands that don't need a live server first ────────────────────
 
 $cmdLower = $Command.ToLower()
-$allCommands = @("setup", "docker", "vault", "unseal", "status", "seed", "refresh", "ingest")
+$allCommands = @("setup", "docker", "vault", "unseal", "status", "seed", "refresh", "ingest", "invite")
 
 if ($allCommands -notcontains $cmdLower) {
     Write-Err "Unknown command: '$Command'"
@@ -144,6 +152,16 @@ switch ($cmdLower) {
     "ingest" {
         . (Join-Path $cliDir "ingest.ps1")
         Invoke-Ingest -BaseUrl $baseUrl -Page $Page -VerboseOutput:$VerboseOutput
+    }
+    "invite" {
+        . (Join-Path $cliDir "invite.ps1")
+        Invoke-TestOrganizerKey -BaseUrl $baseUrl -Email $Email -VerboseOutput:$VerboseOutput
+    }
+    default {
+        Write-Err "Unknown command: '$Command'"
+        Write-Host ""
+        Show-Help
+        exit 1
     }
 }
 

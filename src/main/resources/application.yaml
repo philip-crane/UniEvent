@@ -12,6 +12,23 @@ spring:
       pageable:
         default-page-size: 20
         max-page-size: 100
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+    protocol: smtp
+    default-encoding: UTF-8
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
 
 logging:
   level:
@@ -56,6 +73,9 @@ unievent:
       expiration-ms: ${UNIEVENT_SECURITY_JWT_EXPIRATION_MS:86400000}
       refresh-secret: ${UNIEVENT_SECURITY_JWT_REFRESH_SECRET}
       refresh-expiration-ms: ${UNIEVENT_SECURITY_JWT_REFRESH_EXPIRATION_MS:604800000}
+    organizer-key:
+      expiration-hours: ${UNIEVENT_ORGANIZER_KEY_EXPIRATION_HOURS:24}
+      confirmation-token-expiration-minutes: ${UNIEVENT_ORGANIZER_KEY_CONFIRMATION_TOKEN_EXPIRATION_MINUTES:10}
   openapi:
     title: ${UNIEVENT_OPENAPI_TITLE:UniEvent API}
     version: ${UNIEVENT_OPENAPI_VERSION:1.0.0}
