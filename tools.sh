@@ -28,6 +28,7 @@ for arg in "$@"; do
     --wipe)    args+=("-w") ;;
     --yes)     args+=("-y") ;;
     --page)    args+=("-p") ;;
+    --orgname) args+=("-n") ;;
     --help)    args+=("-h") ;;
     --*)       args+=("-${arg#--}") ;;
     *)         args+=("$arg") ;;

@@ -200,7 +200,7 @@ subjectAltName = DNS:vault,DNS:localhost,IP:127.0.0.1
         }
     }
 
-    # ── Step 7: Install CLI on PATH ───────────────────────────────────────────
+    # ── Step 6: Install CLI on PATH ───────────────────────────────────────────
 
     Write-Step "Installing CLI..."
 

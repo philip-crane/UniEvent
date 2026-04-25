@@ -11,15 +11,15 @@ function Invoke-TestOrganizerKey {
         [switch]$VerboseOutput
     )
 
-        $BaseUrl = Assert-ValidBaseUrl -BaseUrl $BaseUrl
+    $BaseUrl = Assert-ValidBaseUrl -BaseUrl $BaseUrl
 
-        if (-not (Test-ValidEmail -Email $Email)) {
-            Write-Err "Invalid email address: $Email"
-            exit 1
-        }
+    if (-not (Test-ValidEmail -Email $Email)) {
+        Write-Err "Invalid email address: $Email"
+        exit 1
+    }
 
-        Assert-NonEmpty -Name "Organization name" -Value $OrgName
-    
+    Assert-NonEmpty -Name "Organization name" -Value $OrgName
+
     Write-Step "Testing Organizer Key Registration Flow"
     Write-Info "Target: $BaseUrl"
     Write-Info "Test Email: $Email"
@@ -39,7 +39,7 @@ function Invoke-TestOrganizerKey {
     $generateBody = @{
         email = $Email
         organizationName = $OrgName
-    } | ConvertTo-Json
+    } | ConvertTo-Json -Compress
 
     try {
         $headers = @{
@@ -107,21 +107,21 @@ function Invoke-RegistrationInTool {
         [switch]$VerboseOutput
     )
 
-        $BaseUrl = Assert-ValidBaseUrl -BaseUrl $BaseUrl
-        if (-not (Test-ValidEmail -Email $Email)) {
-            Write-Err "Invalid email address: $Email"
-            exit 1
-        }
-        if (-not $KeyValue -or $KeyValue -notmatch '^[A-Za-z0-9]{32}$') {
-            Write-Err "Invalid organizer key format"
-            exit 1
-        }
+    $BaseUrl = Assert-ValidBaseUrl -BaseUrl $BaseUrl
+    if (-not (Test-ValidEmail -Email $Email)) {
+        Write-Err "Invalid email address: $Email"
+        exit 1
+    }
+    if (-not $KeyValue -or $KeyValue -notmatch '^[A-Za-z0-9]{32}$') {
+        Write-Err "Invalid organizer key format"
+        exit 1
+    }
 
     Write-Step "[1/3] Verifying organizer key..."
     
     $verifyBody = @{
         key = $KeyValue
-    } | ConvertTo-Json
+    } | ConvertTo-Json -Compress
 
     try {
         $headers = @{ "Content-Type" = "application/json" }
@@ -173,7 +173,7 @@ function Invoke-RegistrationInTool {
         username = $username
         email = $Email
         password = $passwordPlain
-    } | ConvertTo-Json
+    } | ConvertTo-Json -Compress
 
     try {
         $headers = @{ "Content-Type" = "application/json" }
@@ -228,15 +228,8 @@ function Invoke-RegistrationOnWebsite {
     Write-Host ""
     
     if ($KeyValue) {
-        $maskedKey = ""
-        if ($KeyValue.Length -ge 8) {
-            $maskedKey = "$($KeyValue.Substring(0,4))************************$($KeyValue.Substring($KeyValue.Length - 4, 4))"
-        } else {
-            $maskedKey = "(hidden)"
-        }
-
-        Write-Host "   Invitation Key: $maskedKey" -ForegroundColor Yellow
-        Write-Host "   (Key already available - copy and paste above)"
+        Write-Host "   Invitation Key: ********************************" -ForegroundColor Yellow
+        Write-Host "   (Key already in your clipboard from the email — paste it into the form)"
     } else {
         Write-Host "   Get the key from your email at: $Email" -ForegroundColor Yellow
         Write-Host "   Look for subject: 'You're Invited to Organize Events on UniEvent!'"

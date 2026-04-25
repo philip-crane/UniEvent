@@ -350,9 +350,7 @@ function Invoke-VaultWipe {
     $ErrorActionPreference = $prev
 
     Write-Info "Clearing Vault credentials from .env..."
-    Update-EnvVar -Key "VAULT_UNSEAL_TOKEN" -Value ""
-    Update-EnvVar -Key "VAULT_ROOT_TOKEN"   -Value ""
-    Update-EnvVar -Key "VAULT_TOKEN"        -Value ""
+    Update-EnvVars -Pairs @{ VAULT_UNSEAL_TOKEN = ""; VAULT_ROOT_TOKEN = ""; VAULT_TOKEN = "" }
 
     Write-Ok "Vault wiped"
     Write-Info "Run 'tools docker' to restart Vault, then 'tools vault' to re-initialize."

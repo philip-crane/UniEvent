@@ -115,6 +115,8 @@ function Show-Help {
     Write-Host ""
     Write-Host "Flags:"
     Write-Host "  -p, --page <id>      Scope to a single page (refresh, ingest)"
+    Write-Host "  -e, --email <email>  invite: recipient email (default: test@example.com)"
+    Write-Host "  -n, --orgname <name> invite: organization name (default: Test Organization)"
     Write-Host "  -w, --wipe           seed: only clear, skip re-seed; docker/vault: destroy data volumes"
     Write-Host "  -d, --down           docker: stop the stack"
     Write-Host "  -y, --yes            Non-interactive approval for prompts"
@@ -141,14 +143,19 @@ function Show-Help {
 # Resolve the repo root from any script location under cli/.
 # Walks up from $PSScriptRoot looking for .git/ or pom.xml.
 
+$script:_repoRoot = $null
+
 function Get-RepoRoot {
     param([string]$StartFrom = $PSScriptRoot)
+
+    if ($script:_repoRoot) { return $script:_repoRoot }
 
     $dir = Get-Item -LiteralPath $StartFrom
     while ($null -ne $dir) {
         if ((Test-Path (Join-Path $dir.FullName ".git")) -or
             (Test-Path (Join-Path $dir.FullName "pom.xml"))) {
-            return $dir.FullName
+            $script:_repoRoot = $dir.FullName
+            return $script:_repoRoot
         }
         if ($null -eq $dir.Parent) { break }
         $dir = $dir.Parent
@@ -172,7 +179,9 @@ function Load-DotEnv {
         $line = $line.Trim()
         if ($line -eq "" -or $line.StartsWith("#")) { continue }
         if ($line -match "^([^=]+)=(.*)$") {
-            $vars[$Matches[1].Trim()] = $Matches[2].Trim()
+            $raw = $Matches[2].Trim()
+            if (($raw -match '^"(.*)"$') -or ($raw -match "^'(.*)'$")) { $raw = $Matches[1] }
+            $vars[$Matches[1].Trim()] = $raw
         }
     }
     return $vars
@@ -441,7 +450,7 @@ function Handle-Response {
     param([hashtable]$Response, [string]$SuccessMsg, [switch]$VerboseOutput)
 
     switch ($Response.StatusCode) {
-        200 {
+        { $_ -ge 200 -and $_ -lt 300 } {
             Write-Ok $SuccessMsg
             if ($VerboseOutput -and $Response.Body) {
                 Write-Host ""
@@ -454,6 +463,16 @@ function Handle-Response {
                     Write-Host (Redact-SensitiveText -Text $Response.Body) -ForegroundColor Gray
                 }
             }
+        }
+        { $_ -eq 400 -or $_ -eq 422 } {
+            Write-Err "Validation error ($($Response.StatusCode))"
+            if ($Response.Body) { Write-Warn (Redact-SensitiveText -Text $Response.Body) }
+            exit 1
+        }
+        { $_ -eq 401 -or $_ -eq 403 } {
+            Write-Err "Unauthorized ($($Response.StatusCode)) - check admin credentials"
+            if ($Response.Body) { Write-Warn (Redact-SensitiveText -Text $Response.Body) }
+            exit 1
         }
         404 {
             Write-Err "Endpoint not found (404)"

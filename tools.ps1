@@ -18,7 +18,8 @@
 
 .FLAGS
     -r, --remote <url>   Target server URL (default: https://localhost)
-    -e, --email <email>  invite: Email for organizer invite (default: test@example.com)
+    -e, --email <email>  invite: recipient email (default: test@example.com)
+    -n, --orgname <name> invite: organization name (default: Test Organization)
     -p, --page <id>      Scope to a single page (refresh, ingest)
     -d, --down           docker: stop the stack
     -w, --wipe           seed: only clear, skip re-seed; docker/vault: destroy data volumes
@@ -41,6 +42,9 @@ param(
 
     [Alias("e")]
     [string]$Email = "",
+
+    [Alias("n")]
+    [string]$OrgName = "",
 
     [Alias("p")]
     [string]$Page = "",
@@ -159,7 +163,9 @@ switch ($cmdLower) {
     }
     "invite" {
         . (Join-Path $cliDir "invite.ps1")
-        Invoke-TestOrganizerKey -BaseUrl $baseUrl -Email $Email -VerboseOutput:$VerboseOutput
+        $inviteEmail   = if ($Email)   { $Email }   else { "test@example.com" }
+        $inviteOrgName = if ($OrgName) { $OrgName } else { "Test Organization" }
+        Invoke-TestOrganizerKey -BaseUrl $baseUrl -Email $inviteEmail -OrgName $inviteOrgName -VerboseOutput:$VerboseOutput
     }
     default {
         Write-Err "Unknown command: '$Command'"
