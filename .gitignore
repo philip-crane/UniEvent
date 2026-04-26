@@ -49,3 +49,9 @@ logs/
 
 ### GENERATED FRONTEND BUILD ###
 src/main/resources/static/
+
+### FRONTEND (web/) ###
+web/node_modules/
+web/dist/
+web/.env
+web/.env.local

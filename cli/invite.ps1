@@ -229,7 +229,7 @@ function Invoke-RegistrationOnWebsite {
     
     if ($KeyValue) {
         Write-Host "   Invitation Key: ********************************" -ForegroundColor Yellow
-        Write-Host "   (Key already in your clipboard from the email — paste it into the form)"
+        Write-Host "   (Key already in your clipboard from the email - paste it into the form)"
     } else {
         Write-Host "   Get the key from your email at: $Email" -ForegroundColor Yellow
         Write-Host "   Look for subject: 'You're Invited to Organize Events on UniEvent!'"

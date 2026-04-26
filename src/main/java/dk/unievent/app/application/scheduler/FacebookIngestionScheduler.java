@@ -3,47 +3,35 @@ package dk.unievent.app.application.scheduler;
 import dk.unievent.app.application.service.EventService;
 import dk.unievent.app.application.service.PageService;
 import dk.unievent.app.application.dto.PageDTO;
+import dk.unievent.app.infrastructure.config.SchedulingConstants;
 import dk.unievent.app.infrastructure.exception.FacebookApiException;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-
-
-/**
- * Scheduled task for ingesting Facebook events.
- * Runs every 12 hours to fetch upcoming events from all connected Facebook pages.
- *
- * Schedule: 43200000 ms = 12 hours
- * Retry on failure: Does not block on individual page failures
- * Logging: Detailed logging of successes and failures per page
- */
 @Slf4j
 @Component
 public class FacebookIngestionScheduler {
 
     private final PageService pageService;
     private final EventService eventService;
-    private static final int PAGE_SIZE = 50;
-    private static final long INGESTION_INTERVAL = 43200000; // 12 hours in milliseconds
+    private final int pageSize;
 
     public FacebookIngestionScheduler(
         PageService pageService,
-        EventService eventService
+        EventService eventService,
+        @Value("${unievent.facebook.ingestion.page-size:50}") int pageSize
     ) {
         this.pageService = pageService;
         this.eventService = eventService;
+        this.pageSize = pageSize;
     }
 
-    /**
-     * Ingest Facebook events for all active pages.
-     * Runs on a 12-hour schedule.
-     * Processes pages in batches to avoid overwhelming the system.
-     */
-    @Scheduled(fixedDelay = INGESTION_INTERVAL, initialDelay = 60000) // Initial delay: 1 minute after startup
+    @Scheduled(fixedDelay = SchedulingConstants.INGESTION_INTERVAL_MS, initialDelay = SchedulingConstants.INGESTION_INITIAL_DELAY_MS)
     public void ingestFacebookEvents() {
         log.info("Starting scheduled Facebook event ingestion");
 
@@ -58,7 +46,7 @@ public class FacebookIngestionScheduler {
             boolean hasMorePages = true;
 
             while (hasMorePages) {
-                Pageable pageable = PageRequest.of(pageNumber, PAGE_SIZE);
+                Pageable pageable = PageRequest.of(pageNumber, pageSize);
                 Page<PageDTO> activePagesPage = pageService.getActivePages(pageable);
 
                 for (PageDTO page : activePagesPage.getContent()) {

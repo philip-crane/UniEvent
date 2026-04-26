@@ -22,7 +22,7 @@ import java.util.List;
 @ConfigurationProperties(prefix = "unievent.security.cors")
 public class CorsConfig {
 
-    private List<String> allowedOrigins = List.of("http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:8080", "http://127.0.0.1:8080", "https://localhost");
+    private List<String> allowedOrigins = List.of();
     private List<String> allowedMethods = List.of("GET", "POST", "PUT", "DELETE", "OPTIONS");
     private List<String> allowedHeaders = List.of("Authorization", "Content-Type", "Accept");
     private boolean allowCredentials = true;

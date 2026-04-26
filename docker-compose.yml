@@ -145,7 +145,7 @@ services:
 
   frontend:
     build:
-      context: ../UniEventClient/web
+      context: ./web
       dockerfile: Dockerfile
     container_name: unievent-frontend
     restart: on-failure

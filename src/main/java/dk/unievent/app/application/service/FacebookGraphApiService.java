@@ -1,6 +1,7 @@
 package dk.unievent.app.application.service;
 
 import dk.unievent.app.api.dto.*;
+import dk.unievent.app.infrastructure.config.FacebookApiConstants;
 import dk.unievent.app.infrastructure.config.FacebookConfig;
 import dk.unievent.app.infrastructure.exception.FacebookApiException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -76,7 +77,7 @@ public class FacebookGraphApiService {
             log.debug("Exchanging short-lived token for long-lived token");
 
             MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
-            body.add("grant_type", "fb_exchange_token");
+            body.add("grant_type", FacebookApiConstants.GRANT_TYPE_EXCHANGE_TOKEN);
             body.add("client_id", facebookConfig.getAppId());
             body.add("client_secret", facebookConfig.getAppSecret());
             body.add("fb_exchange_token", shortLivedToken);
@@ -115,8 +116,8 @@ public class FacebookGraphApiService {
             log.debug("Fetching admin-controlled pages for user (token: {})", maskToken(userToken));
 
             String responseBody = restClient.get()
-                    .uri("/{version}/me/accounts?fields=id,name,access_token", facebookConfig.getGraphApiVersion())
-                    .header("Authorization", "Bearer " + userToken)
+                    .uri("/{version}/me/accounts?fields={fields}", facebookConfig.getGraphApiVersion(), FacebookApiConstants.PAGES_FIELDS)
+                    .header("Authorization", FacebookApiConstants.BEARER_PREFIX + userToken)
                     .retrieve()
                     .body(String.class);
 
@@ -171,12 +172,11 @@ public class FacebookGraphApiService {
         try {
             log.debug("Fetching events for page: {} (token: {})", pageId, maskToken(pageToken));
 
-            String fields = "id,name,description,start_time,end_time,place,cover,timezone,is_canceled,is_online,type";
-
             String responseBody = restClient.get()
-                    .uri("/{version}/{pageId}/events?fields={fields}&limit=100",
-                            facebookConfig.getGraphApiVersion(), pageId, fields)
-                    .header("Authorization", "Bearer " + pageToken)
+                    .uri("/{version}/{pageId}/events?fields={fields}&limit={limit}",
+                            facebookConfig.getGraphApiVersion(), pageId,
+                            FacebookApiConstants.EVENTS_FIELDS, FacebookApiConstants.EVENTS_LIMIT)
+                    .header("Authorization", FacebookApiConstants.BEARER_PREFIX + pageToken)
                     .retrieve()
                     .body(String.class);
 
@@ -202,7 +202,7 @@ public class FacebookGraphApiService {
                     log.debug("Following paging.next for page: {}", pageId);
                     responseBody = restClient.get()
                             .uri(URI.create(nextUrl))
-                            .header("Authorization", "Bearer " + pageToken)
+                            .header("Authorization", FacebookApiConstants.BEARER_PREFIX + pageToken)
                             .retrieve()
                             .body(String.class);
                 }
@@ -241,7 +241,7 @@ public class FacebookGraphApiService {
             log.debug("Refreshing page token (token: {})", maskToken(expiredToken));
 
             MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
-            body.add("grant_type", "fb_exchange_token");
+            body.add("grant_type", FacebookApiConstants.GRANT_TYPE_EXCHANGE_TOKEN);
             body.add("client_id", facebookConfig.getAppId());
             body.add("client_secret", facebookConfig.getAppSecret());
             body.add("fb_exchange_token", expiredToken);
@@ -279,7 +279,7 @@ public class FacebookGraphApiService {
 
             var response = restClient.get()
                     .uri("/{version}/{pageId}?fields=id", facebookConfig.getGraphApiVersion(), pageId)
-                    .header("Authorization", "Bearer " + pageToken)
+                    .header("Authorization", FacebookApiConstants.BEARER_PREFIX + pageToken)
                     .retrieve()
                     .body(new ParameterizedTypeReference<Map<String, Object>>() {});
 

@@ -90,6 +90,8 @@ unievent:
     app-secret: ${FACEBOOK_APP_SECRET:}
     redirect-uri: ${FACEBOOK_REDIRECT_URI:http://localhost:8080/api/facebook/callback}
     graph-api-version: ${FACEBOOK_GRAPH_VERSION:v25.0}
+    ingestion:
+      page-size: ${FACEBOOK_INGESTION_PAGE_SIZE:50}
 
 frontend:
   url: ${FRONTEND_URL:http://localhost}

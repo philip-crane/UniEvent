@@ -2,6 +2,7 @@ package dk.unievent.app.api.controller;
 
 import dk.unievent.app.application.service.FacebookOAuthService;
 import dk.unievent.app.db.model.PageEntity;
+import dk.unievent.app.infrastructure.config.FacebookApiConstants;
 import dk.unievent.app.infrastructure.config.FacebookConfig;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -27,7 +28,7 @@ import java.util.UUID;
 @Tag(name = "Facebook Integration", description = "Facebook OAuth and event integration")
 public class FacebookController {
 
-    private static final long STATE_MAX_AGE_SECONDS = 900; // 15 minutes
+    private static final long STATE_MAX_AGE_SECONDS = FacebookApiConstants.STATE_MAX_AGE_SECONDS;
 
     private final FacebookOAuthService facebookOAuthService;
     private final FacebookConfig facebookConfig;
@@ -53,10 +54,10 @@ public class FacebookController {
     @ApiResponse(responseCode = "200", description = "Authorization URL generated")
     public ResponseEntity<Map<String, String>> initiateOAuth() {
         String state = generateSignedState();
-        String authUrl = "https://www.facebook.com/dialog/oauth"
+        String authUrl = FacebookApiConstants.OAUTH_URL
             + "?client_id=" + facebookConfig.getAppId()
             + "&redirect_uri=" + URLEncoder.encode(facebookConfig.getRedirectUri(), StandardCharsets.UTF_8)
-            + "&scope=pages_show_list,pages_read_engagement"
+            + "&scope=" + FacebookApiConstants.OAUTH_SCOPES
             + "&state=" + URLEncoder.encode(state, StandardCharsets.UTF_8)
             + "&response_type=code";
         return ResponseEntity.ok(Map.of("url", authUrl, "state", state));

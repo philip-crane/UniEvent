@@ -17,6 +17,7 @@ import dk.unievent.app.api.dto.GenerateOrganizerKeyRequest;
 import dk.unievent.app.api.dto.GenerateOrganizerKeyResponse;
 import dk.unievent.app.infrastructure.security.UserDetailsAdapter;
 import dk.unievent.app.application.service.EmailService;
+import dk.unievent.app.infrastructure.config.RoleConstants;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -57,7 +58,7 @@ public class AuthController {
             @ApiResponse(responseCode = "409", description = "User already exists")
     })
     public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
-        UserEntity user = userService.register(new UserDTO(request.username(), request.email(), request.password(), "user"));
+        UserEntity user = userService.register(new UserDTO(request.username(), request.email(), request.password(), RoleConstants.USER));
         RefreshTokenService.TokenPair tokenPair = refreshTokenService.issueTokenPair(user);
         return ResponseEntity.ok(new AuthResponse(
                 tokenPair.accessToken(),
