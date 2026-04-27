@@ -43,4 +43,17 @@ function Invoke-Status {
     } else {
         Write-Warn "App container not found in compose output"
     }
+
+    $frontendLine = $stackPs | Where-Object { $_ -match 'unievent-frontend' } | Select-Object -First 1
+    if ($frontendLine) {
+        if ($frontendLine -match '\(healthy\)') {
+            Write-Ok "Frontend container is healthy"
+        } elseif ($frontendLine -match '\(unhealthy\)') {
+            Write-Warn "Frontend container is unhealthy"
+        } else {
+            Write-Warn "Frontend container is starting or unknown"
+        }
+    } else {
+        Write-Warn "Frontend container not found in compose output"
+    }
 }

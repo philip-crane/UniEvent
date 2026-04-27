@@ -76,6 +76,15 @@ function Invoke-Setup {
         Write-Ok "Docker ($dockerPath)"
     }
 
+    $npmCmd = Get-Command npm -ErrorAction SilentlyContinue -CommandType Application | Select-Object -First 1
+    if ($npmCmd) {
+        Write-Ok "npm ($($npmCmd.Source))"
+    } else {
+        Write-Err "Node.js / npm not found"
+        Write-Warn "Install from https://nodejs.org"
+        $failed += "npm"
+    }
+
     if ($failed.Count -gt 0) {
         Write-Host ""
         Write-Err "Missing dependencies: $($failed -join ', ')"
@@ -96,7 +105,28 @@ function Invoke-Setup {
     }
     Write-Ok ".env found"
 
-    # ── Step 3: docker-compose.override.yml ──────────────────────────────────
+    # ── Step 3: Frontend dependencies ────────────────────────────────────────
+
+    Write-Step "Installing frontend dependencies (web/)..."
+    $webDir = Join-Path $repoRoot "web"
+    $nodeModules = Join-Path $webDir "node_modules"
+    if (Test-Path $nodeModules) {
+        Write-Ok "web/node_modules already exists"
+    } else {
+        $prev = $ErrorActionPreference
+        $ErrorActionPreference = "Continue"
+        & npm install --prefix $webDir
+        $npmExit = $LASTEXITCODE
+        $ErrorActionPreference = $prev
+        if ($npmExit -eq 0) {
+            Write-Ok "Frontend dependencies installed"
+        } else {
+            Write-Err "npm install failed (exit $npmExit)"
+            exit 1
+        }
+    }
+
+    # ── Step 5: docker-compose.override.yml ──────────────────────────────────
 
     Write-Step "Checking docker-compose.override.yml..."
     $overrideDst = Join-Path $repoRoot "docker-compose.override.yml"
@@ -111,7 +141,7 @@ function Invoke-Setup {
         Write-Warn "docker-compose.override.yml.example not found - skipping"
     }
 
-    # ── Step 4: TLS certificate ───────────────────────────────────────────────
+    # ── Step 6: TLS certificate ───────────────────────────────────────────────
 
     Write-Step "Checking TLS certificate..."
     $certsDir  = Join-Path $repoRoot "certs"
@@ -152,7 +182,7 @@ function Invoke-Setup {
         }
     }
 
-    # ── Step 5: Vault TLS certificate ────────────────────────────────────────
+    # ── Step 7: Vault TLS certificate ────────────────────────────────────────
 
     Write-Step "Checking Vault TLS certificate..."
     $vaultCertFile = Join-Path $certsDir "vault.crt"
@@ -200,7 +230,7 @@ subjectAltName = DNS:vault,DNS:localhost,IP:127.0.0.1
         }
     }
 
-    # ── Step 6: Install CLI on PATH ───────────────────────────────────────────
+    # ── Step 8: Install CLI on PATH ───────────────────────────────────────────
 
     Write-Step "Installing CLI..."
 
@@ -346,7 +376,7 @@ subjectAltName = DNS:vault,DNS:localhost,IP:127.0.0.1
         Write-Info "You can now run: tools seed, tools setup, tools refresh"
     }
 
-    # ── Step 8: Done ──────────────────────────────────────────────────────────
+    # ── Step 9: Done ──────────────────────────────────────────────────────────
 
     Write-Host ""
     Write-Sep
