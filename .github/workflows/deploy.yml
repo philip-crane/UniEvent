@@ -1,0 +1,25 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    name: Deploy to server
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.LIVE_DEPLOY_HOST }}
+          username: ${{ secrets.LIVE_DEPLOY_USER }}
+          key: ${{ secrets.LIVE_DEPLOY_SSH_KEY }}
+          known_hosts: ${{ secrets.LIVE_DEPLOY_KNOWN_HOSTS }}
+          script: |
+            set -e
+            cd ${{ secrets.LIVE_DEPLOY_PATH }}
+            git pull origin main
+            docker compose up --build -d
+            docker image prune -f
