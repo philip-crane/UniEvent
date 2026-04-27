@@ -74,13 +74,13 @@ unievent:
       csrf-name: ${UNIEVENT_SECURITY_COOKIE_CSRF_NAME:csrf_token}
       access-max-age: ${UNIEVENT_SECURITY_COOKIE_ACCESS_MAX_AGE:86400}
       refresh-max-age: ${UNIEVENT_SECURITY_COOKIE_REFRESH_MAX_AGE:604800}
-      csrf-max-age: ${UNIEVENT_SECURITY_COOKIE_CSRF_MAX_AGE:3600}
+      csrf-max-age: ${UNIEVENT_SECURITY_COOKIE_CSRF_MAX_AGE:86400}
       secure: ${UNIEVENT_SECURITY_COOKIE_SECURE:true}
-      same-site: ${UNIEVENT_SECURITY_COOKIE_SAME_SITE:Strict}
+      same-site: ${UNIEVENT_SECURITY_COOKIE_SAME_SITE:Lax}
       domain: ${UNIEVENT_COOKIE_DOMAIN:}
       path: /
     csrf:
-      secret: ${UNIEVENT_SECURITY_CSRF_SECRET:dev-csrf-secret-key-change-in-production}
+      secret: ${UNIEVENT_SECURITY_CSRF_SECRET}
     jwt:
       secret: ${UNIEVENT_SECURITY_JWT_SECRET}
       expiration-ms: ${UNIEVENT_SECURITY_JWT_EXPIRATION_MS:86400000}

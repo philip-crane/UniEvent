@@ -24,6 +24,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import jakarta.servlet.http.Cookie;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -98,7 +99,8 @@ class AuthControllerTests {
             3600000L,
             86400000L,
             "testuser",
-            "test@example.com"
+            "test@example.com",
+            "user"
         );
 
         adminUser = UserEntity.builder()
@@ -142,9 +144,10 @@ class AuthControllerTests {
                 .content("{\"username\":\"testuser\",\"email\":\"test@example.com\",\"password\":\"password123456\"}"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.token").value("access-token-value"))
-            .andExpect(jsonPath("$.refreshToken").value("refresh-token-value"))
             .andExpect(jsonPath("$.username").value("testuser"))
-            .andExpect(jsonPath("$.email").value("test@example.com"));
+            .andExpect(jsonPath("$.email").value("test@example.com"))
+            .andExpect(jsonPath("$.role").value("user"))
+            .andExpect(jsonPath("$.csrfToken").value("csrf-token-value"));
     }
 
     @Test
@@ -185,7 +188,9 @@ class AuthControllerTests {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.token").value("access-token-value"))
             .andExpect(jsonPath("$.username").value("testuser"))
-            .andExpect(jsonPath("$.email").value("test@example.com"));
+            .andExpect(jsonPath("$.email").value("test@example.com"))
+            .andExpect(jsonPath("$.role").value("user"))
+            .andExpect(jsonPath("$.csrfToken").value("csrf-token-value"));
 
         verify(authenticationManager).authenticate(any(UsernamePasswordAuthenticationToken.class));
     }
@@ -211,38 +216,33 @@ class AuthControllerTests {
         when(refreshTokenService.rotate(eq("old-refresh-token"), any(), any())).thenReturn(testTokenPair);
 
         mockMvc.perform(post("/api/auth/refresh")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"refreshToken\":\"old-refresh-token\"}"))
+                .cookie(new Cookie("auth_refresh", "old-refresh-token")))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.token").value("access-token-value"))
-            .andExpect(jsonPath("$.refreshToken").value("refresh-token-value"))
             .andExpect(jsonPath("$.username").value("testuser"))
-            .andExpect(jsonPath("$.email").value("test@example.com"));
+            .andExpect(jsonPath("$.email").value("test@example.com"))
+            .andExpect(jsonPath("$.role").value("user"))
+            .andExpect(jsonPath("$.csrfToken").value("csrf-token-value"));
     }
 
     @Test
-    void refreshShouldReturn400WhenTokenBlank() throws Exception {
-        mockMvc.perform(post("/api/auth/refresh")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"refreshToken\":\"\"}"))
+    void refreshShouldReturn400WhenNoCookie() throws Exception {
+        mockMvc.perform(post("/api/auth/refresh"))
             .andExpect(status().isBadRequest());
     }
 
     @Test
     void logoutShouldReturnNoContent() throws Exception {
         mockMvc.perform(post("/api/auth/logout")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"refreshToken\":\"some-refresh-token\"}"))
+                .cookie(new Cookie("auth_refresh", "some-refresh-token")))
             .andExpect(status().isNoContent());
 
         verify(refreshTokenService).logout("some-refresh-token");
     }
 
     @Test
-    void logoutShouldReturn400WhenTokenBlank() throws Exception {
-        mockMvc.perform(post("/api/auth/logout")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"refreshToken\":\"\"}"))
+    void logoutShouldReturn400WhenNoCookie() throws Exception {
+        mockMvc.perform(post("/api/auth/logout"))
             .andExpect(status().isBadRequest());
     }
 
@@ -339,7 +339,7 @@ class AuthControllerTests {
     @Test
     void registerWithKeyShouldReturn201OnSuccess() throws Exception {
         RefreshTokenService.TokenPair organizerPair = new RefreshTokenService.TokenPair(
-            "org-access-token", "org-refresh-token", 3600000L, 86400000L, "neworg", "organizer@example.com");
+            "org-access-token", "org-refresh-token", 3600000L, 86400000L, "neworg", "organizer@example.com", "organizer");
         UserEntity organizer = UserEntity.builder()
             .username("neworg").email("organizer@example.com").password("encoded").role("organizer").build();
         when(organizerKeyService.completeOrganizerRegistration(eq("valid-token"), eq("neworg"), eq("securepassword1"), eq("organizer@example.com")))
@@ -352,7 +352,9 @@ class AuthControllerTests {
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.token").value("org-access-token"))
             .andExpect(jsonPath("$.username").value("neworg"))
-            .andExpect(jsonPath("$.email").value("organizer@example.com"));
+            .andExpect(jsonPath("$.email").value("organizer@example.com"))
+            .andExpect(jsonPath("$.role").value("organizer"))
+            .andExpect(jsonPath("$.csrfToken").value("csrf-token-value"));
     }
 
     @Test
