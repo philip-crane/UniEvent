@@ -34,6 +34,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -66,7 +67,8 @@ public class AuthController {
                 user.getUsername(),
                 user.getEmail(),
                 tokenPair.accessTokenExpiresInMs(),
-                tokenPair.refreshTokenExpiresInMs()
+                tokenPair.refreshTokenExpiresInMs(),
+                user.getRole()
         ));
     }
 
@@ -90,7 +92,8 @@ public class AuthController {
                 user.getUsername(),
                 user.getEmail(),
                 tokenPair.accessTokenExpiresInMs(),
-                tokenPair.refreshTokenExpiresInMs()
+                tokenPair.refreshTokenExpiresInMs(),
+                user.getRole()
         ));
     }
 
@@ -106,13 +109,17 @@ public class AuthController {
         String userAgent = httpRequest.getHeader("User-Agent");
         String ipAddress = httpRequest.getRemoteAddr();
         RefreshTokenService.TokenPair tokenPair = refreshTokenService.rotate(request.refreshToken(), userAgent, ipAddress);
+        
+        // Fetch user to get role
+        UserEntity user = userService.findByEmail(tokenPair.email());
         return ResponseEntity.ok(new AuthResponse(
                 tokenPair.accessToken(),
                 tokenPair.refreshToken(),
                 tokenPair.username(),
                 tokenPair.email(),
                 tokenPair.accessTokenExpiresInMs(),
-                tokenPair.refreshTokenExpiresInMs()
+                tokenPair.refreshTokenExpiresInMs(),
+                user.getRole()
         ));
     }
 
@@ -187,7 +194,8 @@ public class AuthController {
                 organizer.getUsername(),
                 organizer.getEmail(),
                 tokenPair.accessTokenExpiresInMs(),
-                tokenPair.refreshTokenExpiresInMs()
+                tokenPair.refreshTokenExpiresInMs(),
+                organizer.getRole()
         ));
     }
 }
