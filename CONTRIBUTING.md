@@ -35,26 +35,13 @@ Frontend:
 
 ## Setup
 
-### Backend
-
 Run `pwsh ./tools.ps1 setup`. On Mac/Linux, install PowerShell first. The command will:
 - Check required dependencies (Java, Maven, cURL, Docker)
 - Check for a root `.env` file, request one from the team if missing
 - Generate self-signed TLS certs and create `docker-compose.override.yml` for local HTTPS
 - Add `tools` to your PATH so you can run `tools` directly instead of `./tools.ps1`.
 
-After setup the `tools` CLI is available - see `cli/` in the project structure below.
-
-### Frontend
-
-```bash
-cd web
-npm install
-cp .env.example .env   # set VITE_BACKEND_URL=http://localhost:8080 for local dev
-npm run dev            # http://localhost:5173
-```
-
-The backend needs to be running at `VITE_BACKEND_URL` for API calls to work.
+After setup the `tools` CLI is available - see `cli/` in the project structure below. To run frontend npm commands (`npm run dev`, `npm run test` etc), `cd` into the web directory
 
 ## Project Structure
 
@@ -62,7 +49,7 @@ The backend needs to be running at `VITE_BACKEND_URL` for API calls to work.
 UniEventServer/
 ├── .github/
 │   └── workflows/
-│       └── deploy-live.yml      # CI/CD: build gates + SSH deploy + docker compose up
+│       └── deploy.yml      # CI/CD: build gates + SSH deploy + docker compose up
 ├── cli/
 │   ├── setup.ps1      # tools setup
 │   ├── docker.ps1     # tools docker / tools docker -d (stop) / tools docker --wipe
@@ -74,7 +61,6 @@ UniEventServer/
 │   ├── status.ps1     # tools status (read-only Docker/Vault summary)
 │   └── shared.ps1     # (shared helpers)
 ├── deploy/
-│   ├── nginx.conf                # HTTP-only (cert bootstrap)
 │   ├── nginx-dev.conf            # Local dev
 │   └── nginx-https.conf          # Production HTTPS + reverse proxy
 ├── src/
@@ -268,18 +254,17 @@ Uses H2 as an embedded in-memory database - no running MySQL needed. Test config
 cd web && npm test
 ```
 
-Uses Vitest + jsdom. Note: `dal.test.ts` makes real fetch calls and requires the backend to be running - those tests will fail without it.
+Uses Vitest + jsdom. All tests mock `fetch` - no running backend required.
 
 ## Deployment
 
-GitHub Actions deploys the full stack automatically on push to `live` (see [deploy-live.yml](.github/workflows/deploy-live.yml)).
+GitHub Actions deploys the full stack automatically on push to `live` (see [deploy.yml](.github/workflows/deploy.yml)).
 
 **What the workflow does:**
 
-1. Runs `./mvnw test` (backend) and `cd web && npm run build` (frontend) as CI gates - deploy never fires if either fails
-2. SSHs to the server and pulls the monorepo at `LIVE_DEPLOY_PATH`
-3. Writes `web/.env` from the `LIVE_FRONTEND_ENV` secret - this is necessary because `VITE_*` vars are baked into the JS bundle at Docker build time, so the file must exist before `docker compose up --build`
-4. Runs `docker compose up -d --build --remove-orphans`, which rebuilds and restarts all services: Spring Boot backend, React frontend (nginx), MySQL, SeaweedFS, Vault, and the nginx edge
+1. SSHs to the server and pulls the monorepo at `LIVE_DEPLOY_PATH`
+2. Runs `docker compose up --build -d`, which rebuilds and restarts all services: Spring Boot backend, React frontend (nginx), MySQL, SeaweedFS, Vault, and the nginx edge
+3. Prunes dangling images
 
 One deploy, one repo, everything updates together.
 
@@ -292,9 +277,6 @@ One deploy, one repo, everything updates together.
 | `LIVE_DEPLOY_HOST` | Server hostname or IP |
 | `LIVE_DEPLOY_USER` | SSH username |
 | `LIVE_DEPLOY_PATH` | Absolute path to the repo on the server |
-| `LIVE_TLS_DOMAIN` | Domain for TLS cert (e.g. `unievent.dk`) |
-| `LIVE_LETSENCRYPT_EMAIL` | Email for Let's Encrypt (first deploy only) |
-| `LIVE_FRONTEND_ENV` | Production contents of `web/.env` |
 
 ## TODO
 

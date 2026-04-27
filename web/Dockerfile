@@ -6,7 +6,7 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 
-# Declare VITE_* build-time vars — baked into the JS bundle at build time
+# Declare VITE_* build-time vars - baked into the JS bundle at build time
 ARG VITE_BACKEND_URL
 ARG VITE_FACEBOOK_APP_ID
 ARG VITE_ORGANIZER_SIGNUP_PASSWORD

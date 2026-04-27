@@ -48,8 +48,8 @@ function Resolve-BaseUrl {
     }
 
     if ($uri.Scheme -eq "http") {
-        $host = $uri.Host.ToLowerInvariant()
-        $isLocal = ($host -eq "localhost" -or $host -eq "127.0.0.1" -or $host -eq "::1")
+        $hostname = $uri.Host.ToLowerInvariant()
+        $isLocal = ($hostname -eq "localhost" -or $hostname -eq "127.0.0.1" -or $hostname -eq "::1")
         if (-not $isLocal) {
             throw "Refusing insecure HTTP for non-localhost target '$candidate'. Use HTTPS."
         }
@@ -240,8 +240,8 @@ function Invoke-Web {
     $skipCert = $false
     try {
         $parsedUri = [System.Uri]$Uri
-        $host = $parsedUri.Host.ToLowerInvariant()
-        $isLocalHost = ($host -eq "localhost" -or $host -eq "127.0.0.1" -or $host -eq "::1")
+        $hostname = $parsedUri.Host.ToLowerInvariant()
+        $isLocalHost = ($hostname -eq "localhost" -or $hostname -eq "127.0.0.1" -or $hostname -eq "::1")
         $skipCert = $parsedUri.Scheme -eq "https" -and $isLocalHost
     } catch {
         $skipCert = $false

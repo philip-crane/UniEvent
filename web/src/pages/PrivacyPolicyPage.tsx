@@ -108,8 +108,7 @@ export function PrivacyPolicyPage() {
         <section>
           <h2 className="text-2xl font-bold mt-8 mb-4">9. Third‑Party Services</h2>
           <p>
-            UniEvent uses Meta/Facebook APIs and other infrastructure services (e.g., Google Cloud/Firebase) to provide
-            the Service. Each third party’s privacy policy governs their respective processing activities.
+            UniEvent uses Meta/Facebook APIs to provide the Service. Each third party’s privacy policy governs their respective processing activities.
           </p>
         </section>
 

@@ -75,7 +75,7 @@ export function TermsAndConditionsPage() {
 
         <h2 className="text-2xl font-bold mt-8 mb-4">7. Third‑Party Services</h2>
         <p>
-          The Service depends on third-party providers such as Meta/Facebook APIs and Google Cloud/Firebase systems.
+          The Service depends on third-party providers such as Meta/Facebook APIs.
           Your use of the Service may also be subject to those third parties’ terms and policies.
         </p>
 

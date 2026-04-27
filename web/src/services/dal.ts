@@ -1,8 +1,7 @@
 /**
  * Data Access Layer (DAL)
- * 
+ *
  * Communicates with the UniEventServer backend at /api/events, /api/pages, etc.
- * Replaces Firebase Firestore calls with REST API calls.
  */
 
 import type { Event, Page, Place } from '../types';

@@ -13,8 +13,9 @@ RUN ./mvnw dependency:go-offline -B
 COPY src src
 RUN ./mvnw package -DskipTests -B
 
-# Extract layered jar for optimal Docker layer caching
-RUN java -Djarmode=tools -jar target/*.jar extract --destination target/extracted
+# Rename to fixed name then extract layered jar for optimal Docker layer caching
+RUN cp target/*.jar target/app.jar && \
+    java -Djarmode=tools -jar target/app.jar extract --layers --destination target/extracted
 
 # Runtime stage
 FROM eclipse-temurin:25-jre-alpine
@@ -28,4 +29,4 @@ COPY --from=builder /app/target/extracted/application/ ./
 
 EXPOSE 8080
 
-ENTRYPOINT ["java", "org.springframework.boot.loader.launch.JarLauncher"]
+ENTRYPOINT ["java", "-jar", "app.jar"]
