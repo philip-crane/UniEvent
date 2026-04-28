@@ -32,7 +32,7 @@ public class CookieConfig {
     private boolean secure = true;
 
     @NotBlank
-    private String sameSite = "Strict";
+    private String sameSite;
 
     private String domain = "";
 

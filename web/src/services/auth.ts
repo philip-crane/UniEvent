@@ -153,7 +153,7 @@ export async function loginWithEmail(email: string, password: string): Promise<A
         );
     }
 
-    const data = await response.json() as { username: string; email: string; role: string; csrfToken: string; accessTokenExpiresInMs: number };
+    const data = await response.json() as { username: string; email: string; roles: string[]; csrfToken: string; accessTokenExpiresInMs: number };
     _csrfToken = data.csrfToken;
     storeTokenExpiry(data.accessTokenExpiresInMs);
     const user: AuthUser = {
@@ -161,7 +161,7 @@ export async function loginWithEmail(email: string, password: string): Promise<A
         email: data.email,
         uid: data.username,
         displayName: data.username,
-        role: resolveAccountRole(data.role, undefined),
+        role: resolveAccountRole(data.roles?.[0], undefined),
     };
     persistUser(user);
     notifyListeners(user);
@@ -184,7 +184,7 @@ export async function signupWithEmail({ username, email, password, role, organiz
         );
     }
 
-    const data = await response.json() as { username: string; email: string; role: string; csrfToken: string; accessTokenExpiresInMs: number };
+    const data = await response.json() as { username: string; email: string; roles: string[]; csrfToken: string; accessTokenExpiresInMs: number };
     _csrfToken = data.csrfToken;
     storeTokenExpiry(data.accessTokenExpiresInMs);
     const user: AuthUser = {
@@ -192,7 +192,7 @@ export async function signupWithEmail({ username, email, password, role, organiz
         email: data.email,
         uid: data.username,
         displayName: data.username,
-        role: resolveAccountRole(data.role, undefined) ?? role,
+        role: resolveAccountRole(data.roles?.[0], undefined) ?? role,
         organizerNames: organizerNames ? [...organizerNames] : undefined,
     };
     persistUser(user);
@@ -229,7 +229,7 @@ export async function refreshTokens(): Promise<void> {
         return;
     }
 
-    const data = await response.json() as { username: string; email: string; role: string; csrfToken: string; accessTokenExpiresInMs: number };
+    const data = await response.json() as { username: string; email: string; roles: string[]; csrfToken: string; accessTokenExpiresInMs: number };
     _csrfToken = data.csrfToken;
     storeTokenExpiry(data.accessTokenExpiresInMs);
 

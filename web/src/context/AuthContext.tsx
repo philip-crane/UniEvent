@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import { isTokenExpiredOrExpiringSoon, onAuthUserChanged, refreshTokens, type AuthUser } from '../services/auth';
+import { getCurrentUser, isTokenExpiredOrExpiringSoon, onAuthUserChanged, refreshTokens, type AuthUser } from '../services/auth';
 
 // A context is a REACT-particular thing to share state and just data in general across various REACT components
 // accross the entire app without having to pass state "props" (i.e. parameters, properties) down through 
@@ -27,9 +27,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     useEffect(() => {
         // Proactively refresh the access token before it expires so the user
-        // never gets a surprise 401 mid-session.
+        // never gets a surprise 401 mid-session. Empty deps keeps the interval
+        // stable - getCurrentUser() reads the latest state on each tick.
         async function checkAndRefresh() {
-            if (currentUser && isTokenExpiredOrExpiringSoon(REFRESH_THRESHOLD_MS)) {
+            if (getCurrentUser() && isTokenExpiredOrExpiringSoon(REFRESH_THRESHOLD_MS)) {
                 await refreshTokens();
             }
         }
@@ -37,7 +38,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         checkAndRefresh();
         const interval = setInterval(checkAndRefresh, REFRESH_INTERVAL_MS);
         return () => clearInterval(interval);
-    }, [currentUser]);
+    }, []);
 
     return <AuthContext.Provider value={{ currentUser }}>{children}</AuthContext.Provider>;
 }

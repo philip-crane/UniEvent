@@ -230,60 +230,13 @@ UniEventServer/
 | `POST` | `/admin/tools/refresh-tokens` | Refresh tokens for all pages |
 | `POST` | `/admin/tools/refresh-tokens/{pageId}` | Refresh token for one page |
 
-## Auth
-
-Auth is JWT-based via the backend. The backend issues a short-lived access token and a long-lived refresh token on login. On the frontend, both tokens are stored in `localStorage` (`unievent_token`, `unievent_user`). The `AuthContext` + `useAuth()` hook expose the current user across the app. All authenticated API calls attach `Authorization: Bearer <token>` manually - there is no global interceptor.
-
-## Likes
-
-Likes are stored in `localStorage` per user (`unievent_likes_<uid>`), backed by an in-memory cache for performance. They are device-local. Cross-device sync would require backend endpoints (`/api/users/me/likes`) - tracked in the TODO.
-
-## Tests
-
-### Backend
-
-```bash
-./mvnw test
-```
-
-Uses H2 as an embedded in-memory database - no running MySQL needed. Test config lives in `src/test/resources/` (`application-test.yaml`, `db-test.yaml`, etc.).
-
-### Frontend
-
-```bash
-cd web && npm test
-```
-
-Uses Vitest + jsdom. All tests mock `fetch` - no running backend required.
-
-## Deployment
-
-GitHub Actions deploys the full stack automatically on push to `live` (see [deploy.yml](.github/workflows/deploy.yml)).
-
-**What the workflow does:**
-
-1. SSHs to the server and pulls the monorepo at `LIVE_DEPLOY_PATH`
-2. Runs `docker compose up --build -d`, which rebuilds and restarts all services: Spring Boot backend, React frontend (nginx), MySQL, SeaweedFS, Vault, and the nginx edge
-3. Prunes dangling images
-
-One deploy, one repo, everything updates together.
-
-**Required GitHub Actions secrets:**
-
-| Secret | Purpose |
-|--------|---------|
-| `LIVE_DEPLOY_SSH_KEY` | Private SSH key for server access |
-| `LIVE_DEPLOY_KNOWN_HOSTS` | Server SSH host fingerprint |
-| `LIVE_DEPLOY_HOST` | Server hostname or IP |
-| `LIVE_DEPLOY_USER` | SSH username |
-| `LIVE_DEPLOY_PATH` | Absolute path to the repo on the server |
-
 ## TODO
 
 Backend
 
 - [in progress] JWT auth - signed token, expiry, validation filter
 - [in progress] Auto Facebook token refresh
+- [ ] Persist likes to backend (`/api/users/me/likes`) - currently localStorage only
 - [ ] Fix the damn env situation
 - [ ] Replace `ddl-auto: update` with Flyway migrations
 - [ ] PicoCLI for proper tool CLI
@@ -298,4 +251,3 @@ Backend
 - [ ] Organizer dashboard (event sync status, token expiry)
 - [ ] Create Event page
 - [ ] Business Manager integration for stable API access
-- [ ] Persist likes to backend (`/api/users/me/likes`) - currently localStorage only
