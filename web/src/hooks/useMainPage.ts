@@ -15,10 +15,7 @@ const FB_ERROR_MESSAGES: Record<string, string> = {
 };
 
 function getCreatedMs(e: EventType): number {
-    type LegacyEvent = EventType & { createdTime?: string; postedTime?: string; insertedAt?: string; addedAt?: string };
-    const le = e as LegacyEvent;
-    const maybe = le.createdTime ?? le.createdAt ?? le.postedTime ?? le.insertedAt ?? le.addedAt ?? le.startTime;
-    const ms = Date.parse(maybe);
+    const ms = Date.parse(e.createdAt ?? e.startTime);
     return isNaN(ms) ? new Date(e.startTime).getTime() : ms;
 }
 

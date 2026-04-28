@@ -1,46 +1,12 @@
-import { useState } from 'react';
-import type { FormEvent } from 'react';
 import { Link } from 'react-router-dom';
-import { useNavigate } from 'react-router-dom';
 import { HeaderLogoLink } from '../components/HeaderLogoLink';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { Footer } from '../components/Footer';
 import { LogIn, UserPlus } from 'lucide-react';
-import { loginWithEmail } from '../handlers/login';
-import { mapAuthError, isValidEmail } from '../utils/authUtils';
+import { useLoginPage } from '../hooks/useLoginPage';
 
 export function LoginPage() {
-    const navigate = useNavigate();
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
-    const [errorMessage, setErrorMessage] = useState('');
-
-    async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-        event.preventDefault();
-        setErrorMessage('');
-
-        const trimmedEmail = email.trim();
-        if (!trimmedEmail || !password) {
-            setErrorMessage('Please provide both email and password.');
-            return;
-        }
-
-        if (!isValidEmail(trimmedEmail)) {
-            setErrorMessage('Please provide a valid email address.');
-            return;
-        }
-
-        try {
-            setIsLoading(true);
-            await loginWithEmail(trimmedEmail, password);
-            navigate('/', { replace: true });
-        } catch (error) {
-            setErrorMessage(mapAuthError(error));
-        } finally {
-            setIsLoading(false);
-        }
-    }
+    const { email, setEmail, password, setPassword, isLoading, errorMessage, handleSubmit } = useLoginPage();
 
     return (
         <div className="min-h-screen flex flex-col">

@@ -3,7 +3,6 @@ import { HeaderLogoLink } from '../components/HeaderLogoLink';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { Footer } from '../components/Footer';
 import { SavedEventCard } from '../components/SavedEventCard';
-import { buildFacebookLoginUrl } from '../services/facebook';
 import { useProfilePage } from '../hooks/useProfilePage';
 import { CircleUserRound, Heart, LogOut } from 'lucide-react';
 
@@ -13,11 +12,14 @@ export function ProfilePage() {
         accountRole,
         organizerNames,
         isSigningOut,
+        fbConnecting,
+        fbError,
         isLoadingLikedEvents,
         likedEvents,
         userLabel,
         username,
         profileImage,
+        handleFacebookConnect,
         handleSignOut,
     } = useProfilePage();
 
@@ -115,12 +117,17 @@ export function ProfilePage() {
                                 </h3>
                             </div>
 
-                            <a
-                                href={buildFacebookLoginUrl()}
-                                className="inline-flex items-center justify-center rounded-lg bg-[var(--link-primary)] px-6 py-3 text-sm font-semibold text-white transition-colors duration-200 hover:bg-[var(--link-primary-hover)]"
+                            {fbError && (
+                                <p className="text-sm font-medium text-red-600">{fbError}</p>
+                            )}
+                            <button
+                                type="button"
+                                onClick={handleFacebookConnect}
+                                disabled={fbConnecting}
+                                className="inline-flex items-center justify-center rounded-lg bg-[var(--link-primary)] px-6 py-3 text-sm font-semibold text-white transition-colors duration-200 hover:bg-[var(--link-primary-hover)] disabled:opacity-60 disabled:cursor-not-allowed"
                             >
-                                Connect Facebook Page
-                            </a>
+                                {fbConnecting ? 'Connecting…' : 'Connect Facebook Page'}
+                            </button>
                         </div>
 
                         <div className="mt-4 rounded-xl border border-[var(--panel-border)] bg-[var(--input-bg)]/65 p-4">

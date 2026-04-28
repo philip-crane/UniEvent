@@ -212,7 +212,7 @@ describe('SignupPage', () => {
         await user.type(screen.getByLabelText('Organizer Access Password(s)'), 'bad-key');
         await user.click(screen.getByRole('button', { name: 'Sign Up as Organizer' }));
 
-        expect(screen.getByText('Organizer access password is incorrect: bad-key')).toBeInTheDocument();
+        expect(screen.getByText('Organizer access password is incorrect.')).toBeInTheDocument();
         expect(mockSignupWithEmail).not.toHaveBeenCalled();
     });
 });

@@ -93,18 +93,6 @@ export function onUserChanged(callback: (user: User | null) => void): () => void
     };
 }
 
-export function getStoredAccountRole(uid: string): AccountRole {
-    const user = _currentUser;
-    if (!user || (uid && user.uid !== uid)) return 'user';
-    return user.role ?? 'user';
-}
-
-export function getStoredOrganizerNames(uid: string): string[] {
-    const user = _currentUser;
-    if (!user || (uid && user.uid !== uid)) return [];
-    return Array.isArray(user.organizerNames) ? [...user.organizerNames] : [];
-}
-
 export async function getAccountProfile(uid?: string): Promise<{ role: AccountRole; organizerNames: string[] }> {
     const user = _currentUser;
     if (!user || (uid && user.uid !== uid)) {

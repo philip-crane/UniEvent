@@ -5,24 +5,7 @@
  */
 
 import type { Event, Page, ApiResponse, EventApiResponse, PageApiResponse } from '../types';
-import { BACKEND_URL } from '../constants';
-
-function getMediaBaseUrl(): string {
-  if (BACKEND_URL) {
-    return BACKEND_URL;
-  }
-
-  // local dev
-  if (
-    typeof window !== 'undefined' &&
-    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') &&
-    window.location.port === '3000'
-  ) {
-    return `http://${window.location.hostname}:8080`;
-  }
-
-  return window.location.origin;
-}
+import { BACKEND_URL, API_AUTH_ORGANIZER_KEY_VERIFY } from '../constants';
 
 function buildBackendUrl(path: string): URL {
   return new URL(path, BACKEND_URL || window.location.origin);
@@ -46,7 +29,7 @@ function mapEventResponse(data: EventApiResponse): Event {
     endTime: data.endTime,
     place: data.place,
     coverImageUrl: data.coverImageId
-      ? new URL(`/media/${data.coverImageId}`, getMediaBaseUrl()).toString()
+      ? new URL(`/media/${data.coverImageId}`, BACKEND_URL || window.location.origin).toString()
       : undefined,
     eventURL: data.eventUrl,
     createdAt: data.createdAt,
@@ -265,7 +248,7 @@ export async function getEventsByPlaceId(placeId: string, page: number = 0, size
  * Throws on network error.
  */
 export async function verifyOrganizerKey(key: string): Promise<boolean> {
-  const url = buildBackendUrlString('/api/auth/organizer-key/verify');
+  const url = buildBackendUrlString(API_AUTH_ORGANIZER_KEY_VERIFY);
   const response = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

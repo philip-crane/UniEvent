@@ -73,7 +73,7 @@ export function useSignupPage() {
                 for (const code of enteredCodes) {
                     const valid = await verifyOrganizerKey(code);
                     if (!valid) {
-                        setErrorMessage(`Organizer access password is incorrect: ${code}`);
+                        setErrorMessage('Organizer access password is incorrect.');
                         return;
                     }
                 }

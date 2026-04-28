@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { CircleUserRound, LogOut } from 'lucide-react';
 import { useClickOutside } from '../hooks/useClickOutside';
@@ -12,7 +12,8 @@ type UserMenuProps = {
 export function UserMenu({ userLabel, onSignOut, isSigningOut }: UserMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
-  useClickOutside(menuRef, isOpen, () => setIsOpen(false));
+  const handleClose = useCallback(() => setIsOpen(false), []);
+  useClickOutside(menuRef, isOpen, handleClose);
 
   return (
     <div className="relative" ref={menuRef}>
