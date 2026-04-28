@@ -21,6 +21,7 @@ shift
 goto arg_loop
 :arg_done
 
+:: Check if pwsh (PowerShell Core) is available, otherwise fallback to powershell.exe (Windows PowerShell).
 where /q pwsh.exe
 if %errorlevel% equ 0 (
   pwsh.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%~dp0tools.ps1" !PSARGS!

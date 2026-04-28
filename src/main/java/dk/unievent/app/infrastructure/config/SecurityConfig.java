@@ -13,8 +13,6 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
-import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 import org.springframework.web.filter.ForwardedHeaderFilter;
 
 import dk.unievent.app.infrastructure.filter.CookieAuthenticationFilter;
@@ -73,12 +71,6 @@ public class SecurityConfig {
             CookieConfig cookieConfig
     ) throws Exception {
         boolean devProfile = Arrays.asList(environment.getActiveProfiles()).contains("dev");
-        CookieCsrfTokenRepository csrfTokenRepository = CookieCsrfTokenRepository.withHttpOnlyFalse();
-        csrfTokenRepository.setCookieName(cookieConfig.getCsrfName());
-        csrfTokenRepository.setHeaderName("X-CSRF-Token");
-
-        CsrfTokenRequestAttributeHandler csrfRequestHandler = new CsrfTokenRequestAttributeHandler();
-        csrfRequestHandler.setCsrfRequestAttributeName("_csrf");
 
         http
             .authorizeHttpRequests(authz -> {
@@ -106,11 +98,8 @@ public class SecurityConfig {
             })
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .cors(cors -> {})
-            // Cookie-backed CSRF tokens are used alongside the custom validation filter.
-            .csrf(csrf -> csrf
-                .csrfTokenRepository(csrfTokenRepository)
-                .csrfTokenRequestHandler(csrfRequestHandler)
-            )
+            // CSRF is handled by CsrfValidationFilter; Spring's built-in filter is disabled.
+            .csrf(csrf -> csrf.disable())
             .httpBasic(basic -> basic.disable())
             .headers(headers -> headers
                 .httpStrictTransportSecurity(hsts -> hsts

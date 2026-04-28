@@ -131,7 +131,7 @@ UniEventServer/
 │   ├── public/
 │   ├── src/
 │   │   ├── components/          # Isolated UI pieces (no data fetching)
-│   │   ├── context/             # React context providers (AuthContext, LikesContext)
+│   │   ├── context/             # React context providers (AuthContext, LikesContext, PagesContext)
 │   │   ├── data/
 │   │   ├── handlers/            # Use-case orchestration (coordinates services, handles side-effects)
 │   │   │   ├── login.ts         # loginWithEmail use case

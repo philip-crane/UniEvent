@@ -10,7 +10,7 @@ export function buildFacebookLoginUrl(): string {
 
 export async function getFacebookAuthUrl(): Promise<string> {
     const csrf = getCsrfToken();
-    if (!csrf) throw new Error('You must be logged in to connect Facebook.');
+    // if (!csrf) throw new Error('You must be logged in to connect Facebook.');
 
     const response = await fetch(`${BACKEND_URL}/api/facebook/auth`, {
         credentials: 'include',

@@ -3,9 +3,11 @@
 # Requires: pwsh (PowerShell Core) - https://learn.microsoft.com/en-us/powershell/scripting/install/installing-powershell
 set -e
 
+# get dir
 SELF="$(realpath "$0" 2>/dev/null || readlink -f "$0" 2>/dev/null || echo "$0")"
 DIR="$(cd "$(dirname "$SELF")" && pwd)"
 
+# checks if pwsh works and is installed
 if ! command -v pwsh > /dev/null 2>&1; then
   echo "  ERROR: pwsh (PowerShell Core) is not installed or not on PATH"
   echo ""
@@ -18,8 +20,7 @@ if ! command -v pwsh > /dev/null 2>&1; then
   exit 1
 fi
 
-# Translate --flags to -flags for PowerShell.
-# Special case: --verbose -> -v  (PowerShell reserves -Verbose as a common parameter)
+# Translate --flags to -flags for PowerShell. e.g. --verbose -> -v, as PowerShell reserves -Verbose
 args=()
 for arg in "$@"; do
   case "$arg" in

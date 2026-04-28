@@ -135,8 +135,7 @@ export function MainPage() {
 
           {viewMode === 'list' ? <EventList list={list} /> : <CalendarView events={list} />}
 
-          {currentUser?.role === 'organizer' && (
-            <div className="flex flex-col items-center gap-2">
+          <div className="flex flex-col items-center gap-2">
               {fbMessage && (
                 <p className={`text-sm font-medium ${fbMessage.kind === 'success' ? 'text-green-600' : 'text-red-600'}`}>
                   {fbMessage.text}
@@ -150,7 +149,6 @@ export function MainPage() {
                 {fbConnecting ? 'Connecting…' : 'Connect Facebook Page'}
               </button>
             </div>
-          )}
         </div>
       </div>
 
