@@ -1,4 +1,5 @@
 import type { Event } from '../types';
+import { NEW_EVENT_THRESHOLD_DAYS } from '../constants';
 import { DEFAULT_EVENT_COVER_IMAGE_URL, formatEventStart, getEventCoverImageUrl } from '../utils/eventUtils';
 import { useEventCard } from '../hooks/useEventCard';
 import { FacebookLinkButton } from './FacebookLinkButton';
@@ -36,7 +37,7 @@ export function EventCard({ event }: { event: Event }) {
     const createdAt = e.createdAt ?? e.publishedAt ?? e.addedAt;
     if (createdAt) {
       const created = new Date(createdAt).getTime();
-      return Number.isFinite(created) && (Date.now() - created) < 7 * 24 * 60 * 60 * 1000; // 7 days
+      return Number.isFinite(created) && (Date.now() - created) < NEW_EVENT_THRESHOLD_DAYS * 24 * 60 * 60 * 1000;
     }
     return false;
   })();

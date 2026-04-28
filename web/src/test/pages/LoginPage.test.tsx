@@ -18,10 +18,13 @@ vi.mock('react-router-dom', async () => {
     };
 });
 
-// We replace backend calls with fake responses to test screen behavior only.
-vi.mock('../../services/auth', () => ({
+vi.mock('../../handlers/login', () => ({
     loginWithEmail: (...args: unknown[]) => mockLoginWithEmail(...args),
+}));
+
+vi.mock('../../utils/authUtils', () => ({
     mapAuthError: (...args: unknown[]) => mockMapAuthError(...args),
+    createHttpError: (status: number, message: string) => Object.assign(new Error(message), { status }),
 }));
 
 // Small helper to open the page in a test-safe router.

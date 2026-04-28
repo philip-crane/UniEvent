@@ -1,115 +1,32 @@
 import { Link, useParams } from 'react-router-dom';
-import { useEffect, useRef, useState } from 'react';
-import type { Event, Page } from '../types';
-import { getEventById, getPages } from '../services/dal';
-import { DEFAULT_EVENT_COVER_IMAGE_URL, formatEventStart, getEventCoverImageUrl } from '../utils/eventUtils';
+import { DEFAULT_EVENT_COVER_IMAGE_URL, formatEventStart, formatTimeRange } from '../utils/eventUtils';
 import { downloadIcs, buildGoogleCalendarUrl } from '../utils/calendarUtils';
 import { LikeButton } from '../components/LikeButton';
 import { HeaderLogoLink } from '../components/HeaderLogoLink';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { UserMenu } from '../components/UserMenu';
 import { ShareButton } from '../components/ShareButton';
-import { mapAuthError, signOutCurrentUser } from '../services/auth';
-import { useAuth } from '../context/AuthContext';
+import { useEventPage } from '../hooks/useEventPage';
 import { CalendarDays, Clock3, MapPin } from 'lucide-react';
-
-function formatTimeRange(startTime: string, endTime?: string) {
-  const formatter = new Intl.DateTimeFormat('da-DK', { hour: '2-digit', minute: '2-digit' });
-  const start = formatter.format(new Date(startTime));
-
-  if (!endTime) {
-    return start;
-  }
-
-  const end = formatter.format(new Date(endTime));
-  return `${start} - ${end}`;
-}
-
-function getOrganizerName(event: Event | null, pages: Page[]) {
-  if (!event) {
-    return 'Unknown';
-  }
-
-  const eventData = event as Event & { organizerName?: string; pageName?: string };
-  if (eventData.organizerName) {
-    return eventData.organizerName;
-  }
-
-  if (eventData.pageName) {
-    return eventData.pageName;
-  }
-
-  const matchedPage = pages.find((page) => page.id === event.pageId);
-  return matchedPage?.name || 'Unknown';
-}
 
 export function EventPage() {
   const { id } = useParams<{ id: string }>();
-  const { currentUser } = useAuth();
-  const [event, setEvent] = useState<Event | null>(null);
-  const [pages, setPages] = useState<Page[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSigningOut, setIsSigningOut] = useState(false);
+  const {
+    currentUser,
+    event,
+    isLoading,
+    isSigningOut,
+    showAddMenu,
+    setShowAddMenu,
+    saveFeedback,
+    addMenuRef,
+    handleLikeToggle,
+    handleSignOut,
+    userLabel,
+    organizerName,
+    coverImageUrl,
+  } = useEventPage(id);
 
-  useEffect(() => {
-    if (!id) return;
-
-    const getEventFromDal = async () => {
-      setIsLoading(true);
-      try {
-        const [fetchedEvent, fetchedPages] = await Promise.all([
-          getEventById(id),
-          getPages().catch(() => []),
-        ]);
-        setEvent(fetchedEvent);
-        setPages(fetchedPages);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    getEventFromDal();
-  }, [id]);
-
-  const [showAddMenu, setShowAddMenu] = useState(false);
-  const [saveFeedback, setSaveFeedback] = useState<string>('');
-  const addMenuRef = useRef<HTMLDivElement | null>(null);
-
-  // close the menu when clicking outside
-  useEffect(() => {
-    if (!showAddMenu) return;
-
-    const onClick = (e: MouseEvent) => {
-      if (!addMenuRef.current?.contains(e.target as Node)) {
-        setShowAddMenu(false);
-      }
-    };
-
-    document.addEventListener('mousedown', onClick);
-    return () => document.removeEventListener('mousedown', onClick);
-  }, [showAddMenu]);
-
-  async function handleSignOut() {
-    try {
-      setIsSigningOut(true);
-      await signOutCurrentUser();
-    } catch (error) {
-      console.error(mapAuthError(error));
-    } finally {
-      setIsSigningOut(false);
-    }
-  }
-
-  const userLabel = currentUser?.displayName || currentUser?.email || 'My Profile';
-
-  const handleLikeToggle = (isSaved: boolean) => {
-    setSaveFeedback(isSaved ? 'Saved to your profile.' : 'Removed from saved events.');
-    window.setTimeout(() => setSaveFeedback(''), 1500);
-  };
-
-  const organizerName = getOrganizerName(event, pages);
-  const coverImageUrl = getEventCoverImageUrl(event?.coverImageUrl);
-
-  // Main Rendering of EventPage
   return (
     <div className="page flex flex-col">
 
@@ -145,7 +62,6 @@ export function EventPage() {
         </div>
       </header>
 
-      {/* Content */}
       <main className="flex-1 overflow-y-auto w-full">
         <div className="max-w-5xl mx-auto pb-16 px-4">
           {isLoading && (
@@ -236,8 +152,8 @@ export function EventPage() {
                     src={coverImageUrl}
                     alt={event.title}
                     className="w-full h-full object-cover"
-                    onError={(imageEvent) => {
-                      imageEvent.currentTarget.src = DEFAULT_EVENT_COVER_IMAGE_URL;
+                    onError={(e) => {
+                      e.currentTarget.src = DEFAULT_EVENT_COVER_IMAGE_URL;
                     }}
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
@@ -280,7 +196,6 @@ export function EventPage() {
               </section>
             </>
           )}
-
         </div>
       </main>
     </div>

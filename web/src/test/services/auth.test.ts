@@ -27,15 +27,11 @@ function authResponse(overrides: Partial<{ username: string; email: string; role
     };
 }
 
-import {
-    _resetForTesting,
-    getCurrentUser,
-    loginWithEmail,
-    mapAuthError,
-    onAuthUserChanged,
-    signOutCurrentUser,
-    signupWithEmail,
-} from '../../services/auth';
+import { _resetForTesting, getCurrentUser, onAuthUserChanged } from '../../services/auth';
+import { loginWithEmail } from '../../handlers/login';
+import { signupWithEmail } from '../../handlers/signup';
+import { signOutCurrentUser } from '../../handlers/logout';
+import { mapAuthError } from '../../utils/authUtils';
 
 describe('auth service', () => {
     beforeEach(() => {
@@ -197,7 +193,7 @@ describe('auth service', () => {
     // ── mapAuthError ─────────────────────────────────────────────────────────
 
     it('returns "Invalid email or password" for 401', () => {
-        expect(mapAuthError({ status: 401 }, 'login')).toBe('Invalid email or password.');
+        expect(mapAuthError({ status: 401 })).toBe('Invalid email or password.');
     });
 
     it('returns "Invalid email or password" for 403', () => {

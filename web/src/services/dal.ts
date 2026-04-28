@@ -4,9 +4,8 @@
  * Communicates with the UniEventServer backend at /api/events, /api/pages, etc.
  */
 
-import type { Event, Page, Place } from '../types';
-
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL ?? '';
+import type { Event, Page, ApiResponse, EventApiResponse, PageApiResponse } from '../types';
+import { BACKEND_URL } from '../constants';
 
 function getMediaBaseUrl(): string {
   if (BACKEND_URL) {
@@ -33,37 +32,6 @@ function buildBackendUrlString(path: string): string {
   return buildBackendUrl(path).toString();
 }
 
-interface ApiResponse<T> {
-  content: T[];
-  totalElements: number;
-  totalPages: number;
-  number: number;
-  size: number;
-  hasNext: boolean;
-  hasPrevious: boolean;
-}
-
-interface EventApiResponse {
-  id: string;
-  pageId: string;
-  title: string;
-  description?: string;
-  startTime: string; // ISO format
-  endTime?: string; // ISO format
-  place?: Place;
-  coverImageId?: number;
-  eventUrl?: string;
-  createdAt: string; // ISO format
-  updatedAt: string; // ISO format
-}
-
-interface PageApiResponse {
-  id: string;
-  name: string;
-  url: string;
-  active: boolean;
-  pictureId?: number;
-}
 
 /**
  * Map backend EventApiResponse to frontend Event type

@@ -6,8 +6,8 @@ import { HeaderLogoLink } from '../components/HeaderLogoLink';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { Footer } from '../components/Footer';
 import { LogIn, UserPlus } from 'lucide-react';
-import { loginWithEmail, mapAuthError } from '../services/auth';
-import { isValidEmail } from '../utils/validationUtils';
+import { loginWithEmail } from '../handlers/login';
+import { mapAuthError, isValidEmail } from '../utils/authUtils';
 
 export function LoginPage() {
     const navigate = useNavigate();
@@ -36,7 +36,7 @@ export function LoginPage() {
             await loginWithEmail(trimmedEmail, password);
             navigate('/', { replace: true });
         } catch (error) {
-            setErrorMessage(mapAuthError(error, 'login'));
+            setErrorMessage(mapAuthError(error));
         } finally {
             setIsLoading(false);
         }
@@ -79,7 +79,7 @@ export function LoginPage() {
                                     placeholder="Enter your email"
                                     className="auth-input"
                                     value={email}
-                                    onChange={(event) => setEmail(event.target.value)}
+                                    onChange={(e) => setEmail(e.target.value)}
                                 />
 
                                 <label className="text-[0.85rem] font-bold uppercase tracking-[0.06em] text-[var(--text-primary)]" htmlFor="password">Password</label>
@@ -91,7 +91,7 @@ export function LoginPage() {
                                     placeholder="Enter your password"
                                     className="auth-input"
                                     value={password}
-                                    onChange={(event) => setPassword(event.target.value)}
+                                    onChange={(e) => setPassword(e.target.value)}
                                 />
 
                                 {errorMessage && <p className="mt-0.5 text-[0.9rem] font-semibold text-[var(--dtu-accent)]">{errorMessage}</p>}

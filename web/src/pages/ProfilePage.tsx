@@ -1,196 +1,25 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { HeaderLogoLink } from '../components/HeaderLogoLink';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { Footer } from '../components/Footer';
-import { getAccountProfile, signOutCurrentUser, type AccountRole, type AuthUser } from '../services/auth';
-import { useAuth } from '../context/AuthContext';
+import { SavedEventCard } from '../components/SavedEventCard';
 import { buildFacebookLoginUrl } from '../services/facebook';
-import { getEvents } from '../services/dal';
-import { formatEventStart } from '../utils/eventUtils';
-import type { Event as EventType } from '../types';
-import { LikeButton } from '../components/LikeButton';
-import { useLikes } from '../context/LikesContext';
-import { CalendarDays, CircleUserRound, Heart, LogOut, MapPin, Ticket } from 'lucide-react';
-
-function buildUsername(user: AuthUser | null) {
-    if (!user) return 'username';
-
-    const emailLocalPart = user.email?.split('@')[0]?.trim();
-    if (emailLocalPart) return emailLocalPart;
-
-    const displayName = user.displayName?.trim();
-    if (displayName) return displayName.toLowerCase().replace(/\s+/g, '.');
-
-    return 'username';
-}
-
-function filterAndSortLikedEvents(events: EventType[], likedEventIds: string[]) {
-    const likedEventIdSet = new Set(likedEventIds);
-
-    return events
-        .filter((event) => likedEventIdSet.has(event.id))
-        .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
-}
-
-function SavedEventCard({ event }: { event: EventType }) {
-    return (
-        <article className="group overflow-hidden rounded-2xl border border-[var(--panel-border)] bg-[var(--input-bg)]/75 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl focus-within:ring-2 focus-within:ring-[var(--input-focus-border)]">
-            <Link to={`/events/${event.id}`} className="block h-40 overflow-hidden" aria-label={`Open event ${event.title}`}>
-                {event.coverImageUrl ? (
-                    <img
-                        src={event.coverImageUrl}
-                        alt={event.title}
-                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                    />
-                ) : (
-                    <div className="flex h-full w-full items-center justify-center bg-[linear-gradient(135deg,rgba(59,130,246,0.35),rgba(20,184,166,0.25))]">
-                        <CalendarDays size={26} className="text-white/80" />
-                    </div>
-                )}
-            </Link>
-
-            <div className="space-y-3 p-4">
-                <div className="flex items-center justify-between gap-2">
-                    <span className="inline-flex items-center gap-2 rounded-full border border-[var(--panel-border)] bg-[var(--panel-bg)] px-3 py-1 text-xs font-semibold text-[var(--text-primary)]">
-                        <Heart size={12} fill="currentColor" />
-                        Saved
-                    </span>
-                    <LikeButton event={event} compact />
-                </div>
-
-                <Link
-                    to={`/events/${event.id}`}
-                    className="block rounded-md text-lg font-bold text-[var(--text-primary)] transition hover:text-[var(--link-primary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--input-focus-border)]"
-                >
-                    {event.title}
-                </Link>
-
-                <div className="space-y-2 text-sm text-[var(--text-subtle)]">
-                    <div className="flex items-center gap-2">
-                        <CalendarDays size={14} />
-                        <span>{formatEventStart(event.startTime)}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <MapPin size={14} />
-                        <span>{event.place?.name || 'Location TBA'}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <Ticket size={14} />
-                        <span>Saved to your profile</span>
-                    </div>
-                </div>
-            </div>
-        </article>
-    );
-}
+import { useProfilePage } from '../hooks/useProfilePage';
+import { CircleUserRound, Heart, LogOut } from 'lucide-react';
 
 export function ProfilePage() {
-    const navigate = useNavigate();
-    const { currentUser } = useAuth();
-    const { likedIds } = useLikes();
-    const [accountRole, setAccountRole] = useState<AccountRole>(currentUser?.role ?? 'user');
-    const [organizerNames, setOrganizerNames] = useState<string[]>([]);
-    const [isSigningOut, setIsSigningOut] = useState(false);
-    const [allEvents, setAllEvents] = useState<EventType[]>([]);
-    const [isLoadingLikedEvents, setIsLoadingLikedEvents] = useState(true);
-
-    useEffect(() => {
-        if (currentUser === null) {
-            navigate('/login', { replace: true });
-        }
-    }, [currentUser, navigate]);
-
-    async function handleSignOut() {
-        const shouldSignOut = window.confirm('Are you sure you want to log out?');
-        if (!shouldSignOut) {
-            return;
-        }
-
-        try {
-            setIsSigningOut(true);
-            await signOutCurrentUser();
-            navigate('/login', { replace: true });
-        } finally {
-            setIsSigningOut(false);
-        }
-    }
-
-    const userLabel = currentUser?.displayName || currentUser?.email || 'Profile';
-    const username = buildUsername(currentUser);
-    const profileImage = currentUser?.photoURL;
-
-    useEffect(() => {
-        setAccountRole(currentUser?.role ?? 'user');
-        setOrganizerNames(Array.isArray(currentUser?.organizerNames) ? currentUser.organizerNames : []);
-    }, [currentUser?.role, currentUser?.organizerNames]);
-
-    useEffect(() => {
-        let cancelled = false;
-
-        const loadAccountProfile = async () => {
-            try {
-                const profile = await getAccountProfile(currentUser?.uid);
-                if (cancelled) {
-                    return;
-                }
-
-                setAccountRole(profile.role);
-                setOrganizerNames(profile.organizerNames);
-            } catch {
-                if (cancelled) {
-                    return;
-                }
-
-                setAccountRole(currentUser?.role ?? 'user');
-                setOrganizerNames(Array.isArray(currentUser?.organizerNames) ? currentUser.organizerNames : []);
-            }
-        };
-
-        void loadAccountProfile();
-
-        return () => {
-            cancelled = true;
-        };
-    }, [currentUser?.uid, currentUser?.role, currentUser?.organizerNames]);
-
-    useEffect(() => {
-        let cancelled = false;
-
-        const loadEvents = async () => {
-            if (!currentUser?.uid) {
-                setAllEvents([]);
-                setIsLoadingLikedEvents(false);
-                return;
-            }
-
-            setIsLoadingLikedEvents(true);
-
-            try {
-                const events = await getEvents();
-
-                if (cancelled) {
-                    return;
-                }
-
-                setAllEvents(events);
-            } finally {
-                if (!cancelled) {
-                    setIsLoadingLikedEvents(false);
-                }
-            }
-        };
-
-        void loadEvents();
-
-        return () => {
-            cancelled = true;
-        };
-    }, [currentUser?.uid]);
-
-    const likedEvents = useMemo(() => {
-        return filterAndSortLikedEvents(allEvents, Array.from(likedIds));
-    }, [allEvents, likedIds]);
+    const {
+        currentUser,
+        accountRole,
+        organizerNames,
+        isSigningOut,
+        isLoadingLikedEvents,
+        likedEvents,
+        userLabel,
+        username,
+        profileImage,
+        handleSignOut,
+    } = useProfilePage();
 
     return (
         <div className="min-h-screen flex flex-col">

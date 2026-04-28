@@ -130,24 +130,31 @@ UniEventServer/
 │   ├── public/
 │   ├── src/
 │   │   ├── components/          # Isolated UI pieces (no data fetching)
-│   │   ├── context/             # React context providers (AuthContext)
+│   │   ├── context/             # React context providers (AuthContext, LikesContext)
 │   │   ├── data/
+│   │   ├── handlers/            # Use-case orchestration (coordinates services, handles side-effects)
+│   │   │   ├── login.ts         # loginWithEmail use case
+│   │   │   ├── signup.ts        # signupWithEmail use case
+│   │   │   ├── logout.ts        # signOutCurrentUser use case
+│   │   │   ├── refresh.ts       # refreshTokens use case
+│   │   │   └── facebookLogin.ts # Facebook OAuth redirect use case
 │   │   ├── hooks/               # Stateful logic extracted from components (prefixed use*)
-│   │   ├── pages/               # Full page views (own their data fetching)
-│   │   ├── services/            # External connections
+│   │   ├── pages/               # Full page views (delegate state to hooks, near-pure JSX)
+│   │   ├── services/            # Pure data access: getters, setters, listeners, API calls
 │   │   │   ├── dal.ts           # Data Access Layer - all REST API calls
-│   │   │   ├── auth.ts          # JWT auth (login, signup, token storage)
-│   │   │   ├── facebook.ts      # Facebook OAuth flow
+│   │   │   ├── auth.ts          # Cookie-based auth state (in-memory store + session helpers)
+│   │   │   ├── facebook.ts      # Facebook OAuth URL builders
 │   │   │   └── likes.ts         # Likes persistence (localStorage + in-memory cache)
 │   │   ├── styles/
 │   │   ├── test/
 │   │   │   ├── pages/
 │   │   │   └── services/
 │   │   ├── utils/               # Pure helpers used across multiple files
+│   │   ├── constants.ts         # All magic values (timeouts, API paths, thresholds)
 │   │   ├── main.tsx             # Entry point
 │   │   ├── App.tsx
 │   │   ├── router.tsx           # React Router config
-│   │   └── types.ts             # Shared TypeScript interfaces
+│   │   └── types.ts             # Shared TypeScript interfaces and domain types
 │   ├── Dockerfile               # Frontend nginx image
 │   ├── nginx.conf               # SPA routing (all routes → index.html)
 │   ├── package.json
@@ -162,10 +169,12 @@ UniEventServer/
 ## Conventions
 
 - **`components/`** - purely presentational, no fetch calls
-- **`pages/`** - compose components, own their `useEffect` data fetching
-- **`hooks/`** - extract stateful logic when a component gets complex; always prefix `use*`
-- **`services/`** - all external calls live here, nowhere else
-- **`utils/`** - if a helper is used in more than one file, it goes here
+- **`pages/`** - compose components, delegate all state to a `useXxxPage` hook; near-pure JSX
+- **`hooks/`** - stateful logic extracted from components; always prefix `use*`; page-level hooks named after their page (`useMainPage`, `useEventPage`, etc.)
+- **`handlers/`** - one file per use case; orchestrates service calls and state mutations; no UI concerns
+- **`services/`** - pure data access: in-memory state, getters/setters, listeners, raw API fetches
+- **`utils/`** - pure helpers used in more than one file; no React, no side-effects
+- **`constants.ts`** - all magic values: timeouts, thresholds, API paths, feature flags
 
 ## API Endpoints
 

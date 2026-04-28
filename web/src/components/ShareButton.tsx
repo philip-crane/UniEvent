@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Check, Share2 } from 'lucide-react';
 import type { Event } from '../types';
 import { getEventUrl } from '../utils/eventUtils';
+import { SHARE_FEEDBACK_MS } from '../constants';
 
 type ShareButtonProps = {
   event: Event;
@@ -10,6 +11,7 @@ type ShareButtonProps = {
 
 export function ShareButton({ event, className = '' }: ShareButtonProps) {
   const [copied, setCopied] = useState(false);
+  const handleCopied = () => { setCopied(true); window.setTimeout(() => setCopied(false), SHARE_FEEDBACK_MS); };
   const eventUrl = getEventUrl(event.id, event.eventURL);
 
   const handleShare = async (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -30,8 +32,7 @@ export function ShareButton({ event, className = '' }: ShareButtonProps) {
 
       if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(eventUrl);
-        setCopied(true);
-        window.setTimeout(() => setCopied(false), 1400);
+        handleCopied();
         return;
       }
 
