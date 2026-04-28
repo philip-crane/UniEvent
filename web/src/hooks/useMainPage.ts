@@ -1,12 +1,13 @@
 import { useEffect, useState, useMemo } from 'react';
-import { getEvents, getPages } from '../services/dal';
+import { getEvents } from '../services/dal';
 import { signOutCurrentUser } from '../handlers/logout';
 import { redirectToFacebookAuth } from '../handlers/facebookLogin';
 import { mapAuthError } from '../utils/authUtils';
 import { parseDateOnly, startOfDayMs, endOfDayMs } from '../utils/dateUtils';
 import { useAuth } from '../context/AuthContext';
+import { usePages } from '../context/PagesContext';
 import { DEBOUNCE_MS } from '../constants';
-import type { Event as EventType, Page, SortMode } from '../types';
+import type { Event as EventType, SortMode } from '../types';
 
 const FB_ERROR_MESSAGES: Record<string, string> = {
     access_denied: 'Facebook access was denied. Please try again and accept the required permissions.',
@@ -21,7 +22,7 @@ function getCreatedMs(e: EventType): number {
 
 export function useMainPage() {
     const { currentUser } = useAuth();
-    const [pages, setPages] = useState<Page[]>([]);
+    const pages = usePages();
     const [events, setEvents] = useState<EventType[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -42,9 +43,8 @@ export function useMainPage() {
         (async () => {
             try {
                 setLoading(true);
-                const [page, event] = await Promise.all([getPages(), getEvents()]);
+                const event = await getEvents();
                 if (cancelled) return;
-                setPages(page);
                 setEvents(event);
             } catch (err) {
                 if (cancelled) return;

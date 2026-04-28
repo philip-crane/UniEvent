@@ -3,23 +3,29 @@
 # Default: targets https://localhost with test@example.com
 # Key is sent via email, then choose to complete registration in tool or on website
 
+# This CLI tool is for testing the organizer invitation and registration flow. It simulates:
+# - generting an organizer key for a given email (which would normally be sent via email)
+# - verifying the key
+# - completing registration with the key (either in the tool or on the website)
+
 function Invoke-TestOrganizerKey {
     param(
         [string]$BaseUrl,
         [string]$Email = "test@example.com",
         [string]$OrgName = "Test Organization",
-        [switch]$VerboseOutput
+        [switch]$VerboseOutput # this param is for the -v flag
     )
 
-    $BaseUrl = Assert-ValidBaseUrl -BaseUrl $BaseUrl
+    $BaseUrl = Assert-ValidBaseUrl -BaseUrl $BaseUrl # ensure baseurl is valid in shared.ps1
 
+    # 0. validate email and name before doing anything
     if (-not (Test-ValidEmail -Email $Email)) {
         Write-Err "Invalid email address: $Email"
         exit 1
     }
-
     Assert-NonEmpty -Name "Organization name" -Value $OrgName
 
+    # intro
     Write-Step "Testing Organizer Key Registration Flow"
     Write-Info "Target: $BaseUrl"
     Write-Info "Test Email: $Email"
@@ -39,7 +45,7 @@ function Invoke-TestOrganizerKey {
     $generateBody = @{
         email = $Email
         organizationName = $OrgName
-    } | ConvertTo-Json -Compress
+    } | ConvertTo-Json -Compress # there are better ways to do a body tbf
 
     try {
         $headers = @{

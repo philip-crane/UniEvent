@@ -49,9 +49,15 @@ export function SignupPage() {
                             <h2 className="mt-1.5 text-[clamp(1.55rem,2.7vw,2rem)] font-black leading-tight text-[var(--text-primary)]">Sign up to get started</h2>
                             <p className="mt-3 text-[0.95rem] text-[var(--text-subtle)]">Create your account with a username and password.</p>
                             <p className="mt-2 text-[0.9rem] font-semibold text-[var(--link-primary)]">Already have an account? Log in from the link below.</p>
-                            <p className="mt-2 text-[0.85rem] font-bold text-[var(--text-subtle)]">
-                                Account type: {accountRole === 'organizer' ? 'Organizer' : accountRole === 'user' ? 'User' : 'Not selected'}
-                            </p>
+                            {accountRole && (
+                                <span className={`mt-2 inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.1em] ${
+                                    accountRole === 'organizer'
+                                        ? 'border border-transparent bg-[var(--link-primary)] text-white'
+                                        : 'border border-[var(--panel-border)] bg-[var(--panel-bg)] text-[var(--text-primary)]'
+                                }`}>
+                                    {accountRole === 'organizer' ? 'Organizer' : 'User'}
+                                </span>
+                            )}
 
 
                             <form className="mt-6 grid gap-3" onSubmit={handleSubmit} noValidate>

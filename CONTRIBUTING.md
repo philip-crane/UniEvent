@@ -14,7 +14,8 @@ Backend:
 	- **HashiCorp Vault** - Secret storage
 	- **SeaweedFS** - Media/image storage. Has a Master and Volume.
 - **Spring Mail + Thymeleaf** - Email sending with HTML templates
-- **Lombok** - Boilerplate reduction (`@Data`, `@Builder`, etc.)
+- **Lombok** - Boilerplate reduction
+- **SLF4J** - Logging facade
 - **JJWT** - JWT token signing and validation
 - **SpringDoc OpenAPI** - Auto-generated API docs + Swagger UI (`/swagger-ui.html`)
 - **Jackson** - JSON serialization (including JSR310 for Java date/time types)
@@ -168,12 +169,48 @@ UniEventServer/
 
 ## Conventions
 
-- **`components/`** - purely presentational, no fetch calls
+### Backend
+
+Api Layer:
+- **`/controller/`** - stage endpoints/routes, handle HTTP
+- **`/dto/`** - HTTP Request/Response
+- **`/handler/`** - do something
+
+Application Layer:
+- **`/service/`** - business logic, tho often getters and setters to some external service
+- **`/dto/`** - internal data shapes passed between services or into mappers
+- **`/mapper/`** - `@Component` beans with `toDTO` / `toEntity`. 
+
+Data Layer:
+- **`/model/`** - JPA entities only. 
+- **`/repository/`** - Spring Data interfaces. Queries only, no logic
+
+Infrastructure Layer:
+- **`/config/`** - Spring config beans
+- **`/exception/`** - one `RuntimeException` subclass per failure case
+- **`tools/`** - `@Profile("dev")` admin endpoints only; never ships to production
+
+---
+
+### Frontend
+
+- **`context/`** - app-wide shared state (AuthContext, LikesContext, PagesContext). Use a context when multiple unrelated hooks need the same data and prop-drilling would be awkward
+- **`components/`** - purely presentational, no fetch calls. Delegate state to `useXxx` hooks
 - **`pages/`** - compose components, delegate all state to a `useXxxPage` hook; near-pure JSX
-- **`hooks/`** - stateful logic extracted from components; always prefix `use*`; page-level hooks named after their page (`useMainPage`, `useEventPage`, etc.)
+- **`hooks/`** - stateful logic extracted from REACT components; always prefix `use*`; page-level hooks named after their page (`useMainPage`, `useEventPage`, etc.)
 - **`handlers/`** - one file per use case; orchestrates service calls and state mutations; no UI concerns
 - **`services/`** - pure data access: in-memory state, getters/setters, listeners, raw API fetches
 - **`utils/`** - pure helpers used in more than one file; no React, no side-effects
+- **`types.ts`** - all TS types (remember - TS types don't exist when the program is running, unlike in Java/C#)
+- **`constants.ts`** - all magic values: timeouts, thresholds, API paths, feature flags
+- **`contexts/`** - app-wide state "container", used by REACT components and pages.
+- **`components/`** - purely presentational, no fetch calls. Delegate state to `useXxx` hooks
+- **`pages/`** - compose components, delegate all state to a `useXxxPage` hook; near-pure JSX
+- **`hooks/`** - stateful logic extracted from REACT components; always prefix `use*`; page-level hooks named after their page (`useMainPage`, `useEventPage`, etc.)
+- **`handlers/`** - one file per use case; orchestrates service calls and state mutations; no UI concerns
+- **`services/`** - pure data access: in-memory state, getters/setters, listeners, raw API fetches
+- **`utils/`** - pure helpers used in more than one file; no React, no side-effects
+- **`types.ts`** - all TS types (remember - TS types don't exist when the program is running, unlike in Java/C#)
 - **`constants.ts`** - all magic values: timeouts, thresholds, API paths, feature flags
 
 ## API Endpoints

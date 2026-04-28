@@ -1,27 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { getEventById, getPages } from '../services/dal';
-import type { Page } from '../types';
-
-// Pages are static data - cache at module scope so navigating between event pages
-// doesn't re-fetch the full list on every visit.
-let _pagesCache: Page[] | null = null;
-async function fetchPagesOnce(): Promise<Page[]> {
-    if (_pagesCache) return _pagesCache;
-    _pagesCache = await getPages();
-    return _pagesCache;
-}
+import { getEventById } from '../services/dal';
 import { signOutCurrentUser } from '../handlers/logout';
 import { mapAuthError } from '../utils/authUtils';
 import { getOrganizerName, getEventCoverImageUrl } from '../utils/eventUtils';
 import { useClickOutside } from './useClickOutside';
 import { useAuth } from '../context/AuthContext';
+import { usePages } from '../context/PagesContext';
 import { SAVE_FEEDBACK_MS } from '../constants';
 import type { Event } from '../types';
 
 export function useEventPage(id: string | undefined) {
     const { currentUser } = useAuth();
+    const pages = usePages();
     const [event, setEvent] = useState<Event | null>(null);
-    const [pages, setPages] = useState<Page[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isSigningOut, setIsSigningOut] = useState(false);
     const [showAddMenu, setShowAddMenu] = useState(false);
@@ -33,12 +24,8 @@ export function useEventPage(id: string | undefined) {
         const fetchData = async () => {
             setIsLoading(true);
             try {
-                const [fetchedEvent, fetchedPages] = await Promise.all([
-                    getEventById(id),
-                    fetchPagesOnce().catch(() => []),
-                ]);
+                const fetchedEvent = await getEventById(id);
                 setEvent(fetchedEvent);
-                setPages(fetchedPages);
             } finally {
                 setIsLoading(false);
             }
