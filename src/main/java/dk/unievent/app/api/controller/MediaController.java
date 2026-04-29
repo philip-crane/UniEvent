@@ -20,6 +20,7 @@ import org.springframework.web.multipart.MultipartFile;
 import dk.unievent.app.application.dto.MediaDTO;
 import dk.unievent.app.db.model.MediaEntity;
 import dk.unievent.app.application.service.MediaService;
+import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -37,6 +38,7 @@ public class MediaController {
     private final MediaService mediaService;
 
     @PostMapping
+    @RateLimiter(name = "media-upload", fallbackMethod = "uploadFallback")
     @Operation(
         summary = "Upload a media file",
         description = "Upload a file to SeaweedFS and store metadata in the database. Returns the created media record with ID and file ID."
@@ -96,6 +98,10 @@ public class MediaController {
         Page<MediaDTO> media = mediaService.listAll(pageable);
         log.debug("Found {} media files", media.getTotalElements());
         return media;
+    }
+
+    public ResponseEntity<MediaDTO> uploadFallback(MultipartFile file, Exception ex) throws IOException {
+        return ResponseEntity.status(429).build();
     }
 
 }

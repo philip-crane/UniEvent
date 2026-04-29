@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.*;
 
 import dk.unievent.app.application.dto.PlaceDTO;
 import dk.unievent.app.application.service.PlaceService;
+import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 import jakarta.validation.Valid;
 import java.util.Optional;
 import io.swagger.v3.oas.annotations.Operation;
@@ -78,6 +79,7 @@ public class PlaceController {
     }
     
     @GetMapping("/search")
+    @RateLimiter(name = "place-search", fallbackMethod = "searchFallback")
     @Operation(summary = "Search places by name", description = "Search for venues using a partial name match (case-insensitive)")
     @ApiResponse(responseCode = "200", description = "Page of matching places")
     public ResponseEntity<Page<PlaceDTO>> searchPlaces(
@@ -90,6 +92,7 @@ public class PlaceController {
     }
     
     @PostMapping
+    @RateLimiter(name = "place-create", fallbackMethod = "createFallback")
     @Operation(summary = "Create a new place", description = "Create a new venue/location")
     @ApiResponse(responseCode = "201", description = "Place created successfully")
     public ResponseEntity<PlaceDTO> createPlace(@Valid @RequestBody PlaceDTO placeDTO) {
@@ -100,6 +103,7 @@ public class PlaceController {
     }
     
     @PutMapping("/{id}")
+    @RateLimiter(name = "place-update", fallbackMethod = "updateFallback")
     @Operation(summary = "Update a place", description = "Update venue information")
     @ApiResponse(responseCode = "200", description = "Place updated successfully")
     @ApiResponse(responseCode = "404", description = "Place not found")
@@ -120,6 +124,7 @@ public class PlaceController {
     }
     
     @DeleteMapping("/{id}")
+    @RateLimiter(name = "place-delete", fallbackMethod = "deleteFallback")
     @Operation(summary = "Delete a place", description = "Delete a venue/location")
     @ApiResponse(responseCode = "204", description = "Place deleted successfully")
     @ApiResponse(responseCode = "404", description = "Place not found")
@@ -134,5 +139,21 @@ public class PlaceController {
         
         log.info("Place deleted successfully: {}", id);
         return ResponseEntity.noContent().build();
+    }
+
+    public ResponseEntity<Page<PlaceDTO>> searchFallback(String name, Pageable pageable, Exception ex) {
+        return ResponseEntity.status(429).build();
+    }
+
+    public ResponseEntity<PlaceDTO> createFallback(PlaceDTO placeDTO, Exception ex) {
+        return ResponseEntity.status(429).build();
+    }
+
+    public ResponseEntity<PlaceDTO> updateFallback(String id, PlaceDTO placeDTO, Exception ex) {
+        return ResponseEntity.status(429).build();
+    }
+
+    public ResponseEntity<Void> deleteFallback(String id, Exception ex) {
+        return ResponseEntity.status(429).build();
     }
 }

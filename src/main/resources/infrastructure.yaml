@@ -1,0 +1,77 @@
+resilience4j:
+  ratelimiter:
+    configs:
+      default:
+        registerHealthIndicator: true
+        timeoutDuration: 5s
+    instances:
+      # Authentication endpoints - IP-based limits
+      login:
+        limitForPeriod: 50
+        limitRefreshPeriod: 1h
+      register:
+        limitForPeriod: 50
+        limitRefreshPeriod: 1h
+      verify-organizer-key:
+        limitForPeriod: 50
+        limitRefreshPeriod: 1h
+      register-with-key:
+        limitForPeriod: 30
+        limitRefreshPeriod: 1h
+      
+      # User-based limits
+      refresh-token:
+        limitForPeriod: 100
+        limitRefreshPeriod: 1m
+      logout:
+        limitForPeriod: 100
+        limitRefreshPeriod: 1h
+      generate-organizer-key:
+        limitForPeriod: 100
+        limitRefreshPeriod: 1h
+      
+      # File operations
+      media-upload:
+        limitForPeriod: 100
+        limitRefreshPeriod: 1h
+      
+      # Search endpoints
+      place-search:
+        limitForPeriod: 500
+        limitRefreshPeriod: 1m
+      page-search:
+        limitForPeriod: 500
+        limitRefreshPeriod: 1m
+      
+      # Event mutations
+      event-create:
+        limitForPeriod: 100
+        limitRefreshPeriod: 1h
+      event-update:
+        limitForPeriod: 100
+        limitRefreshPeriod: 1h
+      event-delete:
+        limitForPeriod: 100
+        limitRefreshPeriod: 1h
+      
+      # Place mutations
+      place-create:
+        limitForPeriod: 100
+        limitRefreshPeriod: 1h
+      place-update:
+        limitForPeriod: 100
+        limitRefreshPeriod: 1h
+      place-delete:
+        limitForPeriod: 100
+        limitRefreshPeriod: 1h
+      
+      # Page mutations
+      page-create:
+        limitForPeriod: 100
+        limitRefreshPeriod: 1h
+      page-update:
+        limitForPeriod: 100
+        limitRefreshPeriod: 1h
+      page-delete:
+        limitForPeriod: 100
+        limitRefreshPeriod: 1h

@@ -18,6 +18,7 @@ import dk.unievent.app.infrastructure.config.CookieConfig;
 import dk.unievent.app.infrastructure.security.UserDetailsAdapter;
 import dk.unievent.app.application.service.EmailService;
 import dk.unievent.app.infrastructure.config.RoleConstants;
+import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -63,6 +64,7 @@ public class AuthController {
     private final CookieConfig cookieConfig;
 
     @PostMapping("/register")
+    @RateLimiter(name = "register", fallbackMethod = "registerFallback")
     @Operation(summary = "Register a new user", description = "Create a new user account with email, username, and password. All self-registered users get the 'user' role. To register as an organizer, use the invitation key flow.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "User successfully registered", content = @Content(schema = @Schema(implementation = AuthResponse.class))),
@@ -78,6 +80,7 @@ public class AuthController {
     }
 
     @PostMapping("/login")
+    @RateLimiter(name = "login", fallbackMethod = "loginFallback")
     @Operation(summary = "Login user", description = "Authenticate a user with email and password, sets auth cookies, and returns account details plus a CSRF token")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "User successfully logged in", content = @Content(schema = @Schema(implementation = AuthResponse.class))),
@@ -97,6 +100,7 @@ public class AuthController {
     }
 
     @PostMapping("/refresh")
+    @RateLimiter(name = "refresh-token", fallbackMethod = "refreshFallback")
     @Operation(summary = "Refresh access token", description = "Exchange a valid refresh cookie for rotated auth cookies and a new CSRF token")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Token successfully refreshed", content = @Content(schema = @Schema(implementation = AuthResponse.class))),
@@ -116,6 +120,7 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
+    @RateLimiter(name = "logout", fallbackMethod = "logoutFallback")
     @Operation(summary = "Logout user", description = "Revoke the refresh token to invalidate all active sessions")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "204", description = "User successfully logged out"),
@@ -139,6 +144,7 @@ public class AuthController {
 
     @PostMapping("/organizer-key/generate")
     @PreAuthorize("hasRole('ADMIN')")
+    @RateLimiter(name = "generate-organizer-key", fallbackMethod = "generateKeyFallback")
     @Operation(summary = "Generate organizer invitation key", description = "Admin only: Generate a single-use key for organizer registration (sends key via email)")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Key successfully generated and sent", content = @Content(schema = @Schema(implementation = GenerateOrganizerKeyResponse.class))),
@@ -159,6 +165,7 @@ public class AuthController {
     }
 
     @PostMapping("/organizer-key/verify")
+    @RateLimiter(name = "verify-organizer-key", fallbackMethod = "verifyKeyFallback")
     @Operation(summary = "Verify organizer invitation key", description = "Verify a single-use organizer key and receive a confirmation token")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Key successfully verified", content = @Content(schema = @Schema(implementation = OrganizerKeyVerifyResponse.class))),
@@ -174,6 +181,7 @@ public class AuthController {
     }
 
     @PostMapping("/register-with-key")
+    @RateLimiter(name = "register-with-key", fallbackMethod = "registerWithKeyFallback")
     @Operation(summary = "Register organizer with key", description = "Complete organizer registration using a confirmation token from key verification")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "201", description = "Organizer successfully registered", content = @Content(schema = @Schema(implementation = AuthResponse.class))),
@@ -275,5 +283,34 @@ public class AuthController {
             return trimmed;
         }
         return "ROLE_" + trimmed.toUpperCase();
+    }
+
+    // Rate limit fallback methods
+    public ResponseEntity<AuthResponse> registerFallback(RegisterRequest request, Exception ex) {
+        return ResponseEntity.status(429).body(null);
+    }
+
+    public ResponseEntity<AuthResponse> loginFallback(LoginRequest request, HttpServletResponse response, Exception ex) {
+        return ResponseEntity.status(429).body(null);
+    }
+
+    public ResponseEntity<AuthResponse> refreshFallback(HttpServletRequest httpRequest, HttpServletResponse response, Exception ex) {
+        return ResponseEntity.status(429).body(null);
+    }
+
+    public ResponseEntity<Void> logoutFallback(HttpServletRequest httpRequest, HttpServletResponse response, Exception ex) {
+        return ResponseEntity.status(429).build();
+    }
+
+    public ResponseEntity<GenerateOrganizerKeyResponse> generateKeyFallback(GenerateOrganizerKeyRequest request, Authentication authentication, Exception ex) {
+        return ResponseEntity.status(429).build();
+    }
+
+    public ResponseEntity<OrganizerKeyVerifyResponse> verifyKeyFallback(OrganizerKeyVerifyRequest request, Exception ex) {
+        return ResponseEntity.status(429).build();
+    }
+
+    public ResponseEntity<AuthResponse> registerWithKeyFallback(OrganizerRegisterWithKeyRequest request, Exception ex) {
+        return ResponseEntity.status(429).body(null);
     }
 }

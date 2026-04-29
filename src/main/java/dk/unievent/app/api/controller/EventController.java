@@ -10,6 +10,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import dk.unievent.app.application.dto.EventDTO;
 import dk.unievent.app.application.service.EventService;
+import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 import jakarta.validation.Valid;
 import java.io.IOException;
 import java.util.Optional;
@@ -90,6 +91,7 @@ public class EventController {
     }
 
     @PostMapping
+    @RateLimiter(name = "event-create", fallbackMethod = "createFallback")
     @Operation(summary = "Create a new event", description = "Create a new event")
     @ApiResponse(responseCode = "201", description = "Event created successfully")
     public ResponseEntity<EventDTO> createEvent(@Valid @RequestBody EventDTO eventDTO) {
@@ -100,6 +102,7 @@ public class EventController {
     }
 
     @PutMapping("/{id}")
+    @RateLimiter(name = "event-update", fallbackMethod = "updateFallback")
     @Operation(summary = "Update an event", description = "Update an existing event")
     @ApiResponse(responseCode = "200", description = "Event updated successfully")
     @ApiResponse(responseCode = "404", description = "Event not found")
@@ -136,6 +139,7 @@ public class EventController {
     }
 
     @DeleteMapping("/{id}")
+    @RateLimiter(name = "event-delete", fallbackMethod = "deleteFallback")
     @Operation(summary = "Delete an event", description = "Delete an event permanently")
     @ApiResponse(responseCode = "204", description = "Event deleted successfully")
     @ApiResponse(responseCode = "404", description = "Event not found")
@@ -150,5 +154,17 @@ public class EventController {
 
         log.info("Event deleted successfully: {}", id);
         return ResponseEntity.noContent().build();
+    }
+
+    public ResponseEntity<EventDTO> createFallback(EventDTO eventDTO, Exception ex) {
+        return ResponseEntity.status(429).build();
+    }
+
+    public ResponseEntity<EventDTO> updateFallback(String id, EventDTO eventDTO, Exception ex) {
+        return ResponseEntity.status(429).build();
+    }
+
+    public ResponseEntity<Void> deleteFallback(String id, Exception ex) {
+        return ResponseEntity.status(429).build();
     }
 }

@@ -10,6 +10,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import dk.unievent.app.application.dto.PageDTO;
 import dk.unievent.app.application.service.PageService;
+import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 import jakarta.validation.Valid;
 import java.io.IOException;
 import java.util.Optional;
@@ -65,6 +66,7 @@ public class PageController {
     }
 
     @GetMapping("/search")
+    @RateLimiter(name = "page-search", fallbackMethod = "searchFallback")
     @Operation(summary = "Search pages by name", description = "Search for pages using a partial name match (case-insensitive)")
     @ApiResponse(responseCode = "200", description = "Page of matching pages")
     public ResponseEntity<Page<PageDTO>> searchPages(
@@ -77,6 +79,7 @@ public class PageController {
     }
 
     @PostMapping
+    @RateLimiter(name = "page-create", fallbackMethod = "createFallback")
     @Operation(summary = "Create a new page", description = "Create a new event organizer page")
     @ApiResponse(responseCode = "201", description = "Page created successfully")
     public ResponseEntity<PageDTO> createPage(@Valid @RequestBody PageDTO pageDTO) {
@@ -87,6 +90,7 @@ public class PageController {
     }
 
     @PutMapping("/{id}")
+    @RateLimiter(name = "page-update", fallbackMethod = "updateFallback")
     @Operation(summary = "Update a page", description = "Update page information")
     @ApiResponse(responseCode = "200", description = "Page updated successfully")
     @ApiResponse(responseCode = "404", description = "Page not found")
@@ -122,6 +126,7 @@ public class PageController {
     }
 
     @DeleteMapping("/{id}")
+    @RateLimiter(name = "page-delete", fallbackMethod = "deleteFallback")
     @Operation(summary = "Delete a page", description = "Delete a page and all its events (cascading delete)")
     @ApiResponse(responseCode = "204", description = "Page deleted successfully")
     @ApiResponse(responseCode = "404", description = "Page not found")
@@ -134,5 +139,21 @@ public class PageController {
         }
         log.info("Page deleted successfully: {}", id);
         return ResponseEntity.noContent().build();
+    }
+
+    public ResponseEntity<Page<PageDTO>> searchFallback(String name, Pageable pageable, Exception ex) {
+        return ResponseEntity.status(429).build();
+    }
+
+    public ResponseEntity<PageDTO> createFallback(PageDTO pageDTO, Exception ex) {
+        return ResponseEntity.status(429).build();
+    }
+
+    public ResponseEntity<PageDTO> updateFallback(String id, PageDTO pageDTO, Exception ex) {
+        return ResponseEntity.status(429).build();
+    }
+
+    public ResponseEntity<Void> deleteFallback(String id, Exception ex) {
+        return ResponseEntity.status(429).build();
     }
 }
