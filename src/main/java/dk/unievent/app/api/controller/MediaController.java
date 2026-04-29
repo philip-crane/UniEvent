@@ -16,6 +16,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import dk.unievent.app.application.dto.MediaDTO;
 import dk.unievent.app.db.model.MediaEntity;
@@ -38,6 +39,7 @@ public class MediaController {
     private final MediaService mediaService;
 
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     @RateLimiter(name = "media-upload", fallbackMethod = "uploadFallback")
     @Operation(
         summary = "Upload a media file",
@@ -87,6 +89,7 @@ public class MediaController {
     }
 
     @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
     @Operation(
         summary = "List all media files",
         description = "Retrieve a list of all uploaded media files with their metadata."

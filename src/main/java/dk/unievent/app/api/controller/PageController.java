@@ -7,6 +7,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import dk.unievent.app.application.dto.PageDTO;
 import dk.unievent.app.application.service.PageService;
@@ -79,6 +80,7 @@ public class PageController {
     }
 
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     @RateLimiter(name = "page-create", fallbackMethod = "createFallback")
     @Operation(summary = "Create a new page", description = "Create a new event organizer page")
     @ApiResponse(responseCode = "201", description = "Page created successfully")
@@ -90,6 +92,7 @@ public class PageController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     @RateLimiter(name = "page-update", fallbackMethod = "updateFallback")
     @Operation(summary = "Update a page", description = "Update page information")
     @ApiResponse(responseCode = "200", description = "Page updated successfully")
@@ -109,6 +112,7 @@ public class PageController {
     }
 
     @PostMapping("/{id}/picture")
+    @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Upload picture for page", description = "Upload a picture for a specific page")
     @ApiResponse(responseCode = "200", description = "Picture uploaded successfully")
     @ApiResponse(responseCode = "404", description = "Page not found")
@@ -126,6 +130,7 @@ public class PageController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     @RateLimiter(name = "page-delete", fallbackMethod = "deleteFallback")
     @Operation(summary = "Delete a page", description = "Delete a page and all its events (cascading delete)")
     @ApiResponse(responseCode = "204", description = "Page deleted successfully")

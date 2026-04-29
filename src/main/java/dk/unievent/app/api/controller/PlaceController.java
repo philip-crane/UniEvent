@@ -6,6 +6,7 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import dk.unievent.app.application.dto.PlaceDTO;
 import dk.unievent.app.application.service.PlaceService;
@@ -92,6 +93,7 @@ public class PlaceController {
     }
     
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     @RateLimiter(name = "place-create", fallbackMethod = "createFallback")
     @Operation(summary = "Create a new place", description = "Create a new venue/location")
     @ApiResponse(responseCode = "201", description = "Place created successfully")
@@ -103,6 +105,7 @@ public class PlaceController {
     }
     
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     @RateLimiter(name = "place-update", fallbackMethod = "updateFallback")
     @Operation(summary = "Update a place", description = "Update venue information")
     @ApiResponse(responseCode = "200", description = "Place updated successfully")
@@ -124,6 +127,7 @@ public class PlaceController {
     }
     
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     @RateLimiter(name = "place-delete", fallbackMethod = "deleteFallback")
     @Operation(summary = "Delete a place", description = "Delete a venue/location")
     @ApiResponse(responseCode = "204", description = "Place deleted successfully")
