@@ -148,20 +148,20 @@ public class AuthController {
             @ApiResponse(responseCode = "204", description = "User successfully logged out"),
             @ApiResponse(responseCode = "400", description = "Invalid request body")
     })
-        public ResponseEntity<Void> logout(HttpServletRequest httpRequest,
-                                           HttpServletResponse response) {
-            String refreshToken = resolveOptionalRefreshToken(httpRequest);
-            if (refreshToken != null && !refreshToken.isBlank()) {
-                try {
-                    refreshTokenService.logout(refreshToken);
-                } catch (Exception ex) {
-                    log.debug("Logout refresh token invalid or already revoked", ex);
-                }
+    public ResponseEntity<Void> logout(HttpServletRequest httpRequest,
+                                       HttpServletResponse response) {
+        String refreshToken = resolveOptionalRefreshToken(httpRequest);
+        if (refreshToken != null) {
+            try {
+                refreshTokenService.logout(refreshToken);
+            } catch (Exception ex) {
+                log.debug("Logout refresh token invalid or already revoked", ex);
             }
-            clearAuthCookies(response);
-            log.info("User logout processed from ip={}, userAgent={}",
-                    httpRequest.getRemoteAddr(), httpRequest.getHeader("User-Agent"));
-            return ResponseEntity.noContent().build();
+        }
+        clearAuthCookies(response);
+        log.info("User logout processed from ip={}, userAgent={}",
+                httpRequest.getRemoteAddr(), httpRequest.getHeader("User-Agent"));
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/organizer-key/generate")
@@ -230,15 +230,6 @@ public class AuthController {
             return refreshCookie.getValue();
         }
         throw new IllegalArgumentException("Refresh token cookie is required.");
-        /*return ResponseEntity.status(HttpStatus.CREATED).body(new AuthResponse(
-                organizer.getUsername(),
-                organizer.getEmail(),
-                organizer.getRole(),
-                tokenPair.accessTokenExpiresInMs(),
-                tokenPair.refreshTokenExpiresInMs(),
-                csrfToken,
-                tokenPair.accessToken()
-        ));*/
     }
 
     private String resolveOptionalRefreshToken(HttpServletRequest request) {
@@ -300,6 +291,9 @@ public class AuthController {
                 List.of(normalizedRole),
                 csrfToken,
                 tokenPair.accessToken()
+                /*List.of(normalizeRole(user.getRole())),
+                csrfToken,
+                tokenPair.accessTokenExpiresInMs()*/
         );
     }
 

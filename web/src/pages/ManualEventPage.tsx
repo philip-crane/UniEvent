@@ -1,10 +1,20 @@
-import { Link } from 'react-router-dom';
+import { useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { CalendarDays, FilePlus2, Image as ImageIcon, Link as LinkIcon, MapPin, Save, Tags, Ticket } from 'lucide-react';
 import { Footer } from '../components/Footer';
 import { HeaderLogoLink } from '../components/HeaderLogoLink';
 import { ThemeToggle } from '../components/ThemeToggle';
+import { useAuth } from '../context/AuthContext';
 
 export function ManualEventPage() {
+    const { currentUser } = useAuth();
+    const navigate = useNavigate();
+
+    // Redirect unauthenticated users before the form backend is wired up.
+    useEffect(() => {
+        if (currentUser === null) navigate('/login', { replace: true });
+    }, [currentUser, navigate]);
+
     return (
         <div className="min-h-screen flex flex-col">
             <header className="page-header mx-6 md:mx-8 mt-4 md:mt-6 mb-8">

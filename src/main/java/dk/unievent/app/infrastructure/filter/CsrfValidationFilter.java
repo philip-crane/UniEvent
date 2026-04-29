@@ -14,8 +14,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.web.util.WebUtils;
@@ -70,8 +68,13 @@ public class CsrfValidationFilter extends OncePerRequestFilter {
             return false;
         }
 
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        return authentication != null && authentication.isAuthenticated();
+        // Validate whenever any auth cookie is present. The refresh cookie must be
+        // included because /refresh and /logout operate on it, not the access cookie,
+        // and the access cookie is typically absent when those endpoints are called.
+        Cookie accessCookie = WebUtils.getCookie(request, cookieConfig.getAccessName());
+        if (accessCookie != null) return true;
+        Cookie refreshCookie = WebUtils.getCookie(request, cookieConfig.getRefreshName());
+        return refreshCookie != null;
     }
 
     private boolean isSafeMethod(String method) {

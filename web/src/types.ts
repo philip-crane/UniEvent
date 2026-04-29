@@ -44,7 +44,74 @@ export interface Place {
 // "upcoming" = soonest first; "newest" = most recently added first; "all" = no future-only filter, sorted upcoming.
 export type SortMode = 'upcoming' | 'newest' | 'all';
 
-// Event Page Component Props
+// ── Auth ───────────────────────────────────────────────────────────────────
+
+export type AccountRole = 'user' | 'organizer';
+
+export type User = {
+    username: string;
+    email: string;
+    uid?: string;
+    displayName?: string;
+    photoURL?: string | null;
+    role?: AccountRole;
+    organizerNames?: string[];
+};
+
+export type SignupRequest = {
+    username: string;
+    email: string;
+    password: string;
+    role?: AccountRole;
+    organizerKey?: string;
+};
+
+export type HttpError = Error & { status: number };
+
+export type AuthApiResponse = {
+    username: string;
+    email: string;
+    roles: string[];
+    csrfToken: string;
+    accessTokenExpiresInMs: number;
+};
+
+// ── DAL ───────────────────────────────────────────────────────────────────
+
+export interface ApiResponse<T> {
+    content: T[];
+    totalElements: number;
+    totalPages: number;
+    number: number;
+    size: number;
+    hasNext: boolean;
+    hasPrevious: boolean;
+}
+
+export interface EventApiResponse {
+    id: string;
+    pageId: string;
+    title: string;
+    description?: string;
+    startTime: string;
+    endTime?: string;
+    place?: Place;
+    coverImageId?: number;
+    eventUrl?: string;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface PageApiResponse {
+    id: string;
+    name: string;
+    url: string;
+    active: boolean;
+    pictureId?: number;
+}
+
+// ── Event Page Component Props ─────────────────────────────────────────────
+
 export interface EventHeaderProps {
     onBack: () => void;
 }

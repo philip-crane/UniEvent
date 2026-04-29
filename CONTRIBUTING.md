@@ -14,7 +14,8 @@ Backend:
 	- **HashiCorp Vault** - Secret storage
 	- **SeaweedFS** - Media/image storage. Has a Master and Volume.
 - **Spring Mail + Thymeleaf** - Email sending with HTML templates
-- **Lombok** - Boilerplate reduction (`@Data`, `@Builder`, etc.)
+- **Lombok** - Boilerplate reduction
+- **SLF4J** - Logging facade
 - **JJWT** - JWT token signing and validation
 - **SpringDoc OpenAPI** - Auto-generated API docs + Swagger UI (`/swagger-ui.html`)
 - **Jackson** - JSON serialization (including JSR310 for Java date/time types)
@@ -130,24 +131,31 @@ UniEventServer/
 │   ├── public/
 │   ├── src/
 │   │   ├── components/          # Isolated UI pieces (no data fetching)
-│   │   ├── context/             # React context providers (AuthContext)
+│   │   ├── context/             # React context providers (AuthContext, LikesContext, PagesContext)
 │   │   ├── data/
+│   │   ├── handlers/            # Use-case orchestration (coordinates services, handles side-effects)
+│   │   │   ├── login.ts         # loginWithEmail use case
+│   │   │   ├── signup.ts        # signupWithEmail use case
+│   │   │   ├── logout.ts        # signOutCurrentUser use case
+│   │   │   ├── refresh.ts       # refreshTokens use case
+│   │   │   └── facebookLogin.ts # Facebook OAuth redirect use case
 │   │   ├── hooks/               # Stateful logic extracted from components (prefixed use*)
-│   │   ├── pages/               # Full page views (own their data fetching)
-│   │   ├── services/            # External connections
+│   │   ├── pages/               # Full page views (delegate state to hooks, near-pure JSX)
+│   │   ├── services/            # Pure data access: getters, setters, listeners, API calls
 │   │   │   ├── dal.ts           # Data Access Layer - all REST API calls
-│   │   │   ├── auth.ts          # JWT auth (login, signup, token storage)
-│   │   │   ├── facebook.ts      # Facebook OAuth flow
+│   │   │   ├── auth.ts          # Cookie-based auth state (in-memory store + session helpers)
+│   │   │   ├── facebook.ts      # Facebook OAuth URL builders
 │   │   │   └── likes.ts         # Likes persistence (localStorage + in-memory cache)
 │   │   ├── styles/
 │   │   ├── test/
 │   │   │   ├── pages/
 │   │   │   └── services/
 │   │   ├── utils/               # Pure helpers used across multiple files
+│   │   ├── constants.ts         # All magic values (timeouts, API paths, thresholds)
 │   │   ├── main.tsx             # Entry point
 │   │   ├── App.tsx
 │   │   ├── router.tsx           # React Router config
-│   │   └── types.ts             # Shared TypeScript interfaces
+│   │   └── types.ts             # Shared TypeScript interfaces and domain types
 │   ├── Dockerfile               # Frontend nginx image
 │   ├── nginx.conf               # SPA routing (all routes → index.html)
 │   ├── package.json
@@ -161,11 +169,49 @@ UniEventServer/
 
 ## Conventions
 
-- **`components/`** - purely presentational, no fetch calls
-- **`pages/`** - compose components, own their `useEffect` data fetching
-- **`hooks/`** - extract stateful logic when a component gets complex; always prefix `use*`
-- **`services/`** - all external calls live here, nowhere else
-- **`utils/`** - if a helper is used in more than one file, it goes here
+### Backend
+
+Api Layer:
+- **`/controller/`** - stage endpoints/routes, handle HTTP
+- **`/dto/`** - HTTP Request/Response
+- **`/handler/`** - do something
+
+Application Layer:
+- **`/service/`** - business logic, tho often getters and setters to some external service
+- **`/dto/`** - internal data shapes passed between services or into mappers
+- **`/mapper/`** - `@Component` beans with `toDTO` / `toEntity`. 
+
+Data Layer:
+- **`/model/`** - JPA entities only. 
+- **`/repository/`** - Spring Data interfaces. Queries only, no logic
+
+Infrastructure Layer:
+- **`/config/`** - Spring config beans
+- **`/exception/`** - one `RuntimeException` subclass per failure case
+- **`tools/`** - `@Profile("dev")` admin endpoints only; never ships to production
+
+---
+
+### Frontend
+
+- **`context/`** - app-wide shared state (AuthContext, LikesContext, PagesContext). Use a context when multiple unrelated hooks need the same data and prop-drilling would be awkward
+- **`components/`** - purely presentational, no fetch calls. Delegate state to `useXxx` hooks
+- **`pages/`** - compose components, delegate all state to a `useXxxPage` hook; near-pure JSX
+- **`hooks/`** - stateful logic extracted from REACT components; always prefix `use*`; page-level hooks named after their page (`useMainPage`, `useEventPage`, etc.)
+- **`handlers/`** - one file per use case; orchestrates service calls and state mutations; no UI concerns
+- **`services/`** - pure data access: in-memory state, getters/setters, listeners, raw API fetches
+- **`utils/`** - pure helpers used in more than one file; no React, no side-effects
+- **`types.ts`** - all TS types (remember - TS types don't exist when the program is running, unlike in Java/C#)
+- **`constants.ts`** - all magic values: timeouts, thresholds, API paths, feature flags
+- **`contexts/`** - app-wide state "container", used by REACT components and pages.
+- **`components/`** - purely presentational, no fetch calls. Delegate state to `useXxx` hooks
+- **`pages/`** - compose components, delegate all state to a `useXxxPage` hook; near-pure JSX
+- **`hooks/`** - stateful logic extracted from REACT components; always prefix `use*`; page-level hooks named after their page (`useMainPage`, `useEventPage`, etc.)
+- **`handlers/`** - one file per use case; orchestrates service calls and state mutations; no UI concerns
+- **`services/`** - pure data access: in-memory state, getters/setters, listeners, raw API fetches
+- **`utils/`** - pure helpers used in more than one file; no React, no side-effects
+- **`types.ts`** - all TS types (remember - TS types don't exist when the program is running, unlike in Java/C#)
+- **`constants.ts`** - all magic values: timeouts, thresholds, API paths, feature flags
 
 ## API Endpoints
 
@@ -230,60 +276,13 @@ UniEventServer/
 | `POST` | `/admin/tools/refresh-tokens` | Refresh tokens for all pages |
 | `POST` | `/admin/tools/refresh-tokens/{pageId}` | Refresh token for one page |
 
-## Auth
-
-Auth is JWT-based via the backend. The backend issues a short-lived access token and a long-lived refresh token on login. On the frontend, both tokens are stored in `localStorage` (`unievent_token`, `unievent_user`). The `AuthContext` + `useAuth()` hook expose the current user across the app. All authenticated API calls attach `Authorization: Bearer <token>` manually - there is no global interceptor.
-
-## Likes
-
-Likes are stored in `localStorage` per user (`unievent_likes_<uid>`), backed by an in-memory cache for performance. They are device-local. Cross-device sync would require backend endpoints (`/api/users/me/likes`) - tracked in the TODO.
-
-## Tests
-
-### Backend
-
-```bash
-./mvnw test
-```
-
-Uses H2 as an embedded in-memory database - no running MySQL needed. Test config lives in `src/test/resources/` (`application-test.yaml`, `db-test.yaml`, etc.).
-
-### Frontend
-
-```bash
-cd web && npm test
-```
-
-Uses Vitest + jsdom. All tests mock `fetch` - no running backend required.
-
-## Deployment
-
-GitHub Actions deploys the full stack automatically on push to `live` (see [deploy.yml](.github/workflows/deploy.yml)).
-
-**What the workflow does:**
-
-1. SSHs to the server and pulls the monorepo at `LIVE_DEPLOY_PATH`
-2. Runs `docker compose up --build -d`, which rebuilds and restarts all services: Spring Boot backend, React frontend (nginx), MySQL, SeaweedFS, Vault, and the nginx edge
-3. Prunes dangling images
-
-One deploy, one repo, everything updates together.
-
-**Required GitHub Actions secrets:**
-
-| Secret | Purpose |
-|--------|---------|
-| `LIVE_DEPLOY_SSH_KEY` | Private SSH key for server access |
-| `LIVE_DEPLOY_KNOWN_HOSTS` | Server SSH host fingerprint |
-| `LIVE_DEPLOY_HOST` | Server hostname or IP |
-| `LIVE_DEPLOY_USER` | SSH username |
-| `LIVE_DEPLOY_PATH` | Absolute path to the repo on the server |
-
 ## TODO
 
 Backend
 
 - [in progress] JWT auth - signed token, expiry, validation filter
 - [in progress] Auto Facebook token refresh
+- [ ] Persist likes to backend (`/api/users/me/likes`) - currently localStorage only
 - [ ] Fix the damn env situation
 - [ ] Replace `ddl-auto: update` with Flyway migrations
 - [ ] PicoCLI for proper tool CLI
@@ -298,4 +297,3 @@ Backend
 - [ ] Organizer dashboard (event sync status, token expiry)
 - [ ] Create Event page
 - [ ] Business Manager integration for stable API access
-- [ ] Persist likes to backend (`/api/users/me/likes`) - currently localStorage only

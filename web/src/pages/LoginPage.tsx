@@ -1,15 +1,14 @@
-import { useState } from 'react';
-import type { FormEvent } from 'react';
 import { Link } from 'react-router-dom';
-import { useNavigate } from 'react-router-dom';
 import { HeaderLogoLink } from '../components/HeaderLogoLink';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { Footer } from '../components/Footer';
 import { LogIn, UserPlus } from 'lucide-react';
+import { useLoginPage } from '../hooks/useLoginPage';
 import { useAuth } from '../context/AuthContext';
 import { isValidEmail } from '../utils/validationUtils';
 
 export function LoginPage() {
+    //const { email, setEmail, password, setPassword, isLoading, errorMessage, handleSubmit } = useLoginPage();
     const navigate = useNavigate();
     const { login, isLoading, error, clearError } = useAuth();
     const [email, setEmail] = useState('');

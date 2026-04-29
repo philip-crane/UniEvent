@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import type { Event } from '../types';
 import { formatEventStart } from '../utils/eventUtils';
 
+// consts are usually kept in constants.ts, but this is highly local.
 const WEEK_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 function formatYMD(d: Date) {

@@ -1,11 +1,10 @@
-import { useState } from 'react';
-import type { FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { useNavigate } from 'react-router-dom';
 import { HeaderLogoLink } from '../components/HeaderLogoLink';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { Footer } from '../components/Footer';
 import { Plus, UserPlus } from 'lucide-react';
+import { useSignupPage } from '../hooks/useSignupPage';
 import { useAuth } from '../context/AuthContext';
 import { mapAuthError, signupWithEmail, type AccountRole } from '../services/auth';
 import { isValidEmail } from '../utils/validationUtils';
@@ -119,6 +118,20 @@ export function SignupPage() {
             setIsSubmitting(false);
         }
     }
+    /*const {
+        username, setUsername,
+        email, setEmail,
+        password, setPassword,
+        confirmPassword, setConfirmPassword,
+        organizerPasswords,
+        accountRole, setAccountRole,
+        isRoleModalOpen, setIsRoleModalOpen,
+        isLoading,
+        errorMessage,
+        updateOrganizerCode,
+        addOrganizerCodeField,
+        handleSubmit,
+    } = useSignupPage();*/
 
     return (
         <div className="min-h-screen flex flex-col">
@@ -146,12 +159,16 @@ export function SignupPage() {
                             <h2 className="mt-1.5 text-[clamp(1.55rem,2.7vw,2rem)] font-black leading-tight text-[var(--text-primary)]">Sign up to get started</h2>
                             <p className="mt-3 text-[0.95rem] text-[var(--text-subtle)]">Create your account with a username and password.</p>
                             <p className="mt-2 text-[0.9rem] font-semibold text-[var(--link-primary)]">Already have an account? Log in from the link below.</p>
-                            <p className="mt-2 text-[0.85rem] font-bold text-[var(--text-subtle)]">
-                                Account type: {accountRole === 'organizer' ? 'Organizer' : accountRole === 'user' ? 'User' : 'Not selected'}
-                            </p>
-                            <p className="mt-1 text-[0.85rem] font-semibold text-[var(--text-subtle)]">
-                                Test codes: organizer-test-2026, campus-events-2026, student-hub-2026
-                            </p>
+                            {accountRole && (
+                                <span className={`mt-2 inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.1em] ${
+                                    accountRole === 'organizer'
+                                        ? 'border border-transparent bg-[var(--link-primary)] text-white'
+                                        : 'border border-[var(--panel-border)] bg-[var(--panel-bg)] text-[var(--text-primary)]'
+                                }`}>
+                                    {accountRole === 'organizer' ? 'Organizer' : 'User'}
+                                </span>
+                            )}
+
 
                             <form className="mt-6 grid gap-3" onSubmit={handleSubmit} noValidate>
                                 <label className="text-[0.85rem] font-bold uppercase tracking-[0.06em] text-[var(--text-primary)]" htmlFor="signup-username">Username</label>
@@ -239,7 +256,7 @@ export function SignupPage() {
                                                     placeholder="Enter organizer access password"
                                                     className="auth-input"
                                                     value={code}
-                                                    onChange={(event) => updateOrganizerCode(index, event.target.value)}
+                                                    onChange={(e) => updateOrganizerCode(index, e.target.value)}
                                                 />
                                                 <button
                                                     type="button"
@@ -251,11 +268,7 @@ export function SignupPage() {
                                                 </button>
                                             </div>
                                         ))}
-                                        <div className="mt-1 text-[0.8rem] font-semibold text-[var(--text-subtle)]">
-                                            {TEST_ORGANIZER_CODES.map(([codeText, organization]) => (
-                                                <p key={codeText} className="mt-1">Code: {codeText}{' -> '}{organization}</p>
-                                            ))}
-                                        </div>
+
                                     </>
                                 )}
 
@@ -292,7 +305,7 @@ export function SignupPage() {
                         aria-labelledby="signup-role-modal-title"
                         onClick={() => navigate('/login', { replace: true })}
                     >
-                        <div className="w-full max-w-[460px] rounded-[20px] border border-[var(--panel-border)] bg-[var(--panel-bg)] p-5 shadow-[0_24px_46px_rgba(0,0,0,0.28)]" onClick={(event) => event.stopPropagation()}>
+                        <div className="w-full max-w-[460px] rounded-[20px] border border-[var(--panel-border)] bg-[var(--panel-bg)] p-5 shadow-[0_24px_46px_rgba(0,0,0,0.28)]" onClick={(e) => e.stopPropagation()}>
                             <h3 id="signup-role-modal-title" className="m-0 text-[1.2rem] font-extrabold text-[var(--text-primary)]">Choose account type</h3>
                             <p className="mt-2 text-[0.95rem] text-[var(--text-subtle)]">Do you want to sign up as User or Organizer?</p>
 
@@ -302,7 +315,6 @@ export function SignupPage() {
                                     className="auth-btn auth-btn-primary"
                                     onClick={() => {
                                         setAccountRole('user');
-                                        setOrganizerPasswords(['']);
                                         setIsRoleModalOpen(false);
                                     }}
                                 >
@@ -314,7 +326,6 @@ export function SignupPage() {
                                     className="auth-btn auth-btn-secondary"
                                     onClick={() => {
                                         setAccountRole('organizer');
-                                        setOrganizerPasswords((current) => (current.length ? current : ['']));
                                         setIsRoleModalOpen(false);
                                     }}
                                 >

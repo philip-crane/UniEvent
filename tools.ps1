@@ -33,6 +33,7 @@
     On Linux/Mac (tools.sh): use double-dash flags  (--verbose, --wipe, --down, --page, --help)
 #>
 
+# define CLI flags like -v or --verbose, -h --help etc
 param(
     [Parameter(Position = 0)]
     [string]$Command,

@@ -1,4 +1,13 @@
+import { CSRF_COOKIE_NAME, BACKEND_URL, API_AUTH_PROFILE } from '../constants';
+import type { User, AccountRole, AuthApiResponse } from '../types';
 import { apiCall } from './fetchClient';
+
+/*let _csrfToken: string | null = null;
+let _currentUser: User | null = null;
+let _tokenExpiresAt: number | null = null;
+
+const listeners: Array<(user: User | null) => void> = [];*/
+
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL ?? '';
 const USER_KEY = 'unievent_user';
@@ -37,56 +46,44 @@ function createHttpError(status: number, message: string): HttpError {
 // Module-level listener list for auth state subscriptions
 const listeners: Array<(user: AuthUser | null) => void> = [];
 
-function notifyListeners(user: AuthUser | null): void {
+export function notifyListeners(user: User | null): void {
     listeners.forEach((cb) => cb(user));
-}
-
-function normalizeRole(value: unknown): AccountRole | undefined {
-    if (typeof value !== 'string') return undefined;
-    const normalized = value.trim().toUpperCase();
-    if (normalized === 'ORGANIZER' || normalized === 'ROLE_ORGANIZER') return 'organizer';
-    if (normalized === 'USER' || normalized === 'ROLE_USER') return 'user';
-    return undefined;
-}
-
-function resolveAccountRole(
-    roleCandidate: unknown,
-    organizerNamesCandidate: unknown,
-    fallback: AccountRole = 'user',
-): AccountRole {
-    const normalizedRole = normalizeRole(roleCandidate);
-    if (normalizedRole) return normalizedRole;
-
-    if (Array.isArray(organizerNamesCandidate) && organizerNamesCandidate.length > 0) {
-        return 'organizer';
-    }
-
-    return fallback;
 }
 
 export function getCsrfToken(): string {
     return csrfToken;
 }
 
-function persistUser(user: AuthUser): void {
-    localStorage.setItem(USER_KEY, JSON.stringify({
-        username: user.username,
-        email: user.email,
-        uid: user.uid,
-        displayName: user.displayName,
-        photoURL: user.photoURL,
-        role: user.role,
-        organizerNames: user.organizerNames,
-    }));
+export function setCsrfToken(token: string | null): void {
+    _csrfToken = token;
+}
+
+export function setCurrentUser(user: User): void {
+    _currentUser = user;
 }
 
 function clearUser(): void {
     localStorage.removeItem(USER_KEY);
 }
 
+/*export function clearCurrentUser(): void {
+    _currentUser = null;
+    _tokenExpiresAt = null;
+}*/
+
+export function storeTokenExpiry(accessTokenExpiresInMs: number): void {
+    _tokenExpiresAt = Date.now() + accessTokenExpiresInMs;
+}
+
+export function getTokenExpiresAt(): number | null {
+    return _tokenExpiresAt;
+}
+
 export function isTokenExpiredOrExpiringSoon(thresholdMs = 60_000): boolean {
     void thresholdMs;
     return false;
+    /*if (_tokenExpiresAt === null) return false;
+    return Date.now() >= _tokenExpiresAt - thresholdMs;*/
 }
 
 export function getCurrentUser(): AuthUser | null {
@@ -203,6 +200,34 @@ export async function signupWithEmail({ username, email, password, role, organiz
 
     const data = await response.json() as { username: string; email: string; role?: string; roles?: string[]; csrfToken: string };
     csrfToken = data.csrfToken ?? '';
+
+    /*export function getCurrentUser(): User | null {
+    return _currentUser;
+}
+
+export function normalizeRole(value: unknown): AccountRole | undefined {
+    if (typeof value !== 'string') return undefined;
+    const normalized = value.trim().toUpperCase();
+    if (normalized === 'ORGANIZER' || normalized === 'ROLE_ORGANIZER') return 'organizer';
+    if (normalized === 'USER' || normalized === 'ROLE_USER') return 'user';
+    return undefined;
+}
+
+export function resolveAccountRole(
+    roleCandidate: unknown,
+    organizerNamesCandidate: unknown,
+    fallback: AccountRole = 'user',
+): AccountRole {
+    const normalizedRole = normalizeRole(roleCandidate);
+    if (normalizedRole) return normalizedRole;
+    if (Array.isArray(organizerNamesCandidate) && organizerNamesCandidate.length > 0) {
+        return 'organizer';
+    }
+    return fallback;
+}
+
+export function buildUserFromResponse(data: AuthApiResponse, existing?: User | null): User {
+    return {*/
     const user: AuthUser = {
         username: data.username,
         email: data.email,
@@ -210,16 +235,17 @@ export async function signupWithEmail({ username, email, password, role, organiz
         displayName: data.username,
         role: resolveAccountRole(data.role ?? data.roles?.[0], undefined) ?? role,
         organizerNames: organizerNames ? [...organizerNames] : undefined,
+        /*uid: existing?.uid ?? data.username,
+        displayName: existing?.displayName ?? data.username,
+        photoURL: existing?.photoURL,
+        role: resolveAccountRole(data.roles?.[0], existing?.organizerNames),
+        organizerNames: existing?.organizerNames,*/
     };
-    persistUser(user);
-    notifyListeners(user);
-    return user;
 }
 
-export function onAuthUserChanged(callback: (user: AuthUser | null) => void): () => void {
+export function onUserChanged(callback: (user: User | null) => void): () => void {
     listeners.push(callback);
-    // fire immediately with current state
-    callback(getCurrentUser());
+    callback(_currentUser);
     return () => {
         const idx = listeners.indexOf(callback);
         if (idx !== -1) listeners.splice(idx, 1);
@@ -303,7 +329,7 @@ export function getStoredOrganizerNames(uid: string): string[] {
 }
 
 export async function getAccountProfile(uid?: string): Promise<{ role: AccountRole; organizerNames: string[] }> {
-    const user = getCurrentUser();
+    const user = _currentUser;
     if (!user || (uid && user.uid !== uid)) {
         return { role: 'user', organizerNames: [] };
     }
@@ -311,7 +337,7 @@ export async function getAccountProfile(uid?: string): Promise<{ role: AccountRo
     const fallbackRole = resolveAccountRole(user.role, user.organizerNames);
     const fallbackOrganizerNames = Array.isArray(user.organizerNames) ? [...user.organizerNames] : [];
 
-    const response = await fetch(`${BACKEND_URL}/api/auth/profile`, {
+    const response = await fetch(`${BACKEND_URL}${API_AUTH_PROFILE}`, {
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
     });
@@ -327,12 +353,12 @@ export async function getAccountProfile(uid?: string): Promise<{ role: AccountRo
         organizerNames: profileOrganizerNames,
     };
 
-    const updatedUser: AuthUser = {
+    const updatedUser: User = {
         ...user,
         role: profile.role,
         organizerNames: [...profile.organizerNames],
     };
-    persistUser(updatedUser);
+    setCurrentUser(updatedUser);
     notifyListeners(updatedUser);
 
     return profile;
@@ -361,3 +387,10 @@ export function mapAuthError(error: unknown, _context?: AuthErrorContext): strin
     }
     return 'Something went wrong. Please try again.';
 }
+
+/*export function _resetForTesting(): void {
+    _currentUser = null;
+    _tokenExpiresAt = null;
+    _csrfToken = null;
+    listeners.length = 0;
+}*/

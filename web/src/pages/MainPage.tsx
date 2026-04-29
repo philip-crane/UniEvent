@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react';
 import { FilterBar } from '../components/FilterBar';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { EventList } from '../components/EventList';
@@ -6,12 +5,12 @@ import { CalendarView } from '../components/Calendar';
 import { Footer } from '../components/Footer';
 import { HeaderLogoLink } from '../components/HeaderLogoLink';
 import { UserMenu } from '../components/UserMenu';
+import { useMainPage } from '../hooks/useMainPage';
 import { getEvents, getPages } from '../services/dal';
 import { getFacebookAuthUrl } from '../services/facebook';
 import { parseDateOnly, startOfDayMs, endOfDayMs } from '../utils/dateUtils';
 import type { Event as EventType, Page, SortMode } from '../types';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
 import { CalendarDays, LayoutList } from 'lucide-react';
 
 export function MainPage() {
@@ -176,6 +175,27 @@ export function MainPage() {
   }
 
   const count = list.length;
+  /*const {
+    currentUser,
+    pages,
+    list,
+    loading,
+    error,
+    isSigningOut,
+    fbConnecting,
+    fbMessage,
+    pageIds, setPageIds,
+    query, setQuery,
+    fromDate, setFromDate,
+    toDate, setToDate,
+    sortMode, setSortMode,
+    viewMode, setViewMode,
+    count,
+    invalidRange,
+    userLabel,
+    handleFacebookConnect,
+    handleSignOut,
+  } = useMainPage();*/
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -281,19 +301,19 @@ export function MainPage() {
           {viewMode === 'list' ? <EventList list={list} /> : <CalendarView events={list} />}
 
           <div className="flex flex-col items-center gap-2">
-            {fbMessage && (
-              <p className={`text-sm font-medium ${fbMessage.kind === 'success' ? 'text-green-600' : 'text-red-600'}`}>
-                {fbMessage.text}
-              </p>
-            )}
-            <button
-              onClick={handleFacebookConnect}
-              disabled={fbConnecting}
-              className="bg-[var(--link-primary)] hover:bg-[var(--link-primary-hover)] text-white font-semibold px-6 py-3 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 disabled:opacity-60 disabled:cursor-not-allowed disabled:transform-none"
-            >
-              {fbConnecting ? 'Connecting…' : 'Connect Facebook Page'}
-            </button>
-          </div>
+              {fbMessage && (
+                <p className={`text-sm font-medium ${fbMessage.kind === 'success' ? 'text-green-600' : 'text-red-600'}`}>
+                  {fbMessage.text}
+                </p>
+              )}
+              <button
+                onClick={handleFacebookConnect}
+                disabled={fbConnecting}
+                className="bg-[var(--link-primary)] hover:bg-[var(--link-primary-hover)] text-white font-semibold px-6 py-3 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 disabled:opacity-60 disabled:cursor-not-allowed disabled:transform-none"
+              >
+                {fbConnecting ? 'Connecting…' : 'Connect Facebook Page'}
+              </button>
+            </div>
         </div>
       </div>
 

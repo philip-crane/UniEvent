@@ -18,10 +18,14 @@ vi.mock('react-router-dom', async () => {
     };
 });
 
-// We replace backend calls with fake responses to test screen behavior only.
-vi.mock('../../services/auth', () => ({
+vi.mock('../../handlers/login', () => ({
     loginWithEmail: (...args: unknown[]) => mockLoginWithEmail(...args),
+}));
+
+vi.mock('../../utils/authUtils', () => ({
     mapAuthError: (...args: unknown[]) => mockMapAuthError(...args),
+    createHttpError: (status: number, message: string) => Object.assign(new Error(message), { status }),
+    isValidEmail: (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v),
 }));
 
 // Small helper to open the page in a test-safe router.
@@ -91,7 +95,7 @@ describe('LoginPage', () => {
         await user.type(screen.getByLabelText('Password'), 'wrongpass');
         await user.click(screen.getByRole('button', { name: 'Sign In' }));
 
-        expect(mockMapAuthError).toHaveBeenCalledWith(error, 'login');
+        expect(mockMapAuthError).toHaveBeenCalledWith(error);
         expect(screen.getByText('Invalid email or password.')).toBeInTheDocument();
     });
 });

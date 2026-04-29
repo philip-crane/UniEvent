@@ -147,7 +147,8 @@ class AuthControllerTests {
             .andExpect(jsonPath("$.username").value("testuser"))
             .andExpect(jsonPath("$.email").value("test@example.com"))
             .andExpect(jsonPath("$.roles[0]").value("ROLE_USER"))
-            .andExpect(jsonPath("$.csrfToken").value("csrf-token-value"));
+            .andExpect(jsonPath("$.csrfToken").value("csrf-token-value"))
+            .andExpect(jsonPath("$.accessTokenExpiresInMs").value(3600000));
     }
 
     @Test
@@ -190,7 +191,8 @@ class AuthControllerTests {
             .andExpect(jsonPath("$.username").value("testuser"))
             .andExpect(jsonPath("$.email").value("test@example.com"))
             .andExpect(jsonPath("$.roles[0]").value("ROLE_USER"))
-            .andExpect(jsonPath("$.csrfToken").value("csrf-token-value"));
+            .andExpect(jsonPath("$.csrfToken").value("csrf-token-value"))
+            .andExpect(jsonPath("$.accessTokenExpiresInMs").value(3600000));
 
         verify(authenticationManager).authenticate(any(UsernamePasswordAuthenticationToken.class));
     }
@@ -217,41 +219,35 @@ class AuthControllerTests {
         when(userService.findByEmail("test@example.com")).thenReturn(testUser);
 
         mockMvc.perform(post("/api/auth/refresh")
-                .cookie(new jakarta.servlet.http.Cookie("auth_refresh", "old-refresh-token")))
-                //.cookie(new Cookie("auth_refresh", "old-refresh-token")))
+                .cookie(new Cookie("auth_refresh", "old-refresh-token")))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.token").value("access-token-value"))
             .andExpect(jsonPath("$.username").value("testuser"))
             .andExpect(jsonPath("$.email").value("test@example.com"))
             .andExpect(jsonPath("$.roles[0]").value("ROLE_USER"))
-            .andExpect(jsonPath("$.csrfToken").value("csrf-token-value"));
+            .andExpect(jsonPath("$.csrfToken").value("csrf-token-value"))
+            .andExpect(jsonPath("$.accessTokenExpiresInMs").value(3600000));
     }
 
     @Test
-    void refreshShouldReturn400WhenTokenBlank() throws Exception {
-        mockMvc.perform(post("/api/auth/refresh")
-                .contentType(MediaType.APPLICATION_JSON))
-    /*void refreshShouldReturn400WhenNoCookie() throws Exception {
-        mockMvc.perform(post("/api/auth/refresh"))*/
+    void refreshShouldReturn400WhenNoCookie() throws Exception {
+        mockMvc.perform(post("/api/auth/refresh"))
             .andExpect(status().isBadRequest());
     }
 
     @Test
     void logoutShouldReturnNoContent() throws Exception {
         mockMvc.perform(post("/api/auth/logout")
-                .cookie(new jakarta.servlet.http.Cookie("auth_refresh", "some-refresh-token")))
-                //.cookie(new Cookie("auth_refresh", "some-refresh-token")))
+                .cookie(new Cookie("auth_refresh", "some-refresh-token")))
             .andExpect(status().isNoContent());
 
         verify(refreshTokenService).logout("some-refresh-token");
     }
 
     @Test
-    void logoutShouldReturn400WhenTokenBlank() throws Exception {
-        mockMvc.perform(post("/api/auth/logout")
-                .contentType(MediaType.APPLICATION_JSON))
+    void logoutShouldReturn204EvenWithNoCookie() throws Exception {
+        mockMvc.perform(post("/api/auth/logout"))
             .andExpect(status().isNoContent());
-            //.andExpect(status().isBadRequest());
     }
 
     // ── /organizer-key/generate ───────────────────────────────────────────────
@@ -362,7 +358,8 @@ class AuthControllerTests {
             .andExpect(jsonPath("$.username").value("neworg"))
             .andExpect(jsonPath("$.email").value("organizer@example.com"))
             .andExpect(jsonPath("$.roles[0]").value("ROLE_ORGANIZER"))
-            .andExpect(jsonPath("$.csrfToken").value("csrf-token-value"));
+            .andExpect(jsonPath("$.csrfToken").value("csrf-token-value"))
+            .andExpect(jsonPath("$.accessTokenExpiresInMs").value(3600000));
     }
 
     @Test

@@ -236,7 +236,14 @@ function Update-EnvVars {
 # rather than bash/curl - PS 7's -SkipCertificateCheck is the load-bearing feature.
 
 function Invoke-Web {
-    param([string]$Method = "GET", [string]$Uri, [hashtable]$Headers = @{}, [int]$TimeoutSec = 30, [string]$Body = $null)
+    param(
+        [string]$Method = "GET",
+        [string]$Uri,
+        [hashtable]$Headers = @{},
+        [int]$TimeoutSec = 30,
+        [string]$Body = $null,
+        $WebSession = $null
+    )
     $skipCert = $false
     try {
         $parsedUri = [System.Uri]$Uri
@@ -247,14 +254,12 @@ function Invoke-Web {
         $skipCert = $false
     }
     if ($PSVersionTable.PSVersion.Major -ge 6) {
-        if ($null -ne $Body -and $Body -ne "") {
-            return Invoke-WebRequest -Uri $Uri -Method $Method -Headers $Headers -Body $Body `
-                -TimeoutSec $TimeoutSec -ErrorAction Stop -SkipCertificateCheck:$skipCert
-        }
-        return Invoke-WebRequest -Uri $Uri -Method $Method -Headers $Headers `
-            -TimeoutSec $TimeoutSec -ErrorAction Stop -SkipCertificateCheck:$skipCert
+        $splat = @{ Uri=$Uri; Method=$Method; Headers=$Headers; TimeoutSec=$TimeoutSec; ErrorAction="Stop"; SkipCertificateCheck=$skipCert }
+        if ($null -ne $Body -and $Body -ne "") { $splat["Body"] = $Body }
+        if ($null -ne $WebSession) { $splat["WebSession"] = $WebSession }
+        return Invoke-WebRequest @splat
     }
-    
+
     # PS 5: Cannot use scriptblock callbacks for cert validation (no runspace in .NET callback)
     # Solution: use compiled C# delegate instead of scriptblock
     if ($skipCert) {
@@ -274,13 +279,12 @@ function Invoke-Web {
         $old = [System.Net.ServicePointManager]::ServerCertificateValidationCallback
         [System.Net.ServicePointManager]::ServerCertificateValidationCallback = [System.Net.Security.RemoteCertificateValidationCallback]::CreateDelegate([System.Net.Security.RemoteCertificateValidationCallback], [CertificateBypass], 'IgnoreSSLErrors')
     }
-    
+
     try {
-        if ($null -ne $Body -and $Body -ne "") {
-            return Invoke-WebRequest -Uri $Uri -Method $Method -Headers $Headers -Body $Body `
-                -TimeoutSec $TimeoutSec -ErrorAction Stop
-        }
-        return Invoke-WebRequest -Uri $Uri -Method $Method -Headers $Headers -TimeoutSec $TimeoutSec -ErrorAction Stop
+        $splat = @{ Uri=$Uri; Method=$Method; Headers=$Headers; TimeoutSec=$TimeoutSec; ErrorAction="Stop" }
+        if ($null -ne $Body -and $Body -ne "") { $splat["Body"] = $Body }
+        if ($null -ne $WebSession) { $splat["WebSession"] = $WebSession }
+        return Invoke-WebRequest @splat
     } finally {
         if ($skipCert) { [System.Net.ServicePointManager]::ServerCertificateValidationCallback = $old }
     }
@@ -337,15 +341,15 @@ function Test-ServerHealth {
     return $false
 }
 
-$script:_adminTokenByBaseUrl = @{}
+$script:_adminSessionByBaseUrl = @{}
 
-function Get-AdminToken {
+function Get-AdminSession {
     param([string]$BaseUrl)
 
     $BaseUrl = Assert-ValidBaseUrl -BaseUrl $BaseUrl
 
-    if ($script:_adminTokenByBaseUrl.ContainsKey($BaseUrl) -and $script:_adminTokenByBaseUrl[$BaseUrl]) {
-        return $script:_adminTokenByBaseUrl[$BaseUrl]
+    if ($script:_adminSessionByBaseUrl.ContainsKey($BaseUrl) -and $script:_adminSessionByBaseUrl[$BaseUrl]) {
+        return $script:_adminSessionByBaseUrl[$BaseUrl]
     }
 
     $envVars  = Load-DotEnv
@@ -357,29 +361,29 @@ function Get-AdminToken {
         exit 1
     }
 
-    $email = "cli@unievent.internal"
+    $email    = "cli@unievent.internal"
+    $loginBody = @{ email = $email; password = $password } | ConvertTo-Json -Compress
 
-    $loginBody = @{
-        email = $email
-        password = $password
-    } | ConvertTo-Json -Compress
+    # Create a WebSession so auth cookies from the login response are auto-sent on subsequent requests.
+    $webSession = New-Object Microsoft.PowerShell.Commands.WebRequestSession
     try {
-        $resp  = Invoke-Web -Uri "$BaseUrl/api/auth/login" -Method "POST" `
-            -Headers @{ "Content-Type" = "application/json" } -Body $loginBody -TimeoutSec 15
-        $token = ($resp.Content | ConvertFrom-Json).token
+        $resp      = Invoke-Web -Uri "$BaseUrl/api/auth/login" -Method "POST" `
+            -Headers @{ "Content-Type" = "application/json" } -Body $loginBody -TimeoutSec 15 -WebSession $webSession
+        $csrfToken = ($resp.Content | ConvertFrom-Json).csrfToken
     } catch {
         Write-Err "Could not authenticate CLI service account: $($_.Exception.Message)"
         Write-Warn "Ensure the server is running and ADMIN_PASSWORD matches what the server was started with."
         exit 1
     }
 
-    if (-not $token) {
-        Write-Err "Login succeeded but response contained no token - check server logs"
+    if (-not $csrfToken) {
+        Write-Err "Login succeeded but response contained no csrfToken - check server logs"
         exit 1
     }
 
-    $script:_adminTokenByBaseUrl[$BaseUrl] = $token
-    return $token
+    $session = @{ WebSession = $webSession; CsrfToken = $csrfToken }
+    $script:_adminSessionByBaseUrl[$BaseUrl] = $session
+    return $session
 }
 
 function Invoke-AdminRequest {
@@ -391,17 +395,21 @@ function Invoke-AdminRequest {
         exit 1
     }
 
-    $baseUrl = "$($uri.Scheme)://$($uri.Authority)"
-    $token   = Get-AdminToken -BaseUrl $baseUrl
+    $baseUrl      = "$($uri.Scheme)://$($uri.Authority)"
+    $adminSession = Get-AdminSession -BaseUrl $baseUrl
 
-    $headers = @{ "Content-Type" = "application/json"; "Authorization" = "Bearer $token" }
+    $headers = @{ "Content-Type" = "application/json" }
+    # State-changing methods require the CSRF token alongside the auth cookie.
+    if ($Method -in @("POST", "PUT", "PATCH", "DELETE")) {
+        $headers["X-CSRF-Token"] = $adminSession.CsrfToken
+    }
 
     if ($VerboseOutput) {
         Write-Info "$Method $Url"
     }
 
     try {
-        $resp = Invoke-Web -Uri $Url -Method $Method -Headers $headers -TimeoutSec 120
+        $resp = Invoke-Web -Uri $Url -Method $Method -Headers $headers -TimeoutSec 120 -WebSession $adminSession.WebSession
         return @{ StatusCode = $resp.StatusCode; Body = $resp.Content }
     } catch [System.Net.WebException] {
         $response = $_.Exception.Response
