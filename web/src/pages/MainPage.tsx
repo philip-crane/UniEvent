@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { FilterBar } from '../components/FilterBar';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { EventList } from '../components/EventList';
@@ -5,7 +6,7 @@ import { CalendarView } from '../components/Calendar';
 import { Footer } from '../components/Footer';
 import { HeaderLogoLink } from '../components/HeaderLogoLink';
 import { UserMenu } from '../components/UserMenu';
-import { useMainPage } from '../hooks/useMainPage';
+import { useAuth } from '../context/AuthContext';
 import { getEvents, getPages } from '../services/dal';
 import { getFacebookAuthUrl } from '../services/facebook';
 import { parseDateOnly, startOfDayMs, endOfDayMs } from '../utils/dateUtils';

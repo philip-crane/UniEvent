@@ -75,19 +75,10 @@ public class AuthController {
         String csrfToken = csrfTokenService.generateToken();
         writeAuthCookies(response, tokenPair, csrfToken);
         return ResponseEntity.ok(buildAuthResponse(user, tokenPair, csrfToken));
-        /*return ResponseEntity.ok(new AuthResponse(
-                user.getUsername(),
-                user.getEmail(),
-                user.getRole(),
-                tokenPair.accessTokenExpiresInMs(),
-                tokenPair.refreshTokenExpiresInMs(),
-                csrfToken,
-                tokenPair.accessToken()
-        ));*/
     }
 
     @PostMapping("/login")
-    @Operation(summary = "Login user", description = "Authenticate a user with email and password, returns access and refresh tokens")
+    @Operation(summary = "Login user", description = "Authenticate a user with email and password, sets auth cookies, and returns account details plus a CSRF token")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "User successfully logged in", content = @Content(schema = @Schema(implementation = AuthResponse.class))),
             @ApiResponse(responseCode = "400", description = "Invalid request body"),
@@ -103,19 +94,10 @@ public class AuthController {
         String csrfToken = csrfTokenService.generateToken();
         writeAuthCookies(response, tokenPair, csrfToken);
         return ResponseEntity.ok(buildAuthResponse(user, tokenPair, csrfToken));
-        /*return ResponseEntity.ok(new AuthResponse(
-                user.getUsername(),
-                user.getEmail(),
-                user.getRole(),
-                tokenPair.accessTokenExpiresInMs(),
-                tokenPair.refreshTokenExpiresInMs(),
-                csrfToken,
-                tokenPair.accessToken()
-        ));*/
     }
 
     @PostMapping("/refresh")
-    @Operation(summary = "Refresh access token", description = "Exchange a valid refresh token for a new access token and refresh token pair")
+    @Operation(summary = "Refresh access token", description = "Exchange a valid refresh cookie for rotated auth cookies and a new CSRF token")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Token successfully refreshed", content = @Content(schema = @Schema(implementation = AuthResponse.class))),
             @ApiResponse(responseCode = "400", description = "Invalid request body"),
@@ -131,15 +113,6 @@ public class AuthController {
         writeAuthCookies(response, tokenPair, csrfToken);
         UserEntity user = userService.findByEmail(tokenPair.email());
         return ResponseEntity.ok(buildAuthResponse(user, tokenPair, csrfToken));
-        /*return ResponseEntity.ok(new AuthResponse(
-                tokenPair.username(),
-                tokenPair.email(),
-                tokenPair.role(),
-                tokenPair.accessTokenExpiresInMs(),
-                tokenPair.refreshTokenExpiresInMs(),
-                csrfToken,
-                tokenPair.accessToken()
-        ));*/
     }
 
     @PostMapping("/logout")
@@ -287,13 +260,9 @@ public class AuthController {
         return new AuthResponse(
                 user.getUsername(),
                 user.getEmail(),
-                normalizedRole,
                 List.of(normalizedRole),
                 csrfToken,
-                tokenPair.accessToken()
-                /*List.of(normalizeRole(user.getRole())),
-                csrfToken,
-                tokenPair.accessTokenExpiresInMs()*/
+                tokenPair.accessTokenExpiresInMs()
         );
     }
 

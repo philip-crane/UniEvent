@@ -1,124 +1,13 @@
-import { Link } from 'react-router-dom';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { HeaderLogoLink } from '../components/HeaderLogoLink';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { Footer } from '../components/Footer';
 import { Plus, UserPlus } from 'lucide-react';
 import { useSignupPage } from '../hooks/useSignupPage';
-import { useAuth } from '../context/AuthContext';
-import { mapAuthError, signupWithEmail, type AccountRole } from '../services/auth';
-import { isValidEmail } from '../utils/validationUtils';
-
-const DEFAULT_ORGANIZER_CODE_TO_ORG: Record<string, string> = {
-    'organizer-test-2026': 'UniEvent Core Team',
-    'campus-events-2026': 'DTU Campus Events',
-    'student-hub-2026': 'Student Hub Society',
-};
-
-const organizerCodesFromEnv = import.meta.env.VITE_ORGANIZER_SIGNUP_PASSWORD?.trim();
-
-const ORGANIZER_CODE_TO_ORG = organizerCodesFromEnv
-    ? { [organizerCodesFromEnv]: 'UniEvent Core Team' }
-    : DEFAULT_ORGANIZER_CODE_TO_ORG;
-
-const TEST_ORGANIZER_CODES = Object.entries(DEFAULT_ORGANIZER_CODE_TO_ORG);
 
 export function SignupPage() {
     const navigate = useNavigate();
-    const { login, isLoading, error, clearError } = useAuth();
-    const [username, setUsername] = useState('');
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [confirmPassword, setConfirmPassword] = useState('');
-    const [organizerPasswords, setOrganizerPasswords] = useState<string[]>(['']);
-    const [accountRole, setAccountRole] = useState<AccountRole | null>(null);
-    const [isRoleModalOpen, setIsRoleModalOpen] = useState(true);
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [validationError, setValidationError] = useState('');
-    const [signupError, setSignupError] = useState('');
-    const [successMessage, setSuccessMessage] = useState('');
-
-    function updateOrganizerCode(index: number, value: string) {
-        setOrganizerPasswords((current) => current.map((code, codeIndex) => (codeIndex === index ? value : code)));
-    }
-
-    function addOrganizerCodeField() {
-        setOrganizerPasswords((current) => [...current, '']);
-    }
-
-    async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-        event.preventDefault();
-        setValidationError('');
-        setSignupError('');
-        setSuccessMessage('');
-        clearError();
-
-        if (!accountRole) {
-            setIsRoleModalOpen(true);
-            return;
-        }
-
-        const trimmedUsername = username.trim();
-        const trimmedEmail = email.trim();
-
-        if (!trimmedUsername || !trimmedEmail || !password || !confirmPassword) {
-            setValidationError('Please fill in all fields.');
-            return;
-        }
-
-        if (!isValidEmail(trimmedEmail)) {
-            setValidationError('Please provide a valid email address.');
-            return;
-        }
-
-        if (password.length < 8) {
-            setValidationError('Password must be at least 8 characters.');
-            return;
-        }
-
-        if (password !== confirmPassword) {
-            setValidationError('Passwords do not match.');
-            return;
-        }
-
-        let organizerNames: string[] = [];
-
-        if (accountRole === 'organizer') {
-            const enteredCodes = organizerPasswords
-                .map((code) => code.trim())
-                .filter((code) => !!code);
-
-            if (!enteredCodes.length) {
-                setValidationError('Please enter at least one organizer access password.');
-                return;
-            }
-
-            const firstInvalidCode = enteredCodes.find((code) => !ORGANIZER_CODE_TO_ORG[code]);
-            if (firstInvalidCode) {
-                setValidationError(`Organizer access password is incorrect: ${firstInvalidCode}`);
-                return;
-            }
-
-            organizerNames = [...new Set(enteredCodes.map((code) => ORGANIZER_CODE_TO_ORG[code]))];
-        }
-
-        try {
-            setIsSubmitting(true);
-            await signupWithEmail({ username: trimmedUsername, email: trimmedEmail, password, role: accountRole, organizerNames });
-            setSuccessMessage('Account created. Signing you in...');
-            try {
-                await login(trimmedEmail, password);
-                navigate('/', { replace: true });
-            } catch (loginError) {
-                void loginError;
-            }
-        } catch (error) {
-            setSignupError(mapAuthError(error, 'signup'));
-        } finally {
-            setIsSubmitting(false);
-        }
-    }
-    /*const {
+    const {
         username, setUsername,
         email, setEmail,
         password, setPassword,
@@ -131,7 +20,7 @@ export function SignupPage() {
         updateOrganizerCode,
         addOrganizerCodeField,
         handleSubmit,
-    } = useSignupPage();*/
+    } = useSignupPage();
 
     return (
         <div className="min-h-screen flex flex-col">
@@ -182,10 +71,6 @@ export function SignupPage() {
                                     value={username}
                                     onChange={(event) => {
                                         setUsername(event.target.value);
-                                        if (validationError) setValidationError('');
-                                        if (signupError) setSignupError('');
-                                        if (successMessage) setSuccessMessage('');
-                                        clearError();
                                     }}
                                 />
 
@@ -200,10 +85,6 @@ export function SignupPage() {
                                     value={email}
                                     onChange={(event) => {
                                         setEmail(event.target.value);
-                                        if (validationError) setValidationError('');
-                                        if (signupError) setSignupError('');
-                                        if (successMessage) setSuccessMessage('');
-                                        clearError();
                                     }}
                                 />
 
@@ -218,10 +99,6 @@ export function SignupPage() {
                                     value={password}
                                     onChange={(event) => {
                                         setPassword(event.target.value);
-                                        if (validationError) setValidationError('');
-                                        if (signupError) setSignupError('');
-                                        if (successMessage) setSuccessMessage('');
-                                        clearError();
                                     }}
                                 />
 
@@ -236,10 +113,6 @@ export function SignupPage() {
                                     value={confirmPassword}
                                     onChange={(event) => {
                                         setConfirmPassword(event.target.value);
-                                        if (validationError) setValidationError('');
-                                        if (signupError) setSignupError('');
-                                        if (successMessage) setSuccessMessage('');
-                                        clearError();
                                     }}
                                 />
 
@@ -272,19 +145,16 @@ export function SignupPage() {
                                     </>
                                 )}
 
-                                {(validationError || signupError || error) && (
+                                {errorMessage && (
                                     <p className="mt-0.5 text-[0.9rem] font-semibold text-[var(--dtu-accent)]">
-                                        {validationError || signupError || error}
+                                        {errorMessage}
                                     </p>
-                                )}
-                                {successMessage && (
-                                    <p className="mt-0.5 text-[0.9rem] font-semibold text-[var(--link-primary)]">{successMessage}</p>
                                 )}
 
                                 <div className="mt-3 grid gap-3">
-                                    <button type="submit" className="auth-btn auth-btn-primary" disabled={isLoading || isSubmitting}>
+                                    <button type="submit" className="auth-btn auth-btn-primary" disabled={isLoading}>
                                         <UserPlus size={18} />
-                                        {isLoading || isSubmitting ? 'Signing Up...' : accountRole ? `Sign Up as ${accountRole === 'organizer' ? 'Organizer' : 'User'}` : 'Sign Up'}
+                                        {isLoading ? 'Signing Up...' : accountRole ? `Sign Up as ${accountRole === 'organizer' ? 'Organizer' : 'User'}` : 'Sign Up'}
                                     </button>
                                 </div>
                             </form>

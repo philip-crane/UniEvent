@@ -10,6 +10,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -39,6 +40,12 @@ public class CookieAuthenticationFilter extends OncePerRequestFilter {
 
         if (accessCookie != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             String token = accessCookie.getValue();
+            if (jwtService.isAccessTokenExpired(token) && !isAuthRecoveryEndpoint(request)) {
+                log.debug("Access token from '{}' cookie is expired", cookieConfig.getAccessName());
+                writeUnauthorizedResponse(response, "Access token expired.");
+                return;
+            }
+
             String username = jwtService.extractUsername(token);
 
             if (username != null && jwtService.isTokenValid(token, username)) {
@@ -55,5 +62,18 @@ public class CookieAuthenticationFilter extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    private boolean isAuthRecoveryEndpoint(HttpServletRequest request) {
+        return "/api/auth/refresh".equals(request.getRequestURI())
+                || "/api/auth/logout".equals(request.getRequestURI());
+    }
+
+    private void writeUnauthorizedResponse(HttpServletResponse response, String message) throws IOException {
+        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        response.getWriter().write("""
+                {"status":401,"error":"Unauthorized","message":"%s"}
+                """.formatted(message));
     }
 }

@@ -1,215 +1,120 @@
-import { CSRF_COOKIE_NAME, BACKEND_URL, API_AUTH_PROFILE } from '../constants';
-import type { User, AccountRole, AuthApiResponse } from '../types';
-import { apiCall } from './fetchClient';
+import { API_AUTH_PROFILE, BACKEND_URL } from '../constants';
+import type { AccountRole, AuthApiResponse, HttpError, SignupRequest, User } from '../types';
+import { getCsrfToken, resetCsrfTokenForTesting, setCsrfToken } from './csrf';
+import { apiCall } from './http';
 
-/*let _csrfToken: string | null = null;
-let _currentUser: User | null = null;
-let _tokenExpiresAt: number | null = null;
-
-const listeners: Array<(user: User | null) => void> = [];*/
-
-
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL ?? '';
 const USER_KEY = 'unievent_user';
 
-// In-memory CSRF token, populated on login/register/refresh.
-let csrfToken = '';
+let currentUser: User | null = null;
+let tokenExpiresAt: number | null = null;
 
-export type AuthUser = {
-    username: string;
-    email: string;
-    uid?: string;
-    displayName?: string;
-    photoURL?: string | null;
-    role?: AccountRole;
-    organizerNames?: string[];
-};
+const listeners: Array<(user: User | null) => void> = [];
 
-export type AccountRole = 'user' | 'organizer';
-
-type SignupInput = {
-    username: string;
-    email: string;
-    password: string;
-    role?: AccountRole;
-    organizerNames?: string[];
-};
+export type AuthUser = User;
+export type { AccountRole };
 
 type AuthErrorContext = 'login' | 'signup' | 'general';
 
-type HttpError = Error & { status: number };
+type SignupInput = SignupRequest & {
+    organizerNames?: string[];
+};
 
 function createHttpError(status: number, message: string): HttpError {
     return Object.assign(new Error(message), { status });
 }
 
-// Module-level listener list for auth state subscriptions
-const listeners: Array<(user: AuthUser | null) => void> = [];
-
-export function notifyListeners(user: User | null): void {
-    listeners.forEach((cb) => cb(user));
+function getStorage(): Storage | null {
+    if (typeof localStorage === 'undefined') {
+        return null;
+    }
+    if (
+        typeof localStorage.getItem !== 'function'
+        || typeof localStorage.setItem !== 'function'
+        || typeof localStorage.removeItem !== 'function'
+    ) {
+        return null;
+    }
+    return localStorage;
 }
 
-export function getCsrfToken(): string {
-    return csrfToken;
-}
-
-export function setCsrfToken(token: string | null): void {
-    _csrfToken = token;
-}
+export { getCsrfToken, setCsrfToken };
 
 export function setCurrentUser(user: User): void {
-    _currentUser = user;
+    currentUser = user;
+    getStorage()?.setItem(USER_KEY, JSON.stringify(user));
 }
 
-function clearUser(): void {
-    localStorage.removeItem(USER_KEY);
+export function clearCurrentUser(): void {
+    currentUser = null;
+    tokenExpiresAt = null;
+    getStorage()?.removeItem(USER_KEY);
 }
 
-/*export function clearCurrentUser(): void {
-    _currentUser = null;
-    _tokenExpiresAt = null;
-}*/
+function clearAuthState(): void {
+    setCsrfToken(null);
+    clearCurrentUser();
+    notifyListeners(null);
+}
+
+function redirectToLogin(): void {
+    if (typeof window === 'undefined' || window.location.pathname === '/login') {
+        return;
+    }
+    try {
+        window.location.assign('/login');
+    } catch {
+        window.location.href = '/login';
+    }
+}
+
+export function clearSessionAndRedirect(): void {
+    clearAuthState();
+    redirectToLogin();
+}
+
+export function notifyListeners(user: User | null): void {
+    listeners.forEach((callback) => callback(user));
+}
+
+export function onUserChanged(callback: (user: User | null) => void): () => void {
+    listeners.push(callback);
+    callback(getCurrentUser());
+    return () => {
+        const index = listeners.indexOf(callback);
+        if (index !== -1) {
+            listeners.splice(index, 1);
+        }
+    };
+}
+
+export const onAuthUserChanged = onUserChanged;
 
 export function storeTokenExpiry(accessTokenExpiresInMs: number): void {
-    _tokenExpiresAt = Date.now() + accessTokenExpiresInMs;
+    tokenExpiresAt = Date.now() + accessTokenExpiresInMs;
 }
 
 export function getTokenExpiresAt(): number | null {
-    return _tokenExpiresAt;
+    return tokenExpiresAt;
 }
 
 export function isTokenExpiredOrExpiringSoon(thresholdMs = 60_000): boolean {
-    void thresholdMs;
-    return false;
-    /*if (_tokenExpiresAt === null) return false;
-    return Date.now() >= _tokenExpiresAt - thresholdMs;*/
-}
-
-export function getCurrentUser(): AuthUser | null {
-    const raw = localStorage.getItem(USER_KEY);
-    if (!raw) return null;
-    try {
-        const stored = JSON.parse(raw) as {
-            username: string;
-            email: string;
-            uid?: string;
-            displayName?: string;
-            photoURL?: string | null;
-            role?: AccountRole;
-            organizerNames?: string[];
-        };
-
-        const organizerNames = Array.isArray(stored.organizerNames) ? stored.organizerNames : undefined;
-
-        return {
-            username: stored.username,
-            email: stored.email,
-            uid: stored.uid ?? stored.username,
-            displayName: stored.displayName ?? stored.username,
-            photoURL: stored.photoURL,
-            role: resolveAccountRole(stored.role, organizerNames),
-            organizerNames,
-        };
-    } catch {
-        return null;
+    if (tokenExpiresAt === null) {
+        return false;
     }
-}
-
-export async function loginWithEmail(email: string, password: string): Promise<AuthUser> {
-    let response: Response;
-    try {
-        response = await apiCall(`${BACKEND_URL}/api/auth/login`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password }),
-        });
-    } catch (error) {
-        if (error instanceof Error && error.message.includes('CSRF token not available')) {
-            throw createHttpError(403, 'CSRF validation failed. Please login again.');
-        }
-        throw new Error('Connection error, retry');
-    }
-
-    if (!response.ok) {
-        const body = await response.json().catch(() => ({})) as Record<string, unknown>;
-        if (response.status === 401) {
-            clearUser();
-            csrfToken = '';
-            notifyListeners(null);
-            if (typeof window !== 'undefined') {
-                window.location.assign('/login');
-            }
-        }
-        if (response.status === 403) {
-            throw createHttpError(response.status, 'CSRF validation failed. Please login again.');
-        }
-        throw createHttpError(
-            response.status,
-            (body['message'] as string | undefined) ?? response.statusText,
-        );
-    }
-
-    const data = await response.json() as { username: string; email: string; role?: string; roles?: string[]; csrfToken: string };
-    csrfToken = data.csrfToken ?? '';
-    const user: AuthUser = {
-        username: data.username,
-        email: data.email,
-        uid: data.username,
-        displayName: data.username,
-        role: resolveAccountRole(data.role ?? data.roles?.[0], undefined),
-    };
-    persistUser(user);
-    notifyListeners(user);
-    return user;
-}
-
-export async function signupWithEmail({ username, email, password, role, organizerNames }: SignupInput): Promise<AuthUser> {
-    let response: Response;
-    try {
-        response = await apiCall(`${BACKEND_URL}/api/auth/register`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, email, password }),
-        });
-    } catch (error) {
-        if (error instanceof Error && error.message.includes('CSRF token not available')) {
-            throw createHttpError(403, 'CSRF validation failed. Please login again.');
-        }
-        throw new Error('Connection error, retry');
-    }
-
-    if (!response.ok) {
-        const body = await response.json().catch(() => ({})) as Record<string, unknown>;
-        if (response.status === 401) {
-            clearUser();
-            csrfToken = '';
-            notifyListeners(null);
-            if (typeof window !== 'undefined') {
-                window.location.assign('/login');
-            }
-        }
-        if (response.status === 403) {
-            throw createHttpError(response.status, 'CSRF validation failed. Please login again.');
-        }
-        throw createHttpError(
-            response.status,
-            (body['message'] as string | undefined) ?? response.statusText,
-        );
-    }
-
-    const data = await response.json() as { username: string; email: string; role?: string; roles?: string[]; csrfToken: string };
-    csrfToken = data.csrfToken ?? '';
-
-    /*export function getCurrentUser(): User | null {
-    return _currentUser;
+    return Date.now() >= tokenExpiresAt - thresholdMs;
 }
 
 export function normalizeRole(value: unknown): AccountRole | undefined {
-    if (typeof value !== 'string') return undefined;
+    if (typeof value !== 'string') {
+        return undefined;
+    }
     const normalized = value.trim().toUpperCase();
-    if (normalized === 'ORGANIZER' || normalized === 'ROLE_ORGANIZER') return 'organizer';
-    if (normalized === 'USER' || normalized === 'ROLE_USER') return 'user';
+    if (normalized === 'ORGANIZER' || normalized === 'ROLE_ORGANIZER') {
+        return 'organizer';
+    }
+    if (normalized === 'USER' || normalized === 'ROLE_USER') {
+        return 'user';
+    }
     return undefined;
 }
 
@@ -219,7 +124,9 @@ export function resolveAccountRole(
     fallback: AccountRole = 'user',
 ): AccountRole {
     const normalizedRole = normalizeRole(roleCandidate);
-    if (normalizedRole) return normalizedRole;
+    if (normalizedRole) {
+        return normalizedRole;
+    }
     if (Array.isArray(organizerNamesCandidate) && organizerNamesCandidate.length > 0) {
         return 'organizer';
     }
@@ -227,89 +134,143 @@ export function resolveAccountRole(
 }
 
 export function buildUserFromResponse(data: AuthApiResponse, existing?: User | null): User {
-    return {*/
-    const user: AuthUser = {
+    return {
         username: data.username,
         email: data.email,
-        uid: data.username,
-        displayName: data.username,
-        role: resolveAccountRole(data.role ?? data.roles?.[0], undefined) ?? role,
-        organizerNames: organizerNames ? [...organizerNames] : undefined,
-        /*uid: existing?.uid ?? data.username,
+        uid: existing?.uid ?? data.username,
         displayName: existing?.displayName ?? data.username,
         photoURL: existing?.photoURL,
         role: resolveAccountRole(data.roles?.[0], existing?.organizerNames),
-        organizerNames: existing?.organizerNames,*/
+        organizerNames: existing?.organizerNames,
     };
 }
 
-export function onUserChanged(callback: (user: User | null) => void): () => void {
-    listeners.push(callback);
-    callback(_currentUser);
-    return () => {
-        const idx = listeners.indexOf(callback);
-        if (idx !== -1) listeners.splice(idx, 1);
+export function getCurrentUser(): User | null {
+    if (currentUser) {
+        return currentUser;
+    }
+
+    const storage = getStorage();
+    const raw = storage?.getItem(USER_KEY);
+    if (!raw) {
+        return null;
+    }
+
+    try {
+        currentUser = JSON.parse(raw) as User;
+        return currentUser;
+    } catch {
+        storage?.removeItem(USER_KEY);
+        return null;
+    }
+}
+
+export async function loginWithEmail(email: string, password: string): Promise<AuthUser> {
+    const response = await apiCall(`${BACKEND_URL}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+        skipAuthErrorHandling: true,
+    });
+
+    if (!response.ok) {
+        const body = await response.json().catch(() => ({})) as Record<string, unknown>;
+        if (response.status === 401) {
+            clearAuthState();
+        }
+        throw createHttpError(
+            response.status,
+            (body['message'] as string | undefined) ?? response.statusText,
+        );
+    }
+
+    const data = await response.json() as AuthApiResponse;
+    setCsrfToken(data.csrfToken);
+    storeTokenExpiry(data.accessTokenExpiresInMs);
+    const user = buildUserFromResponse(data);
+    setCurrentUser(user);
+    notifyListeners(user);
+    return user;
+}
+
+export async function signupWithEmail({ username, email, password, role, organizerKey, organizerNames }: SignupInput): Promise<AuthUser> {
+    const response = await apiCall(`${BACKEND_URL}${organizerKey ? '/api/auth/register-with-key' : '/api/auth/register'}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(organizerKey ? { username, email, password, organizerKey } : { username, email, password }),
+        skipAuthErrorHandling: true,
+    });
+
+    if (!response.ok) {
+        const body = await response.json().catch(() => ({})) as Record<string, unknown>;
+        throw createHttpError(
+            response.status,
+            (body['message'] as string | undefined) ?? response.statusText,
+        );
+    }
+
+    const data = await response.json() as AuthApiResponse;
+    setCsrfToken(data.csrfToken);
+    storeTokenExpiry(data.accessTokenExpiresInMs);
+    const user = {
+        ...buildUserFromResponse(data),
+        role: resolveAccountRole(data.roles?.[0], undefined, role ?? 'user'),
+        organizerNames: organizerNames ? [...organizerNames] : undefined,
     };
-}
-
-export async function refreshTokens(): Promise<void> {
-    try {
-        await refreshSession();
-    } catch {
-        // ignore refresh errors to keep legacy call sites non-throwing
-    }
-}
-
-export async function signOutCurrentUser(): Promise<void> {
-    await logout();
-}
-
-export async function logout(): Promise<void> {
-    try {
-        await apiCall(`${BACKEND_URL}/api/auth/logout`, {
-            method: 'POST',
-        });
-    } catch {
-        // ignore network errors - local state is cleared regardless
-    }
-    csrfToken = '';
-    clearUser();
-    notifyListeners(null);
+    setCurrentUser(user);
+    notifyListeners(user);
+    return user;
 }
 
 export async function refreshSession(): Promise<boolean> {
     try {
         const response = await apiCall(`${BACKEND_URL}/api/auth/refresh`, {
             method: 'POST',
+            skipAuthErrorHandling: true,
         });
 
-        if (response.ok) {
-            const data = await response.json() as { csrfToken: string };
-            csrfToken = data.csrfToken ?? '';
-            return true;
-        }
-
-        if (response.status === 401) {
-            csrfToken = '';
-            clearUser();
-            notifyListeners(null);
-            if (typeof window !== 'undefined') {
-                window.location.assign('/login');
+        if (!response.ok) {
+            if (response.status === 401) {
+                clearSessionAndRedirect();
             }
+            if (response.status === 403) {
+                clearSessionAndRedirect();
+            }
+            return false;
         }
 
-        if (response.status === 403) {
-            throw createHttpError(response.status, 'CSRF validation failed. Please login again.');
+        const data = await response.json() as AuthApiResponse;
+        setCsrfToken(data.csrfToken);
+        if (typeof data.accessTokenExpiresInMs === 'number') {
+            storeTokenExpiry(data.accessTokenExpiresInMs);
         }
-
+        const user = buildUserFromResponse(data, getCurrentUser());
+        setCurrentUser(user);
+        notifyListeners(user);
+        return true;
+    } catch {
         return false;
-    } catch (error) {
-        if (error instanceof Error && error.message.includes('CSRF token not available')) {
-            throw createHttpError(403, 'CSRF validation failed. Please login again.');
-        }
-        console.error('Session refresh failed:', error);
-        throw new Error('Connection error, retry');
     }
+}
+
+export async function refreshTokens(): Promise<void> {
+    await refreshSession();
+}
+
+export async function logout(): Promise<void> {
+    try {
+        await apiCall(`${BACKEND_URL}/api/auth/logout`, {
+            method: 'POST',
+            skipAuthErrorHandling: true,
+        });
+    } catch {
+        // Local state should still be cleared if the network request fails.
+    }
+    clearAuthState();
+}
+
+export async function signOutCurrentUser(): Promise<void> {
+    await logout();
 }
 
 export function getStoredAccountRole(uid: string): AccountRole {
@@ -329,7 +290,7 @@ export function getStoredOrganizerNames(uid: string): string[] {
 }
 
 export async function getAccountProfile(uid?: string): Promise<{ role: AccountRole; organizerNames: string[] }> {
-    const user = _currentUser;
+    const user = getCurrentUser();
     if (!user || (uid && user.uid !== uid)) {
         return { role: 'user', organizerNames: [] };
     }
@@ -347,10 +308,10 @@ export async function getAccountProfile(uid?: string): Promise<{ role: AccountRo
     }
 
     const data = await response.json() as { role?: string; organizerNames?: string[] };
-    const profileOrganizerNames = Array.isArray(data.organizerNames) ? data.organizerNames : fallbackOrganizerNames;
+    const organizerNames = Array.isArray(data.organizerNames) ? data.organizerNames : fallbackOrganizerNames;
     const profile = {
-        role: resolveAccountRole(data.role, profileOrganizerNames, fallbackRole),
-        organizerNames: profileOrganizerNames,
+        role: resolveAccountRole(data.role, organizerNames, fallbackRole),
+        organizerNames,
     };
 
     const updatedUser: User = {
@@ -364,33 +325,38 @@ export async function getAccountProfile(uid?: string): Promise<{ role: AccountRo
     return profile;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function mapAuthError(error: unknown, _context?: AuthErrorContext): string {
     if (error && typeof error === 'object') {
-        const e = error as { status?: number; message?: string };
-        if (e.status === 401) {
+        const authError = error as { status?: number; message?: string };
+        if (authError.status === 401) {
+            return authError.message ?? 'Session expired. Please login again.';
+        }
+        if (authError.status === 403 && authError.message?.toLowerCase().includes('compromised')) {
+            return authError.message;
+        }
+        if (authError.status === 403 && authError.message?.toLowerCase().includes('csrf')) {
+            return authError.message;
+        }
+        if (authError.status === 403) {
             return 'Invalid email or password.';
         }
-        if (e.status === 403 && e.message?.toLowerCase().includes('csrf')) {
-            return e.message;
+        if (authError.status === 409 || (authError.status !== undefined && authError.message?.toLowerCase().includes('already'))) {
+            return authError.message ?? 'Account already exists.';
         }
-        if (e.status === 409 || (e.status !== undefined && e.message && e.message.toLowerCase().includes('already'))) {
-            return e.message ?? 'Account already exists.';
+        if (authError.status === 400) {
+            return authError.message ?? 'Invalid input. Please check your details.';
         }
-        if (e.status === 400) {
-            return e.message ?? 'Invalid input. Please check your details.';
-        }
-        // Only surface the message when it came from our backend (has a known status code).
-        if (e.status !== undefined && e.message) {
-            return e.message;
+        if (authError.status !== undefined && authError.message) {
+            return authError.message;
         }
     }
     return 'Something went wrong. Please try again.';
 }
 
-/*export function _resetForTesting(): void {
-    _currentUser = null;
-    _tokenExpiresAt = null;
-    _csrfToken = null;
+export function _resetForTesting(): void {
+    resetCsrfTokenForTesting();
+    currentUser = null;
+    tokenExpiresAt = null;
     listeners.length = 0;
-}*/
+    getStorage()?.removeItem(USER_KEY);
+}

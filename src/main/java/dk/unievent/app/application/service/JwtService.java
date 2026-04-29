@@ -2,6 +2,7 @@ package dk.unievent.app.application.service;
 
 import dk.unievent.app.infrastructure.config.JwtConfig;
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import lombok.RequiredArgsConstructor;
@@ -112,6 +113,17 @@ public class JwtService {
             return expectedSubject.equals(claims.getSubject())
                     && claims.getExpiration().after(new Date())
                     && "access".equals(claims.get("type"));
+        } catch (Exception ex) {
+            return false;
+        }
+    }
+
+    public boolean isAccessTokenExpired(String token) {
+        try {
+            extractAllClaims(token);
+            return false;
+        } catch (ExpiredJwtException ex) {
+            return true;
         } catch (Exception ex) {
             return false;
         }

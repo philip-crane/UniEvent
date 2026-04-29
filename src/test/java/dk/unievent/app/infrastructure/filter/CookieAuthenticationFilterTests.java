@@ -80,6 +80,7 @@ class CookieAuthenticationFilterTests {
     @Test
     void shouldNotSetAuthenticationWhenTokenIsInvalid() throws Exception {
         request.setCookies(new jakarta.servlet.http.Cookie("auth_access", "bad-token"));
+        when(jwtService.isAccessTokenExpired("bad-token")).thenReturn(false);
         when(jwtService.extractUsername("bad-token")).thenReturn("test@example.com");
         when(jwtService.isTokenValid("bad-token", "test@example.com")).thenReturn(false);
 
@@ -87,6 +88,33 @@ class CookieAuthenticationFilterTests {
 
         verify(filterChain).doFilter(request, response);
         assertNull(SecurityContextHolder.getContext().getAuthentication());
+    }
+
+    @Test
+    void shouldReturnUnauthorizedWhenAccessTokenIsExpired() throws Exception {
+        request.setRequestURI("/api/events");
+        request.setCookies(new jakarta.servlet.http.Cookie("auth_access", "expired-token"));
+        when(jwtService.isAccessTokenExpired("expired-token")).thenReturn(true);
+
+        filter.doFilter(request, response, filterChain);
+
+        verifyNoInteractions(filterChain);
+        assertEquals(401, response.getStatus());
+        assertTrue(response.getContentAsString().contains("Access token expired."));
+        assertNull(SecurityContextHolder.getContext().getAuthentication());
+    }
+
+    @Test
+    void shouldAllowRefreshEndpointWhenAccessTokenIsExpired() throws Exception {
+        request.setRequestURI("/api/auth/refresh");
+        request.setCookies(new jakarta.servlet.http.Cookie("auth_access", "expired-token"));
+        when(jwtService.isAccessTokenExpired("expired-token")).thenReturn(true);
+        when(jwtService.extractUsername("expired-token")).thenReturn(null);
+
+        filter.doFilter(request, response, filterChain);
+
+        verify(filterChain).doFilter(request, response);
+        assertEquals(200, response.getStatus());
     }
 
     @Test

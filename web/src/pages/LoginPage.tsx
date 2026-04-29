@@ -4,42 +4,9 @@ import { ThemeToggle } from '../components/ThemeToggle';
 import { Footer } from '../components/Footer';
 import { LogIn, UserPlus } from 'lucide-react';
 import { useLoginPage } from '../hooks/useLoginPage';
-import { useAuth } from '../context/AuthContext';
-import { isValidEmail } from '../utils/validationUtils';
 
 export function LoginPage() {
-    //const { email, setEmail, password, setPassword, isLoading, errorMessage, handleSubmit } = useLoginPage();
-    const navigate = useNavigate();
-    const { login, isLoading, error, clearError } = useAuth();
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [validationError, setValidationError] = useState('');
-
-    async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-        event.preventDefault();
-        setValidationError('');
-        clearError();
-
-        const trimmedEmail = email.trim();
-        if (!trimmedEmail || !password) {
-            setValidationError('Please provide both email and password.');
-            return;
-        }
-
-        if (!isValidEmail(trimmedEmail)) {
-            setValidationError('Please provide a valid email address.');
-            return;
-        }
-
-        try {
-            await login(trimmedEmail, password);
-            navigate('/', { replace: true });
-        } catch (error) {
-            void error;
-        } finally {
-            // loading state handled by context
-        }
-    }
+    const { email, setEmail, password, setPassword, isLoading, errorMessage, handleSubmit } = useLoginPage();
 
     return (
         <div className="min-h-screen flex flex-col">
@@ -80,8 +47,6 @@ export function LoginPage() {
                                     value={email}
                                     onChange={(event) => {
                                         setEmail(event.target.value);
-                                        if (validationError) setValidationError('');
-                                        clearError();
                                     }}
                                 />
 
@@ -96,14 +61,12 @@ export function LoginPage() {
                                     value={password}
                                     onChange={(event) => {
                                         setPassword(event.target.value);
-                                        if (validationError) setValidationError('');
-                                        clearError();
                                     }}
                                 />
 
-                                {(validationError || error) && (
+                                {errorMessage && (
                                     <p className="mt-0.5 text-[0.9rem] font-semibold text-[var(--dtu-accent)]">
-                                        {validationError || error}
+                                        {errorMessage}
                                     </p>
                                 )}
 

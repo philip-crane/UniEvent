@@ -3,7 +3,8 @@ import {
     loginWithEmail,
     logout,
     mapAuthError,
-    onAuthUserChanged,
+    onUserChanged,
+    refreshTokens,
     refreshSession,
     type AuthUser,
 } from '../services/auth';

@@ -68,7 +68,7 @@ describe('getFacebookAuthUrl', () => {
 
     it('throws when no CSRF token is available', async () => {
         const { getCsrfToken } = await import('../../services/auth');
-        vi.mocked(getCsrfToken).mockReturnValueOnce(null);
+        vi.mocked(getCsrfToken).mockReturnValueOnce('');
 
         await expect(getFacebookAuthUrl()).rejects.toThrow('You must be logged in');
     });

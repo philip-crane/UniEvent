@@ -16,11 +16,16 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import dk.unievent.app.infrastructure.exception.EmailAlreadyRegisteredException;
+import dk.unievent.app.infrastructure.exception.CsrfValidationException;
 import dk.unievent.app.infrastructure.exception.InvalidConfirmationTokenException;
 import dk.unievent.app.infrastructure.exception.OrganizerKeyAlreadyUsedException;
 import dk.unievent.app.infrastructure.exception.OrganizerKeyExpiredException;
 import dk.unievent.app.infrastructure.exception.OrganizerKeyNotFoundException;
+import dk.unievent.app.infrastructure.exception.TokenCompromisedException;
 import dk.unievent.app.infrastructure.exception.UsernameAlreadyTakenException;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.Header;
+import io.jsonwebtoken.Claims;
 
 import java.lang.reflect.Method;
 import java.util.Map;
@@ -135,6 +140,35 @@ class GlobalExceptionHandlerTests {
 
         assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
         assertEquals("Unauthorized", response.getBody().get("error"));
+    }
+
+    @Test
+    void handleExpiredJwtShouldReturn401() {
+        ResponseEntity<Map<String, Object>> response = handler.handleExpiredJwt(
+                new ExpiredJwtException((Header) null, (Claims) null, "expired")
+        );
+
+        assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
+        assertEquals("Unauthorized", response.getBody().get("error"));
+        assertEquals("Session expired. Please login again.", response.getBody().get("message"));
+    }
+
+    @Test
+    void handleCsrfValidationShouldReturn403() {
+        ResponseEntity<Map<String, Object>> response = handler.handleCsrfValidation(new CsrfValidationException());
+
+        assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
+        assertEquals("Forbidden", response.getBody().get("error"));
+        assertEquals("CSRF token validation failed", response.getBody().get("message"));
+    }
+
+    @Test
+    void handleTokenCompromisedShouldReturn403() {
+        ResponseEntity<Map<String, Object>> response = handler.handleTokenCompromised(new TokenCompromisedException());
+
+        assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
+        assertEquals("Forbidden", response.getBody().get("error"));
+        assertEquals("Refresh token family compromised", response.getBody().get("message"));
     }
 
     @Test

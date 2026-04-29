@@ -4,6 +4,7 @@ import dk.unievent.app.db.model.RefreshTokenEntity;
 import dk.unievent.app.db.model.UserEntity;
 import dk.unievent.app.db.repository.RefreshTokenRepository;
 import dk.unievent.app.infrastructure.config.JwtConfig;
+import dk.unievent.app.infrastructure.exception.TokenCompromisedException;
 import dk.unievent.app.infrastructure.exception.UnauthorizedTokenException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -56,17 +57,21 @@ public class RefreshTokenService {
         String familyId = jwtService.extractRefreshFamilyId(refreshToken);
 
         if (userEmail == null || tokenId == null || familyId == null) {
-            throw new UnauthorizedTokenException("Invalid refresh token.");
+            throw new UnauthorizedTokenException("Session expired. Please login again.");
         }
 
         RefreshTokenEntity stored = refreshTokenRepository.findByTokenId(tokenId)
-                .orElseThrow(() -> revokeAndFail(familyId, "Refresh token not recognized."));
+                .orElseThrow(() -> revokeAndFail(familyId));
 
-        if (stored.getRevokedAt() != null || stored.getExpiresAt().isBefore(Instant.now())
+        if (stored.getExpiresAt().isBefore(Instant.now())) {
+            throw new UnauthorizedTokenException("Session expired. Please login again.");
+        }
+
+        if (stored.getRevokedAt() != null
                 || !MessageDigest.isEqual(stored.getTokenHash().getBytes(StandardCharsets.UTF_8),
                         hashToken(refreshToken).getBytes(StandardCharsets.UTF_8))) {
             revokeFamily(familyId);
-            throw new UnauthorizedTokenException("Refresh token has been revoked or replayed.");
+            throw new TokenCompromisedException();
         }
 
         UserEntity user;
@@ -138,9 +143,9 @@ public class RefreshTokenService {
         refreshTokenRepository.revokeByFamilyId(familyId, Instant.now());
     }
 
-    private UnauthorizedTokenException revokeAndFail(String familyId, String message) {
+    private TokenCompromisedException revokeAndFail(String familyId) {
         revokeFamily(familyId);
-        return new UnauthorizedTokenException(message);
+        return new TokenCompromisedException();
     }
 
     private String hashToken(String rawToken) {

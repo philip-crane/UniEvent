@@ -46,6 +46,8 @@ class CsrfValidationFilterTests {
         request = new MockHttpServletRequest();
         response = new MockHttpServletResponse();
         SecurityContextHolder.clearContext();
+        lenient().when(cookieConfig.getAccessName()).thenReturn("auth_access");
+        lenient().when(cookieConfig.getRefreshName()).thenReturn("auth_refresh");
         lenient().when(cookieConfig.getCsrfName()).thenReturn("csrf_token");
         filter = new CsrfValidationFilter(csrfTokenService, cookieConfig, new ObjectMapper());
     }
@@ -68,7 +70,10 @@ class CsrfValidationFilterTests {
     @Test
     void postRequestsShouldPassWithValidCsrfToken() throws Exception {
         request.setMethod("POST");
-        request.setCookies(new jakarta.servlet.http.Cookie("csrf_token", "cookie-token"));
+        request.setCookies(
+                new jakarta.servlet.http.Cookie("auth_access", "access-token"),
+                new jakarta.servlet.http.Cookie("csrf_token", "cookie-token")
+        );
         request.addHeader("X-CSRF-Token", "header-token");
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken("user", null, List.of())
@@ -84,7 +89,10 @@ class CsrfValidationFilterTests {
     @Test
     void postRequestsWithoutHeaderShouldReturnForbidden() throws Exception {
         request.setMethod("POST");
-        request.setCookies(new jakarta.servlet.http.Cookie("csrf_token", "cookie-token"));
+        request.setCookies(
+                new jakarta.servlet.http.Cookie("auth_access", "access-token"),
+                new jakarta.servlet.http.Cookie("csrf_token", "cookie-token")
+        );
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken("user", null, List.of())
         );
@@ -94,12 +102,16 @@ class CsrfValidationFilterTests {
 
         verifyNoInteractions(filterChain);
         assertEquals(403, response.getStatus());
+        assertTrue(response.getContentAsString().contains("CSRF token validation failed"));
     }
 
     @Test
     void postRequestsWithMismatchedTokensShouldReturnForbidden() throws Exception {
         request.setMethod("POST");
-        request.setCookies(new jakarta.servlet.http.Cookie("csrf_token", "cookie-token"));
+        request.setCookies(
+                new jakarta.servlet.http.Cookie("auth_access", "access-token"),
+                new jakarta.servlet.http.Cookie("csrf_token", "cookie-token")
+        );
         request.addHeader("X-CSRF-Token", "header-token");
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken("user", null, List.of())
@@ -115,7 +127,10 @@ class CsrfValidationFilterTests {
     @Test
     void deleteRequestsShouldValidateCsrfToken() throws Exception {
         request.setMethod("DELETE");
-        request.setCookies(new jakarta.servlet.http.Cookie("csrf_token", "cookie-token"));
+        request.setCookies(
+                new jakarta.servlet.http.Cookie("auth_access", "access-token"),
+                new jakarta.servlet.http.Cookie("csrf_token", "cookie-token")
+        );
         request.addHeader("X-CSRF-Token", "header-token");
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken("user", null, List.of())

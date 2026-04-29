@@ -4,29 +4,11 @@
  * Communicates with the UniEventServer backend at /api/events, /api/pages, etc.
  */
 
-//import type { Event, Page, ApiResponse, EventApiResponse, PageApiResponse } from '../types';
-//import { BACKEND_URL, API_AUTH_ORGANIZER_KEY_VERIFY } from '../constants';
-import type { Event, Page, Place } from '../types';
-import { apiCall } from './fetchClient';
+import { API_AUTH_ORGANIZER_KEY_VERIFY } from '../constants';
+import type { ApiResponse, Event, EventApiResponse, Page, PageApiResponse } from '../types';
+import { apiCall } from './http';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL ?? '';
-
-function getMediaBaseUrl(): string {
-  if (BACKEND_URL) {
-    return BACKEND_URL;
-  }
-
-  // local dev
-  if (
-    typeof window !== 'undefined' &&
-    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') &&
-    window.location.port === '3000'
-  ) {
-    return `http://${window.location.hostname}:8080`;
-  }
-
-  return window.location.origin;
-}
 
 function buildBackendUrl(path: string): URL {
   return new URL(path, BACKEND_URL || window.location.origin);

@@ -3,6 +3,7 @@ package dk.unievent.app.infrastructure.filter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dk.unievent.app.application.service.CsrfTokenService;
 import dk.unievent.app.infrastructure.config.CookieConfig;
+import dk.unievent.app.infrastructure.exception.CsrfValidationException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Cookie;
@@ -87,12 +88,13 @@ public class CsrfValidationFilter extends OncePerRequestFilter {
     private void writeForbiddenResponse(HttpServletResponse response) throws IOException {
         response.setStatus(HttpServletResponse.SC_FORBIDDEN);
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        CsrfValidationException exception = new CsrfValidationException();
 
         Map<String, Object> body = new HashMap<>();
         body.put("timestamp", Instant.now().toString());
         body.put("status", HttpServletResponse.SC_FORBIDDEN);
         body.put("error", "Forbidden");
-        body.put("message", "CSRF token validation failed.");
+        body.put("message", exception.getMessage());
 
         response.getWriter().write(objectMapper.writeValueAsString(body));
     }

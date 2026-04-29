@@ -13,12 +13,15 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import dk.unievent.app.infrastructure.exception.EmailAlreadyRegisteredException;
+import dk.unievent.app.infrastructure.exception.CsrfValidationException;
 import dk.unievent.app.infrastructure.exception.InvalidConfirmationTokenException;
 import dk.unievent.app.infrastructure.exception.OrganizerKeyAlreadyUsedException;
 import dk.unievent.app.infrastructure.exception.OrganizerKeyExpiredException;
 import dk.unievent.app.infrastructure.exception.OrganizerKeyNotFoundException;
+import dk.unievent.app.infrastructure.exception.TokenCompromisedException;
 import dk.unievent.app.infrastructure.exception.UnauthorizedTokenException;
 import dk.unievent.app.infrastructure.exception.UsernameAlreadyTakenException;
+import io.jsonwebtoken.ExpiredJwtException;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.security.core.AuthenticationException;
 import lombok.extern.slf4j.Slf4j;
@@ -101,6 +104,24 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, Object>> handleUnauthorized(UnauthorizedTokenException ex) {
         log.warn("Unauthorized token error: {}", ex.getMessage());
         return buildErrorResponse(HttpStatus.UNAUTHORIZED, "Unauthorized", ex.getMessage());
+    }
+
+    @ExceptionHandler(ExpiredJwtException.class)
+    public ResponseEntity<Map<String, Object>> handleExpiredJwt(ExpiredJwtException ex) {
+        log.warn("JWT expired: {}", ex.getMessage());
+        return buildErrorResponse(HttpStatus.UNAUTHORIZED, "Unauthorized", "Session expired. Please login again.");
+    }
+
+    @ExceptionHandler(CsrfValidationException.class)
+    public ResponseEntity<Map<String, Object>> handleCsrfValidation(CsrfValidationException ex) {
+        log.warn("CSRF validation failed");
+        return buildErrorResponse(HttpStatus.FORBIDDEN, "Forbidden", ex.getMessage());
+    }
+
+    @ExceptionHandler(TokenCompromisedException.class)
+    public ResponseEntity<Map<String, Object>> handleTokenCompromised(TokenCompromisedException ex) {
+        log.warn("Refresh token family compromised");
+        return buildErrorResponse(HttpStatus.FORBIDDEN, "Forbidden", ex.getMessage());
     }
 
     @ExceptionHandler(NoSuchElementException.class)
