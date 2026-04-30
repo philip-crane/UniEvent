@@ -1,182 +1,16 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { FilterBar } from '../components/FilterBar';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { EventList } from '../components/EventList';
 import { CalendarView } from '../components/Calendar';
 import { Footer } from '../components/Footer';
 import { HeaderLogoLink } from '../components/HeaderLogoLink';
-import { UserMenu } from '../components/UserMenu';
-import { useAuth } from '../context/AuthContext';
-import { getEvents, getPages } from '../services/dal';
-import { getFacebookAuthUrl } from '../services/facebook';
-import { parseDateOnly, startOfDayMs, endOfDayMs } from '../utils/dateUtils';
-import type { Event as EventType, Page, SortMode } from '../types';
-import { Link } from 'react-router-dom';
-import { CalendarDays, LayoutList } from 'lucide-react';
+import { useMainPage } from '../hooks/useMainPage';
+import { CalendarDays, CircleUserRound, LayoutList, LogOut } from 'lucide-react';
 
 export function MainPage() {
-  const { currentUser, logout, isLoading: authLoading } = useAuth();
-  const [pages, setPages] = useState([] as Page[]);
-  const [events, setEvents] = useState([] as EventType[]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string>('');
-  const [isSigningOut, setIsSigningOut] = useState(false);
-  const [fbConnecting, setFbConnecting] = useState(false);
-  const [fbMessage, setFbMessage] = useState<{ kind: 'success' | 'error'; text: string } | null>(null);
-
-  // organizer filter
-  const [pageIds, setPageIds] = useState<string[]>([]);
-  const [query, setQuery] = useState<string>('');
-  const [debouncedQuery, setDebouncedQuery] = useState<string>('');
-  const [fromDate, setFromDate] = useState<string>('');
-  const [toDate, setToDate] = useState<string>('');
-  const [sortMode, setSortMode] = useState<SortMode>('upcoming');
-  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
-
-  useEffect(() => {
-    let cancelled = false;
-
-    (async () => {
-      try {
-        setLoading(true);
-        const [page, event] = await Promise.all([getPages(), getEvents()]);
-        if (cancelled) return;
-
-        setPages(page);
-        setEvents(event);
-      } catch (err) {
-        if (cancelled) return;
-        const message =
-          err instanceof Error && err.message ? err.message : 'Failed to load data';
-        setError(message);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    const id = setTimeout(() => {
-      setDebouncedQuery(query.trim().toLowerCase());
-    }, 250);
-
-    return () => clearTimeout(id);
-  }, [query]);
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const success = params.get('success');
-    const fbError = params.get('error');
-    if (success === 'true') {
-      const pages = params.get('pages');
-      setFbMessage({ kind: 'success', text: `Facebook connected - ${pages ?? '0'} page(s) linked.` });
-      window.history.replaceState({}, '', window.location.pathname);
-    } else if (fbError) {
-      // Map known OAuth error codes to friendly messages instead of surfacing raw
-      // provider strings. Unknown codes get a generic fallback.
-      const FB_ERROR_MESSAGES: Record<string, string> = {
-        access_denied: 'Facebook access was denied. Please try again and accept the required permissions.',
-        server_error: 'Facebook encountered a server error. Please try again later.',
-        temporarily_unavailable: 'Facebook is temporarily unavailable. Please try again later.',
-      };
-      const friendlyError = FB_ERROR_MESSAGES[fbError] ?? 'Could not connect Facebook. Please try again.';
-      setFbMessage({ kind: 'error', text: friendlyError });
-      window.history.replaceState({}, '', window.location.pathname);
-    }
-  }, []);
-
-  async function handleFacebookConnect() {
-    try {
-      setFbConnecting(true);
-      setFbMessage(null);
-      const url = await getFacebookAuthUrl();
-      window.location.href = url;
-    } catch (err) {
-      setFbMessage({ kind: 'error', text: err instanceof Error ? err.message : 'Could not start Facebook login.' });
-    } finally {
-      setFbConnecting(false);
-    }
-  }
-
-  async function handleSignOut() {
-    try {
-      setIsSigningOut(true);
-      setError('');
-      await logout();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not sign out.');
-    } finally {
-      setIsSigningOut(false);
-    }
-  }
-
-  const userLabel = currentUser?.username || currentUser?.email || 'My Profile';
-
-  const filteredByPage =
-    pageIds.length > 0 ? events.filter((e) => pageIds.includes(e.pageId)) : events;
-
-  const textFiltered = debouncedQuery
-    ? filteredByPage.filter((event) => {
-      const haystack = (
-        (event.title || '') +
-        ' ' +
-        (event.description || '') +
-        ' ' +
-        (event.place?.name || '')
-      ).toLowerCase();
-
-      return haystack.includes(debouncedQuery);
-    })
-    : filteredByPage;
-
-  const fromObj = parseDateOnly(fromDate);
-  const toObj = parseDateOnly(toDate);
-  const invalidRange = !!(fromObj && toObj && toObj < fromObj);
-  const effectiveToObj = invalidRange ? undefined : toObj;
-
-  const dateFiltered = textFiltered.filter((event) => {
-    const eventMs = new Date(event.startTime).getTime();
-    if (fromObj && eventMs < startOfDayMs(fromObj)) return false;
-    if (effectiveToObj && eventMs > endOfDayMs(effectiveToObj)) return false;
-    return true;
-  });
-
-  const getCreatedMs = (e: EventType) => {
-    type LegacyEvent = EventType & { createdTime?: string; postedTime?: string; insertedAt?: string; addedAt?: string };
-    const le = e as LegacyEvent;
-    const maybe =
-      le.createdTime ??
-      le.createdAt ??
-      le.postedTime ??
-      le.insertedAt ??
-      le.addedAt ??
-      le.startTime;
-
-    const ms = Date.parse(maybe);
-    return isNaN(ms) ? new Date(e.startTime).getTime() : ms;
-  };
-
-  let list = [...dateFiltered];
-
-  if (sortMode !== 'all') {
-    const now = new Date().getTime();
-    list = list.filter((event) => new Date(event.startTime).getTime() >= now);
-  }
-
-  if (sortMode === 'upcoming') {
-    list = list.sort(
-      (a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
-    );
-  } else if (sortMode === 'newest') {
-    list = list.sort((a, b) => getCreatedMs(b) - getCreatedMs(a));
-  }
-
-  const count = list.length;
-  /*const {
+  const {
     currentUser,
     pages,
     list,
@@ -185,18 +19,40 @@ export function MainPage() {
     isSigningOut,
     fbConnecting,
     fbMessage,
-    pageIds, setPageIds,
-    query, setQuery,
-    fromDate, setFromDate,
-    toDate, setToDate,
-    sortMode, setSortMode,
-    viewMode, setViewMode,
+    pageIds,
+    setPageIds,
+    query,
+    setQuery,
+    fromDate,
+    setFromDate,
+    toDate,
+    setToDate,
+    sortMode,
+    setSortMode,
+    viewMode,
+    setViewMode,
     count,
     invalidRange,
     userLabel,
     handleFacebookConnect,
     handleSignOut,
-  } = useMainPage();*/
+  } = useMainPage();
+
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const profileMenuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!isProfileOpen) return;
+
+    function handleClickOutside(event: MouseEvent) {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
+        setIsProfileOpen(false);
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isProfileOpen]);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -213,11 +69,41 @@ export function MainPage() {
           <ThemeToggle />
 
           {currentUser ? (
-            <UserMenu
-              userLabel={userLabel}
-              onSignOut={handleSignOut}
-              isSigningOut={isSigningOut || authLoading}
-            />
+            <div className="relative" ref={profileMenuRef}>
+              <button
+                type="button"
+                onClick={() => setIsProfileOpen((open) => !open)}
+                className="inline-flex items-center justify-center rounded-lg border border-[var(--panel-border)] bg-[var(--panel-bg)] px-3 py-2 text-[var(--text-primary)] transition-colors duration-200 hover:bg-[var(--button-hover)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--input-focus-border)]"
+                aria-label="Open account menu"
+                aria-expanded={isProfileOpen}
+              >
+                <CircleUserRound size={18} />
+              </button>
+
+              {isProfileOpen && (
+                <div className="absolute right-0 z-20 mt-2 w-64 rounded-xl border border-[var(--panel-border)] bg-[var(--panel-bg)] p-2 shadow-xl">
+                  <p className="px-2 py-2 text-xs font-semibold text-[var(--text-subtle)]">Signed in as</p>
+                  <p className="truncate px-2 pb-2 text-sm font-semibold text-[var(--text-primary)]">{userLabel}</p>
+                  <Link
+                    to="/profile"
+                    onClick={() => setIsProfileOpen(false)}
+                    className="mt-1 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-[var(--panel-border)] bg-[var(--panel-bg)] px-3 py-2 text-sm font-semibold text-[var(--text-primary)] transition-colors duration-200 hover:bg-[var(--button-hover)]"
+                  >
+                    <CircleUserRound size={16} />
+                    Profile
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={handleSignOut}
+                    disabled={isSigningOut}
+                    className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-[var(--panel-border)] bg-[var(--panel-bg)] px-3 py-2 text-sm font-semibold text-[var(--text-primary)] transition-colors duration-200 hover:bg-[var(--button-hover)] disabled:cursor-not-allowed disabled:opacity-70"
+                  >
+                    <LogOut size={16} />
+                    {isSigningOut ? 'Signing out...' : 'Log out'}
+                  </button>
+                </div>
+              )}
+            </div>
           ) : (
             <Link
               to="/login"
@@ -232,6 +118,33 @@ export function MainPage() {
 
       <div className="flex-1 px-6 md:px-8 pb-8 max-w-6xl mx-auto w-full">
         <div className="space-y-8">
+          {currentUser?.role === 'organizer' && (
+            <section className="rounded-xl border border-[var(--panel-border)] bg-[var(--panel-bg)] p-4 shadow-sm">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--text-subtle)]">Organizer tools</p>
+                  <h2 className="mt-1 text-lg font-bold text-[var(--text-primary)]">Connect Facebook to keep events in sync</h2>
+                  <p className="mt-1 text-sm text-[var(--text-subtle)]">Use the organizer flow if you need to link a page and refresh event imports.</p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleFacebookConnect}
+                  disabled={fbConnecting}
+                  className="inline-flex items-center justify-center rounded-lg bg-[var(--link-primary)] px-4 py-2 text-sm font-semibold text-white transition-colors duration-200 hover:bg-[var(--link-primary-hover)] disabled:cursor-not-allowed disabled:opacity-70"
+                >
+                  {fbConnecting ? 'Connecting...' : 'Connect Facebook'}
+                </button>
+              </div>
+
+              {fbMessage && (
+                <p className={`mt-3 text-sm font-semibold ${fbMessage.kind === 'error' ? 'text-[var(--dtu-accent)]' : 'text-emerald-500'}`} aria-live="polite">
+                  {fbMessage.text}
+                </p>
+              )}
+            </section>
+          )}
+
           <FilterBar
             pages={pages}
             pageIds={pageIds}
@@ -247,13 +160,8 @@ export function MainPage() {
             setSortMode={setSortMode}
           />
 
-          {loading && (
-            <p className="text-sm text-[var(--text-subtle)] mb-2 animate-pulse">Loading…</p>
-          )}
-
-          {error && (
-            <p className="text-sm text-[var(--dtu-accent)] mb-2 font-semibold">{error}</p>
-          )}
+          {loading && <p className="text-sm text-[var(--text-subtle)] mb-2 animate-pulse">Loading…</p>}
+          {error && <p className="text-sm text-[var(--dtu-accent)] mb-2 font-semibold">{error}</p>}
 
           {invalidRange && (
             <p className="text-xs text-[var(--dtu-accent)] mb-2 font-semibold">
@@ -274,7 +182,7 @@ export function MainPage() {
                 className={`px-4 py-2 rounded-lg border text-sm font-semibold transition ${viewMode === 'list'
                   ? 'bg-[var(--link-primary)] text-white border-transparent'
                   : 'bg-[var(--panel-bg)] text-[var(--text-primary)] border-[var(--panel-border)] hover:bg-[var(--input-bg)]'
-                  }`}
+                }`}
               >
                 <span className="inline-flex items-center gap-2">
                   <LayoutList size={16} />
@@ -289,7 +197,7 @@ export function MainPage() {
                 className={`px-4 py-2 rounded-lg border text-sm font-semibold transition ${viewMode === 'calendar'
                   ? 'bg-[var(--link-primary)] text-white border-transparent'
                   : 'bg-[var(--panel-bg)] text-[var(--text-primary)] border-[var(--panel-border)] hover:bg-[var(--input-bg)]'
-                  }`}
+                }`}
               >
                 <span className="inline-flex items-center gap-2">
                   <CalendarDays size={16} />
@@ -300,23 +208,6 @@ export function MainPage() {
           </div>
 
           {viewMode === 'list' ? <EventList list={list} /> : <CalendarView events={list} />}
-
-          {currentUser?.role === 'organizer' && (
-            <div className="flex flex-col items-center gap-2">
-              {fbMessage && (
-                <p className={`text-sm font-medium ${fbMessage.kind === 'success' ? 'text-green-600' : 'text-red-600'}`}>
-                  {fbMessage.text}
-                </p>
-              )}
-              <button
-                onClick={handleFacebookConnect}
-                disabled={fbConnecting}
-                className="bg-[var(--link-primary)] hover:bg-[var(--link-primary-hover)] text-white font-semibold px-6 py-3 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 disabled:opacity-60 disabled:cursor-not-allowed disabled:transform-none"
-              >
-                {fbConnecting ? 'Connecting…' : 'Connect Facebook Page'}
-              </button>
-            </div>
-          )}
         </div>
       </div>
 

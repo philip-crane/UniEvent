@@ -16,8 +16,12 @@ export const API_AUTH_PROFILE = '/api/auth/profile';
 export const DEBOUNCE_MS = 250;
 export const SHARE_FEEDBACK_MS = 1400;
 export const SAVE_FEEDBACK_MS = 1500;
+export const PASSWORD_MIN_LENGTH = 12;
+export const ORGANIZER_SIGNUP_SUCCESS_REDIRECT_MS = 1500;
 
 export const NEW_EVENT_THRESHOLD_DAYS = 7;
+
+export const ORGANIZER_REQUEST_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSdBFOWq8W5qGeeZWpOO8VC8iUpe2mDlao7htn9WgeN6CZXzZg/viewform?usp=dialog';
 
 export const FACEBOOK_APP_VERSION = 'v25.0';
 export const FACEBOOK_SCOPES = 'pages_show_list,pages_read_engagement';

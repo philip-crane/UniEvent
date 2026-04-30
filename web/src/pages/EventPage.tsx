@@ -1,32 +1,29 @@
 import { Link, useParams } from 'react-router-dom';
+import { useEventPage } from '../hooks/useEventPage';
 import { DEFAULT_EVENT_COVER_IMAGE_URL, formatEventStart, formatTimeRange } from '../utils/eventUtils';
 import { downloadIcs, buildGoogleCalendarUrl } from '../utils/calendarUtils';
 import { LikeButton } from '../components/LikeButton';
 import { HeaderLogoLink } from '../components/HeaderLogoLink';
 import { ThemeToggle } from '../components/ThemeToggle';
-import { UserMenu } from '../components/UserMenu';
 import { ShareButton } from '../components/ShareButton';
-import { useEventPage } from '../hooks/useEventPage';
-import { CalendarDays, Clock3, MapPin } from 'lucide-react';
+import { CalendarDays, CircleUserRound, Clock3, MapPin } from 'lucide-react';
 
 export function EventPage() {
-  const { id } = useParams<{ id: string }>();
+  const { id } = useParams<{ id: string }>(); // id for /events/:id
   const {
     currentUser,
     event,
     isLoading,
-    isSigningOut,
     showAddMenu,
     setShowAddMenu,
     saveFeedback,
     addMenuRef,
     handleLikeToggle,
-    handleSignOut,
-    userLabel,
     organizerName,
     coverImageUrl,
   } = useEventPage(id);
 
+  // Main Rendering of EventPage
   return (
     <div className="page flex flex-col">
 
@@ -45,23 +42,26 @@ export function EventPage() {
           <ThemeToggle />
 
           {currentUser ? (
-            <UserMenu
-              userLabel={userLabel}
-              onSignOut={handleSignOut}
-              isSigningOut={isSigningOut}
-            />
+            <Link
+              to="/profile"
+              className="inline-flex items-center justify-center rounded-lg border border-[var(--panel-border)] bg-[var(--panel-bg)] px-3 py-2 text-[var(--text-primary)] transition-colors duration-200 hover:bg-[var(--button-hover)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--input-focus-border)]"
+              aria-label="Open profile"
+            >
+              <CircleUserRound size={18} />
+            </Link>
           ) : (
             <Link
               to="/login"
               className="inline-flex items-center justify-center rounded-lg border border-[var(--panel-border)] bg-[var(--panel-bg)] px-3 py-2 text-[var(--text-primary)] transition-colors duration-200 hover:bg-[var(--button-hover)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--input-focus-border)]"
               aria-label="Go to login"
             >
-              Login
+              <CircleUserRound size={18} />
             </Link>
           )}
         </div>
       </header>
 
+      {/* Content */}
       <main className="flex-1 overflow-y-auto w-full">
         <div className="max-w-5xl mx-auto pb-16 px-4">
           {isLoading && (
@@ -152,8 +152,8 @@ export function EventPage() {
                     src={coverImageUrl}
                     alt={event.title}
                     className="w-full h-full object-cover"
-                    onError={(e) => {
-                      e.currentTarget.src = DEFAULT_EVENT_COVER_IMAGE_URL;
+                    onError={(imageEvent) => {
+                      imageEvent.currentTarget.src = DEFAULT_EVENT_COVER_IMAGE_URL;
                     }}
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
@@ -196,6 +196,7 @@ export function EventPage() {
               </section>
             </>
           )}
+
         </div>
       </main>
     </div>

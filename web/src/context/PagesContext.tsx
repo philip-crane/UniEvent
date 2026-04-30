@@ -1,4 +1,4 @@
-/* eslint-disable react-refresh/only-export-components */
+﻿/* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { getPages } from '../services/dal';
 import type { Page } from '../types';
@@ -11,15 +11,15 @@ import type { Page } from '../types';
 const PagesContext = createContext<Page[]>([]);
 
 export function PagesProvider({ children }: { children: ReactNode }) {
-    const [pages, setPages] = useState<Page[]>([]);
+  const [pages, setPages] = useState<Page[]>([]);
 
-    useEffect(() => {
-        getPages().then(setPages).catch(() => { /* stay empty on network error */ });
-    }, []);
+  useEffect(() => {
+    getPages().then(setPages).catch(() => { /* stay empty on network error */ });
+  }, []);
 
-    return <PagesContext.Provider value={pages}>{children}</PagesContext.Provider>;
+  return <PagesContext.Provider value={pages}>{children}</PagesContext.Provider>;
 }
 
 export function usePages(): Page[] {
-    return useContext(PagesContext);
+  return useContext(PagesContext);
 }
