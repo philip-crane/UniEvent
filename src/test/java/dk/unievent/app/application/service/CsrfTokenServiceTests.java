@@ -15,7 +15,7 @@ import java.util.regex.Pattern;
 import static org.junit.jupiter.api.Assertions.*;
 
 @ExtendWith(MockitoExtension.class)
-class CsrfTokenServiceTest {
+class CsrfTokenServiceTests {
 
     private static final String CSRF_SECRET = "test-csrf-secret-1234567890";
     private static final Pattern TOKEN_PATTERN = Pattern.compile(
