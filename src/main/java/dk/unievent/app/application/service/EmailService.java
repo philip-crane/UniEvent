@@ -31,6 +31,9 @@ public class EmailService {
     @Value("${frontend.url}")
     private String frontendUrl;
 
+    @Value("${unievent.security.organizer-key.expiration-hours:24}")
+    private long organizerKeyExpirationHours;
+
     /**
      * Sends organizer invitation email asynchronously.
      * Does not throw exceptions - logs errors instead to prevent async task failures.
@@ -58,8 +61,8 @@ public class EmailService {
         // Prepare template context with variables
         Context context = new Context();
         context.setVariable("key", key);
-        context.setVariable("expirationHours", 24);
-        context.setVariable("registerUrl", frontendUrl + "/register-organizer?key=" + key);
+        context.setVariable("expirationHours", organizerKeyExpirationHours);
+        context.setVariable("registerUrl", frontendUrl + "/signup-organizer?key=" + key);
 
         // Render HTML template with context
         String htmlContent = templateEngine.process("emails/organizer-invitation", context);

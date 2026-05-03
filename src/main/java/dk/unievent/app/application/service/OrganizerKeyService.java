@@ -39,10 +39,10 @@ public class OrganizerKeyService {
     @Value("${unievent.security.jwt.secret}")
     private String jwtSecret;
 
-    @Value("${unievent.organizer-key.expiration-hours:24}")
+    @Value("${unievent.security.organizer-key.expiration-hours:24}")
     private long keyExpirationHours;
 
-    @Value("${unievent.organizer-key.confirmation-token-expiration-minutes:10}")
+    @Value("${unievent.security.organizer-key.confirmation-token-expiration-minutes:10}")
     private long confirmationTokenExpirationMinutes;
 
     private static final String CONFIRMATION_TOKEN_TYPE = "organizer-registration-confirmation";
