@@ -45,7 +45,7 @@ public class EmailService {
     public void sendOrganizerInvitationEmailAsync(String to, String key) {
         try {
             sendOrganizerInvitationEmail(to, key);
-        } catch (MessagingException e) {
+        } catch (Exception e) {
             log.error("Failed to send organizer invitation email to {}: {}", to, e.getMessage(), e);
         }
     }
