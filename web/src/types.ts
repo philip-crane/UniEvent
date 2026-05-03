@@ -1,4 +1,4 @@
-﻿// "types" = data type "molds" that DB items are cast into
+// "types" = data type "molds" that DB items are cast into
 // "export" = make the type available to other files
 // "slug" = short, stable, human-readable identifier in the URL
 

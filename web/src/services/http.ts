@@ -1,4 +1,4 @@
-﻿import { getCsrfToken } from './csrf';
+import { getCsrfToken } from './csrf';
 
 const STATE_CHANGING_METHODS = new Set(['POST', 'PUT', 'DELETE', 'PATCH']);
 let refreshPromise: Promise<boolean> | null = null;
