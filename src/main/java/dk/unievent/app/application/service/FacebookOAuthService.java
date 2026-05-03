@@ -4,6 +4,7 @@ import dk.unievent.app.api.dto.FbLongLivedTokenResponse;
 import dk.unievent.app.api.dto.FbPageResponse;
 import dk.unievent.app.api.dto.FbShortLivedTokenResponse;
 import dk.unievent.app.db.model.PageEntity;
+import dk.unievent.app.infrastructure.config.FacebookApiConstants;
 import dk.unievent.app.infrastructure.exception.FacebookApiException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -60,7 +61,7 @@ public class FacebookOAuthService {
             FbLongLivedTokenResponse longLivedResponse = facebookGraphApiService.getLongLivedToken(shortLivedToken);
             String longLivedToken = longLivedResponse.getAccessToken();
             Integer expiresInObj = longLivedResponse.getExpiresIn();
-            int expiresIn = expiresInObj != null ? expiresInObj : 5184000; // Default: 60 days in seconds
+            int expiresIn = expiresInObj != null ? expiresInObj : FacebookApiConstants.DEFAULT_TOKEN_EXPIRY_SECONDS;
             log.debug("Long-lived token obtained, expires in {} seconds (~{} days)",
                 expiresIn, (expiresIn / 86400));
 

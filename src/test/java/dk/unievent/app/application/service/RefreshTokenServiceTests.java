@@ -4,6 +4,7 @@ import dk.unievent.app.db.model.RefreshTokenEntity;
 import dk.unievent.app.db.model.UserEntity;
 import dk.unievent.app.db.repository.RefreshTokenRepository;
 import dk.unievent.app.infrastructure.config.JwtConfig;
+import dk.unievent.app.infrastructure.exception.TokenCompromisedException;
 import dk.unievent.app.infrastructure.exception.UnauthorizedTokenException;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -116,6 +117,49 @@ class RefreshTokenServiceTests {
     }
 
     @Test
+    void rotateShouldHandleRecentlyReplacedTokenFromConcurrentRefresh() {
+        String originalRefresh = "original-refresh-token";
+        when(jwtService.extractRefreshUsername(originalRefresh)).thenReturn(user.getEmail());
+        when(jwtService.extractRefreshTokenId(originalRefresh)).thenReturn("token-1");
+        when(jwtService.extractRefreshFamilyId(originalRefresh)).thenReturn("family-1");
+        when(jwtService.generateAccessToken(userDetails)).thenReturn("access-token-3");
+        when(jwtService.generateRefreshToken(eq(userDetails), anyString(), eq("family-1"))).thenReturn("refresh-token-3");
+
+        RefreshTokenEntity replaced = RefreshTokenEntity.builder()
+                .id(10L)
+                .tokenId("token-1")
+                .familyId("family-1")
+                .tokenHash(javaHash(originalRefresh))
+                .userId(user.getId())
+                .userEmail(user.getEmail())
+                .revokedAt(Instant.now())
+                .replacedByTokenId("token-2")
+                .expiresAt(Instant.now().plusSeconds(60))
+                .build();
+
+        RefreshTokenEntity latest = RefreshTokenEntity.builder()
+                .id(11L)
+                .tokenId("token-2")
+                .familyId("family-1")
+                .tokenHash(javaHash("refresh-token-2"))
+                .userId(user.getId())
+                .userEmail(user.getEmail())
+                .expiresAt(Instant.now().plusSeconds(60))
+                .build();
+
+        when(refreshTokenRepository.findByTokenId("token-1")).thenReturn(Optional.of(replaced));
+        when(refreshTokenRepository.findByTokenId("token-2")).thenReturn(Optional.of(latest));
+        when(refreshTokenRepository.save(any(RefreshTokenEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        RefreshTokenService.TokenPair rotated = refreshTokenService.rotate(originalRefresh);
+
+        assertEquals("access-token-3", rotated.accessToken());
+        assertEquals("refresh-token-3", rotated.refreshToken());
+        verify(refreshTokenRepository, times(2)).save(any(RefreshTokenEntity.class));
+        verify(refreshTokenRepository, never()).revokeByFamilyId(eq("family-1"), any());
+    }
+
+    @Test
     void logoutShouldRevokeCurrentTokenAndFamily() {
         String refreshToken = "refresh-token";
         when(jwtService.extractRefreshTokenId(refreshToken)).thenReturn("token-1");
@@ -146,7 +190,59 @@ class RefreshTokenServiceTests {
         when(jwtService.extractRefreshFamilyId("bad-token")).thenReturn("family-1");
         when(refreshTokenRepository.findByTokenId("token-1")).thenReturn(Optional.empty());
 
-        assertThrows(UnauthorizedTokenException.class, () -> refreshTokenService.rotate("bad-token"));
+        assertThrows(TokenCompromisedException.class, () -> refreshTokenService.rotate("bad-token"));
+        verify(refreshTokenRepository).revokeByFamilyId(eq("family-1"), any());
+    }
+
+    @Test
+    void rotateShouldRejectExpiredRefreshTokenAsUnauthorized() {
+        String refreshToken = "expired-refresh-token";
+        when(jwtService.extractRefreshUsername(refreshToken)).thenReturn(user.getEmail());
+        when(jwtService.extractRefreshTokenId(refreshToken)).thenReturn("token-1");
+        when(jwtService.extractRefreshFamilyId(refreshToken)).thenReturn("family-1");
+        when(refreshTokenRepository.findByTokenId("token-1")).thenReturn(Optional.of(
+                RefreshTokenEntity.builder()
+                        .tokenId("token-1")
+                        .familyId("family-1")
+                        .tokenHash(javaHash(refreshToken))
+                        .userId(user.getId())
+                        .userEmail(user.getEmail())
+                        .expiresAt(Instant.now().minusSeconds(60))
+                        .build()
+        ));
+
+        UnauthorizedTokenException exception = assertThrows(
+                UnauthorizedTokenException.class,
+                () -> refreshTokenService.rotate(refreshToken)
+        );
+        assertEquals("Session expired. Please login again.", exception.getMessage());
+        verify(refreshTokenRepository, never()).revokeByFamilyId(anyString(), any());
+    }
+
+    @Test
+    void rotateShouldRejectReplayedRefreshTokenAsCompromised() {
+        String refreshToken = "replayed-refresh-token";
+        when(jwtService.extractRefreshUsername(refreshToken)).thenReturn(user.getEmail());
+        when(jwtService.extractRefreshTokenId(refreshToken)).thenReturn("token-1");
+        when(jwtService.extractRefreshFamilyId(refreshToken)).thenReturn("family-1");
+        when(refreshTokenRepository.findByTokenId("token-1")).thenReturn(Optional.of(
+                RefreshTokenEntity.builder()
+                        .tokenId("token-1")
+                        .familyId("family-1")
+                        .tokenHash(javaHash(refreshToken))
+                        .userId(user.getId())
+                        .userEmail(user.getEmail())
+                        .revokedAt(Instant.now())
+                        .expiresAt(Instant.now().plusSeconds(60))
+                        .build()
+        ));
+
+        TokenCompromisedException exception = assertThrows(
+                TokenCompromisedException.class,
+                () -> refreshTokenService.rotate(refreshToken)
+        );
+        assertEquals("Refresh token family compromised", exception.getMessage());
+        verify(refreshTokenRepository).revokeByFamilyId(eq("family-1"), any());
     }
 
     private String javaHash(String token) {

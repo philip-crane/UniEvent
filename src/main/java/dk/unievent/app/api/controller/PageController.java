@@ -7,9 +7,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import dk.unievent.app.application.dto.PageDTO;
 import dk.unievent.app.application.service.PageService;
+import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 import jakarta.validation.Valid;
 import java.io.IOException;
 import java.util.Optional;
@@ -17,19 +19,17 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.Parameter;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @RestController
 @RequestMapping("/api/pages")
+@RequiredArgsConstructor
 @Tag(name = "Pages", description = "Manage event organizer pages (Facebook pages)")
 public class PageController {
 
     private final PageService pageService;
-
-    public PageController(PageService pageService) {
-        this.pageService = pageService;
-    }
 
     @GetMapping
     @Operation(summary = "Get all pages", description = "Retrieve all event organizer pages ordered by name")
@@ -67,6 +67,7 @@ public class PageController {
     }
 
     @GetMapping("/search")
+    @RateLimiter(name = "page-search", fallbackMethod = "searchFallback")
     @Operation(summary = "Search pages by name", description = "Search for pages using a partial name match (case-insensitive)")
     @ApiResponse(responseCode = "200", description = "Page of matching pages")
     public ResponseEntity<Page<PageDTO>> searchPages(
@@ -79,6 +80,8 @@ public class PageController {
     }
 
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    @RateLimiter(name = "page-create", fallbackMethod = "createFallback")
     @Operation(summary = "Create a new page", description = "Create a new event organizer page")
     @ApiResponse(responseCode = "201", description = "Page created successfully")
     public ResponseEntity<PageDTO> createPage(@Valid @RequestBody PageDTO pageDTO) {
@@ -89,6 +92,8 @@ public class PageController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    @RateLimiter(name = "page-update", fallbackMethod = "updateFallback")
     @Operation(summary = "Update a page", description = "Update page information")
     @ApiResponse(responseCode = "200", description = "Page updated successfully")
     @ApiResponse(responseCode = "404", description = "Page not found")
@@ -107,6 +112,7 @@ public class PageController {
     }
 
     @PostMapping("/{id}/picture")
+    @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Upload picture for page", description = "Upload a picture for a specific page")
     @ApiResponse(responseCode = "200", description = "Picture uploaded successfully")
     @ApiResponse(responseCode = "404", description = "Page not found")
@@ -124,6 +130,8 @@ public class PageController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    @RateLimiter(name = "page-delete", fallbackMethod = "deleteFallback")
     @Operation(summary = "Delete a page", description = "Delete a page and all its events (cascading delete)")
     @ApiResponse(responseCode = "204", description = "Page deleted successfully")
     @ApiResponse(responseCode = "404", description = "Page not found")
@@ -136,5 +144,21 @@ public class PageController {
         }
         log.info("Page deleted successfully: {}", id);
         return ResponseEntity.noContent().build();
+    }
+
+    public ResponseEntity<Page<PageDTO>> searchFallback(String name, Pageable pageable, Exception ex) {
+        return ResponseEntity.status(429).build();
+    }
+
+    public ResponseEntity<PageDTO> createFallback(PageDTO pageDTO, Exception ex) {
+        return ResponseEntity.status(429).build();
+    }
+
+    public ResponseEntity<PageDTO> updateFallback(String id, PageDTO pageDTO, Exception ex) {
+        return ResponseEntity.status(429).build();
+    }
+
+    public ResponseEntity<Void> deleteFallback(String id, Exception ex) {
+        return ResponseEntity.status(429).build();
     }
 }

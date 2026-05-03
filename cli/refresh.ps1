@@ -5,15 +5,22 @@
 function Invoke-Refresh {
     param([string]$BaseUrl, [string]$Page, [switch]$VerboseOutput)
 
+    $BaseUrl = Assert-ValidBaseUrl -BaseUrl $BaseUrl
+
     if ($Page) {
+        Assert-NonEmpty -Name "Page ID" -Value $Page
         Write-Info "Refreshing token for page: $Page"
-        $resp = Invoke-AdminRequest -Method "POST" -Url "$BaseUrl/admin/tools/refresh-tokens/$Page" -VerboseOutput:$VerboseOutput
+        $encodedPage = [System.Uri]::EscapeDataString("$Page")
+        $resp = Invoke-AdminRequest -Method "POST" -Url "$BaseUrl/admin/tools/refresh-tokens/$encodedPage" -VerboseOutput:$VerboseOutput
         if ($resp.StatusCode -eq 200) {
             $body = $null
             try { $body = $resp.Body | ConvertFrom-Json } catch {}
             $msg = if ($body -and $body.message) { $body.message } else { "Token refreshed" }
             Write-Ok "Page $Page`: $msg"
-            if ($VerboseOutput -and $resp.Body) { Write-Host ($body | ConvertTo-Json -Depth 5) -ForegroundColor Gray }
+            if ($VerboseOutput -and $resp.Body) {
+                $json = if ($body) { $body | ConvertTo-Json -Depth 5 } else { $resp.Body }
+                Write-Host (Redact-SensitiveText -Text $json) -ForegroundColor Gray
+            }
             return
         }
         if ($resp.StatusCode -eq 404) {
@@ -23,7 +30,7 @@ function Invoke-Refresh {
         }
         # 500 or other: show what the server said
         Write-Err "Refresh failed for page $Page (status $($resp.StatusCode))"
-        if ($resp.Body) { Write-Warn $resp.Body }
+        if ($resp.Body) { Write-Warn (Redact-SensitiveText -Text $resp.Body) }
         exit 1
     }
 
@@ -32,7 +39,7 @@ function Invoke-Refresh {
 
     if ($resp.StatusCode -ne 200) {
         Write-Err "Refresh failed (status $($resp.StatusCode))"
-        if ($resp.Body) { Write-Warn $resp.Body }
+        if ($resp.Body) { Write-Warn (Redact-SensitiveText -Text $resp.Body) }
         exit 1
     }
 
@@ -42,10 +49,11 @@ function Invoke-Refresh {
         if ($VerboseOutput) {
             Write-Host ""
             Write-Info "Response:"
-            Write-Host ($summary | ConvertTo-Json -Depth 5) -ForegroundColor Gray
+            $output = $summary | ConvertTo-Json -Depth 5
+            Write-Host (Redact-SensitiveText -Text $output) -ForegroundColor Gray
         }
     } catch {
         Write-Ok "Refresh completed"
-        if ($resp.Body) { Write-Host $resp.Body -ForegroundColor Gray }
+        if ($resp.Body) { Write-Host (Redact-SensitiveText -Text $resp.Body) -ForegroundColor Gray }
     }
 }

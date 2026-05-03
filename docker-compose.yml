@@ -75,6 +75,10 @@ services:
       FACEBOOK_APP_SECRET: ${FACEBOOK_APP_SECRET}
       FACEBOOK_REDIRECT_URI: ${FACEBOOK_REDIRECT_URI:-http://localhost:8080/api/facebook/callback}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost}
+      MAIL_HOST: ${MAIL_HOST:-smtp.gmail.com}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USERNAME: ${MAIL_USERNAME}
+      MAIL_PASSWORD: ${MAIL_PASSWORD}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
       FACEBOOK_GRAPH_VERSION: ${FACEBOOK_GRAPH_VERSION:-v25.0}
       VAULT_ENABLED: ${VAULT_ENABLED:-true}
@@ -116,6 +120,8 @@ services:
     depends_on:
       app:
         condition: service_started
+      frontend:
+        condition: service_started
     ports:
       - "80:80"
       - "443:443"
@@ -141,8 +147,11 @@ services:
 
   frontend:
     build:
-      context: ../UniEventClient/web
+      context: ./web
       dockerfile: Dockerfile
+      args:
+        VITE_BACKEND_URL: ${VITE_BACKEND_URL:-}
+        VITE_FACEBOOK_APP_ID: ${VITE_FACEBOOK_APP_ID:-}
     container_name: unievent-frontend
     restart: on-failure
     ports:
@@ -150,7 +159,7 @@ services:
     networks:
       - unievent-network
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health | grep -q healthy || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/health | grep -q healthy || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5

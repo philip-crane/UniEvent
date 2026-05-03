@@ -12,7 +12,16 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
+import dk.unievent.app.infrastructure.exception.EmailAlreadyRegisteredException;
+import dk.unievent.app.infrastructure.exception.CsrfValidationException;
+import dk.unievent.app.infrastructure.exception.InvalidConfirmationTokenException;
+import dk.unievent.app.infrastructure.exception.OrganizerKeyAlreadyUsedException;
+import dk.unievent.app.infrastructure.exception.OrganizerKeyExpiredException;
+import dk.unievent.app.infrastructure.exception.OrganizerKeyNotFoundException;
+import dk.unievent.app.infrastructure.exception.TokenCompromisedException;
 import dk.unievent.app.infrastructure.exception.UnauthorizedTokenException;
+import dk.unievent.app.infrastructure.exception.UsernameAlreadyTakenException;
+import io.jsonwebtoken.ExpiredJwtException;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.security.core.AuthenticationException;
 import lombok.extern.slf4j.Slf4j;
@@ -97,10 +106,58 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(HttpStatus.UNAUTHORIZED, "Unauthorized", ex.getMessage());
     }
 
+    @ExceptionHandler(ExpiredJwtException.class)
+    public ResponseEntity<Map<String, Object>> handleExpiredJwt(ExpiredJwtException ex) {
+        log.warn("JWT expired: {}", ex.getMessage());
+        return buildErrorResponse(HttpStatus.UNAUTHORIZED, "Unauthorized", "Session expired. Please login again.");
+    }
+
+    @ExceptionHandler(CsrfValidationException.class)
+    public ResponseEntity<Map<String, Object>> handleCsrfValidation(CsrfValidationException ex) {
+        log.warn("CSRF validation failed");
+        return buildErrorResponse(HttpStatus.FORBIDDEN, "Forbidden", ex.getMessage());
+    }
+
+    @ExceptionHandler(TokenCompromisedException.class)
+    public ResponseEntity<Map<String, Object>> handleTokenCompromised(TokenCompromisedException ex) {
+        log.warn("Refresh token family compromised");
+        return buildErrorResponse(HttpStatus.FORBIDDEN, "Forbidden", ex.getMessage());
+    }
+
     @ExceptionHandler(NoSuchElementException.class)
     public ResponseEntity<Map<String, Object>> handleNotFound(NoSuchElementException ex) {
         log.warn("Resource not found: {}", ex.getMessage());
         return buildErrorResponse(HttpStatus.NOT_FOUND, "Not Found", ex.getMessage());
+    }
+
+    @ExceptionHandler(OrganizerKeyNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleOrganizerKeyNotFound(OrganizerKeyNotFoundException ex) {
+        log.warn("Organizer key not found");
+        return buildErrorResponse(HttpStatus.NOT_FOUND, "Not Found", ex.getMessage());
+    }
+
+    @ExceptionHandler(OrganizerKeyAlreadyUsedException.class)
+    public ResponseEntity<Map<String, Object>> handleOrganizerKeyAlreadyUsed(OrganizerKeyAlreadyUsedException ex) {
+        log.warn("Organizer key already used");
+        return buildErrorResponse(HttpStatus.GONE, "Gone", ex.getMessage());
+    }
+
+    @ExceptionHandler(OrganizerKeyExpiredException.class)
+    public ResponseEntity<Map<String, Object>> handleOrganizerKeyExpired(OrganizerKeyExpiredException ex) {
+        log.warn("Organizer key expired");
+        return buildErrorResponse(HttpStatus.UNAUTHORIZED, "Unauthorized", ex.getMessage());
+    }
+
+    @ExceptionHandler(InvalidConfirmationTokenException.class)
+    public ResponseEntity<Map<String, Object>> handleInvalidConfirmationToken(InvalidConfirmationTokenException ex) {
+        log.warn("Invalid confirmation token");
+        return buildErrorResponse(HttpStatus.UNAUTHORIZED, "Unauthorized", ex.getMessage());
+    }
+
+    @ExceptionHandler({UsernameAlreadyTakenException.class, EmailAlreadyRegisteredException.class})
+    public ResponseEntity<Map<String, Object>> handleRegistrationConflict(RuntimeException ex) {
+        log.warn("Registration conflict: {}", ex.getMessage());
+        return buildErrorResponse(HttpStatus.CONFLICT, "Conflict", ex.getMessage());
     }
 
     @ExceptionHandler(MaxUploadSizeExceededException.class)
@@ -128,15 +185,7 @@ public class GlobalExceptionHandler {
         log.error("Facebook API error: {} (status: {}, error type: {})",
             ex.getMessage(), ex.getStatusCode(), ex.getErrorType());
 
-        Map<String, Object> errorResponse = new HashMap<>();
-        errorResponse.put("timestamp", LocalDateTime.now());
-        errorResponse.put("status", HttpStatus.SERVICE_UNAVAILABLE.value());
-        errorResponse.put("error", "Facebook API Error");
-        errorResponse.put("message", ex.getMessage());
-        errorResponse.put("facebook_error_type", ex.getErrorType());
-        errorResponse.put("facebook_status_code", ex.getStatusCode());
-
-        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(errorResponse);
+        return buildErrorResponse(HttpStatus.SERVICE_UNAVAILABLE, "Service Unavailable", "Facebook service is currently unavailable. Please try again later.");
     }
 
     @ExceptionHandler(Exception.class)

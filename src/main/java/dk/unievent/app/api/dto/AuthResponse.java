@@ -1,10 +1,11 @@
 package dk.unievent.app.api.dto;
 
+import java.util.List;
+
 public record AuthResponse(
-	String token,
-	String refreshToken,
 	String username,
 	String email,
-	long accessTokenExpiresInMs,
-	long refreshTokenExpiresInMs
+	List<String> roles,
+	String csrfToken,
+	long accessTokenExpiresInMs
 ) {}

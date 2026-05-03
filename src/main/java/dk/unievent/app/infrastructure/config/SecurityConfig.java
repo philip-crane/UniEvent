@@ -15,7 +15,8 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.filter.ForwardedHeaderFilter;
 
-import dk.unievent.app.infrastructure.filter.JwtAuthenticationFilter;
+import dk.unievent.app.infrastructure.filter.CookieAuthenticationFilter;
+import dk.unievent.app.infrastructure.filter.CsrfValidationFilter;
 
 import java.util.Arrays;
 
@@ -63,7 +64,12 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http, JwtAuthenticationFilter jwtAuthenticationFilter) throws Exception {
+    public SecurityFilterChain filterChain(
+            HttpSecurity http,
+            CookieAuthenticationFilter cookieAuthenticationFilter,
+            CsrfValidationFilter csrfValidationFilter,
+            CookieConfig cookieConfig
+    ) throws Exception {
         boolean devProfile = Arrays.asList(environment.getActiveProfiles()).contains("dev");
 
         http
@@ -72,6 +78,7 @@ public class SecurityConfig {
                     // Frontend SPA - static assets served from resources/static (Vite build output)
                     .requestMatchers(org.springframework.http.HttpMethod.GET,
                             "/", "/index.html", "/assets/**", "/favicon.ico", "/favicon.svg", "/favicon.png").permitAll()
+                    .requestMatchers("/api/auth/organizer-key/generate").hasRole("ADMIN")
                     .requestMatchers("/api/auth/**").permitAll()
                     .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/**").permitAll()
                     .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/**").authenticated()
@@ -91,6 +98,7 @@ public class SecurityConfig {
             })
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .cors(cors -> {})
+            // CSRF is handled by CsrfValidationFilter; Spring's built-in filter is disabled.
             .csrf(csrf -> csrf.disable())
             .httpBasic(basic -> basic.disable())
             .headers(headers -> headers
@@ -98,8 +106,12 @@ public class SecurityConfig {
                     .includeSubDomains(true)
                     .maxAgeInSeconds(31536000)
                 )
+                .addHeaderWriter((request, response) ->
+                    response.setHeader("X-CSRF-Token", "required")
+                )
             )
-            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+            .addFilterBefore(cookieAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+            .addFilterAfter(csrfValidationFilter, CookieAuthenticationFilter.class);
 
         return http.build();
     }

@@ -3,6 +3,7 @@ package dk.unievent.app.application.service;
 import dk.unievent.app.application.dto.UserDTO;
 import dk.unievent.app.db.model.UserEntity;
 import dk.unievent.app.db.repository.UserRepository;
+import dk.unievent.app.infrastructure.config.RoleConstants;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import dk.unievent.app.infrastructure.security.UserDetailsAdapter;
@@ -40,8 +41,8 @@ public class UserService implements UserDetailsService, ApplicationRunner {
                 log.error("CLI admin account {} exists but ADMIN_PASSWORD does not match - not touching it (possible pre-registration attack?)", adminEmail);
                 return;
             }
-            if (!"ADMIN".equals(existing.getRole())) {
-                existing.setRole("ADMIN");
+            if (!RoleConstants.ADMIN.equals(existing.getRole())) {
+                existing.setRole(RoleConstants.ADMIN);
                 userRepository.save(existing);
                 log.warn("CLI admin account role corrected to ADMIN: {}", adminEmail);
             } else {
@@ -52,7 +53,7 @@ public class UserService implements UserDetailsService, ApplicationRunner {
                     .username("cli")
                     .email(adminEmail)
                     .password(passwordEncoder.encode(adminPassword))
-                    .role("ADMIN")
+                    .role(RoleConstants.ADMIN)
                     .build());
             log.info("CLI admin account provisioned: {}", adminEmail);
         });
@@ -76,7 +77,7 @@ public class UserService implements UserDetailsService, ApplicationRunner {
         // 'admin' role elevation requires an authorized admin-only flow.
         String requestedRole = user.getRole();
         if (requestedRole == null || requestedRole.isBlank()) {
-            requestedRole = "user";
+            requestedRole = RoleConstants.USER;
         }
         String validatedRole = validateRegistrationRole(requestedRole);
         UserEntity account = UserEntity.builder()
@@ -90,15 +91,20 @@ public class UserService implements UserDetailsService, ApplicationRunner {
 
     /**
      * Validates and returns a role for self-registration.
-     * Only 'user' and 'organizer' are allowed; 'admin' requires authorized admin action.
+     * Only 'user' is allowed for self-registration. 'organizer' role requires an admin-issued invitation key.
+     * 'admin' role requires authorized admin-only action.
      * This prevents privilege escalation attacks during registration.
      */
     private String validateRegistrationRole(String role) {
-        if ("user".equalsIgnoreCase(role) || "organizer".equalsIgnoreCase(role)) {
-            return role.toLowerCase();
+        if (role == null || role.isBlank() || RoleConstants.USER.equalsIgnoreCase(role)) {
+            return RoleConstants.USER;
+        }
+        if (RoleConstants.ORGANIZER.equalsIgnoreCase(role)) {
+            log.warn("Organizer role requested during self-registration - not allowed. Use the invitation key flow instead.");
+            throw new IllegalArgumentException("Organizer role cannot be self-registered. Contact an admin for an invitation key.");
         }
         log.warn("Invalid role requested during registration: {}. Defaulting to 'user'.", role);
-        throw new IllegalArgumentException("Invalid role: " + role + ". Only 'user' or 'organizer' are allowed.");
+        throw new IllegalArgumentException("Invalid role: " + role + ". Only 'user' is allowed for self-registration.");
     }
 
     public UserEntity findByEmail(String email) {

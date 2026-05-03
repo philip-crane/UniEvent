@@ -15,6 +15,18 @@ import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
+import dk.unievent.app.infrastructure.exception.EmailAlreadyRegisteredException;
+import dk.unievent.app.infrastructure.exception.CsrfValidationException;
+import dk.unievent.app.infrastructure.exception.InvalidConfirmationTokenException;
+import dk.unievent.app.infrastructure.exception.OrganizerKeyAlreadyUsedException;
+import dk.unievent.app.infrastructure.exception.OrganizerKeyExpiredException;
+import dk.unievent.app.infrastructure.exception.OrganizerKeyNotFoundException;
+import dk.unievent.app.infrastructure.exception.TokenCompromisedException;
+import dk.unievent.app.infrastructure.exception.UsernameAlreadyTakenException;
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.Header;
+import io.jsonwebtoken.Claims;
+
 import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -94,6 +106,85 @@ class GlobalExceptionHandlerTests {
         assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
         assertEquals("Not Found", response.getBody().get("error"));
         assertEquals("missing", response.getBody().get("message"));
+    }
+
+    @Test
+    void handleOrganizerKeyNotFoundShouldReturn404() {
+        ResponseEntity<Map<String, Object>> response = handler.handleOrganizerKeyNotFound(new OrganizerKeyNotFoundException());
+
+        assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
+        assertEquals("Not Found", response.getBody().get("error"));
+        assertEquals("Organizer key not found", response.getBody().get("message"));
+    }
+
+    @Test
+    void handleOrganizerKeyAlreadyUsedShouldReturn410() {
+        ResponseEntity<Map<String, Object>> response = handler.handleOrganizerKeyAlreadyUsed(new OrganizerKeyAlreadyUsedException());
+
+        assertEquals(HttpStatus.GONE, response.getStatusCode());
+        assertEquals("Gone", response.getBody().get("error"));
+        assertEquals("Organizer key has already been used", response.getBody().get("message"));
+    }
+
+    @Test
+    void handleOrganizerKeyExpiredShouldReturn401() {
+        ResponseEntity<Map<String, Object>> response = handler.handleOrganizerKeyExpired(new OrganizerKeyExpiredException());
+
+        assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
+        assertEquals("Unauthorized", response.getBody().get("error"));
+    }
+
+    @Test
+    void handleInvalidConfirmationTokenShouldReturn401() {
+        ResponseEntity<Map<String, Object>> response = handler.handleInvalidConfirmationToken(new InvalidConfirmationTokenException());
+
+        assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
+        assertEquals("Unauthorized", response.getBody().get("error"));
+    }
+
+    @Test
+    void handleExpiredJwtShouldReturn401() {
+        ResponseEntity<Map<String, Object>> response = handler.handleExpiredJwt(
+                new ExpiredJwtException((Header) null, (Claims) null, "expired")
+        );
+
+        assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
+        assertEquals("Unauthorized", response.getBody().get("error"));
+        assertEquals("Session expired. Please login again.", response.getBody().get("message"));
+    }
+
+    @Test
+    void handleCsrfValidationShouldReturn403() {
+        ResponseEntity<Map<String, Object>> response = handler.handleCsrfValidation(new CsrfValidationException());
+
+        assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
+        assertEquals("Forbidden", response.getBody().get("error"));
+        assertEquals("CSRF token validation failed", response.getBody().get("message"));
+    }
+
+    @Test
+    void handleTokenCompromisedShouldReturn403() {
+        ResponseEntity<Map<String, Object>> response = handler.handleTokenCompromised(new TokenCompromisedException());
+
+        assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
+        assertEquals("Forbidden", response.getBody().get("error"));
+        assertEquals("Refresh token family compromised", response.getBody().get("message"));
+    }
+
+    @Test
+    void handleUsernameAlreadyTakenShouldReturn409() {
+        ResponseEntity<Map<String, Object>> response = handler.handleRegistrationConflict(new UsernameAlreadyTakenException());
+
+        assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
+        assertEquals("Conflict", response.getBody().get("error"));
+    }
+
+    @Test
+    void handleEmailAlreadyRegisteredShouldReturn409() {
+        ResponseEntity<Map<String, Object>> response = handler.handleRegistrationConflict(new EmailAlreadyRegisteredException());
+
+        assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
+        assertEquals("Conflict", response.getBody().get("error"));
     }
 
     @Test

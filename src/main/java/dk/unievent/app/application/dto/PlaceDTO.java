@@ -6,6 +6,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import jakarta.validation.constraints.*;
 import jakarta.validation.Valid;
+import dk.unievent.app.infrastructure.config.ValidationConstants;
 
 @Getter
 @Setter
@@ -15,7 +16,7 @@ public class PlaceDTO {
     private String id;
     
     @NotBlank(message = "Place name is required")
-    @Size(min = 1, max = 255, message = "Place name must be between 1 and 255 characters")
+    @Size(min = 1, max = ValidationConstants.NAME_MAX_LENGTH, message = "Place name must be between 1 and 255 characters")
     private String name;
     
     @Valid

@@ -16,33 +16,31 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import dk.unievent.app.application.dto.MediaDTO;
 import dk.unievent.app.db.model.MediaEntity;
-import dk.unievent.app.db.repository.MediaRepository;
 import dk.unievent.app.application.service.MediaService;
+import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.time.Instant;
 
 @Slf4j
 @RestController
 @RequestMapping("/media")
+@RequiredArgsConstructor
 @Tag(name = "Media Management", description = "APIs for uploading, downloading, and managing media files")
 public class MediaController {
 
     private final MediaService mediaService;
-    private final MediaRepository repository;
-
-    public MediaController(MediaService mediaService, MediaRepository repository) {
-        this.mediaService = mediaService;
-        this.repository = repository;
-    }
 
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    @RateLimiter(name = "media-upload", fallbackMethod = "uploadFallback")
     @Operation(
         summary = "Upload a media file",
         description = "Upload a file to SeaweedFS and store metadata in the database. Returns the created media record with ID and file ID."
@@ -57,16 +55,9 @@ public class MediaController {
         @Parameter(description = "File to upload", required = true)
         @RequestParam("file") MultipartFile file) throws IOException {
         log.info("Uploading media file: {}, size: {} bytes", file.getOriginalFilename(), file.getSize());
-        String storedFilename = mediaService.store(file);
-        MediaEntity meta = MediaEntity.builder()
-                .filename(file.getOriginalFilename())
-                .contentType(file.getContentType())
-                .fileId(storedFilename)
-                .uploadedAt(Instant.now())
-                .build();
-            MediaEntity saved = repository.save(meta);
-            log.info("Media file uploaded successfully with id: {}", saved.getId());
-            return ResponseEntity.ok(toDto(saved));
+        MediaDTO saved = mediaService.storeAndSave(file);
+        log.info("Media file uploaded successfully with id: {}", saved.getId());
+        return ResponseEntity.ok(saved);
     }
 
     @GetMapping("/{id}")
@@ -84,13 +75,8 @@ public class MediaController {
         @Parameter(description = "Media file ID", required = true, example = "1")
         @PathVariable Long id) throws IOException {
         log.debug("Fetching media with id: {}", id);
-        MediaEntity media = repository.findById(id)
-                .orElseThrow(() -> {
-                    log.warn("Media not found with id: {}", id);
-                    return new java.util.NoSuchElementException("Media not found: " + id);
-                });
+        MediaEntity media = mediaService.findById(id);
         log.debug("Media found: {}", id);
-        // fileId stored in DB is the SeaweedFS file ID
         Resource resource = mediaService.loadAsResource(media.getFileId());
         String encoded = URLEncoder.encode(media.getFilename(), StandardCharsets.UTF_8);
         MediaType contentType = media.getContentType() != null
@@ -103,6 +89,7 @@ public class MediaController {
     }
 
     @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
     @Operation(
         summary = "List all media files",
         description = "Retrieve a list of all uploaded media files with their metadata."
@@ -111,18 +98,13 @@ public class MediaController {
         content = @Content(mediaType = "application/json", schema = @Schema(implementation = MediaDTO.class)))
     public Page<MediaDTO> list(@PageableDefault(size = 50) Pageable pageable) {
         log.debug("Listing media files: page={}, size={}", pageable.getPageNumber(), pageable.getPageSize());
-        Page<MediaDTO> media = repository.findAll(pageable).map(this::toDto);
+        Page<MediaDTO> media = mediaService.listAll(pageable);
         log.debug("Found {} media files", media.getTotalElements());
         return media;
     }
 
-    private MediaDTO toDto(MediaEntity entity) {
-        return MediaDTO.builder()
-                .id(entity.getId())
-                .filename(entity.getFilename())
-                .contentType(entity.getContentType())
-                .fileId(entity.getFileId())
-                .uploadedAt(entity.getUploadedAt())
-                .build();
+    public ResponseEntity<MediaDTO> uploadFallback(MultipartFile file, Exception ex) throws IOException {
+        return ResponseEntity.status(429).build();
     }
+
 }

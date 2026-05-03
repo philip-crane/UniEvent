@@ -2,6 +2,6 @@ package dk.unievent.app.api.dto;
 
 import jakarta.validation.constraints.NotBlank;
 
-public record RefreshRequest(
-        @NotBlank String refreshToken
+public record OrganizerKeyVerifyRequest(
+        @NotBlank String key
 ) {}

@@ -1,0 +1,59 @@
+# tools status
+# Read-only status summary for local Docker/Vault.
+
+function Invoke-Status {
+    param([switch]$VerboseOutput)
+
+    $dockerPath = Find-Executable -Name "docker" -Fallbacks $script:KnownPaths.docker
+    if (-not $dockerPath) {
+        Write-Err "Docker not found"
+        exit 1
+    }
+
+    if (-not (Test-DockerDaemon -DockerPath $dockerPath)) {
+        exit 1
+    }
+
+    Write-Info "Docker daemon is running"
+
+    $stackPs = @(& $dockerPath compose ps 2>&1)
+    if ($LASTEXITCODE -ne 0) {
+        Write-Warn "Could not query compose stack"
+        if ($stackPs.Count -gt 0) { Write-Warn ($stackPs -join " | ") }
+        return
+    }
+
+    if ($VerboseOutput) {
+        Write-Info "docker compose ps:"
+        Write-Host ($stackPs -join "`n") -ForegroundColor Gray
+    }
+
+    $vaultStatus = Get-VaultStatus -DockerPath $dockerPath
+    Write-Info "Vault: $vaultStatus"
+
+    $appLine = $stackPs | Where-Object { $_ -match 'unievent-app' } | Select-Object -First 1
+    if ($appLine) {
+        if ($appLine -match '\(healthy\)') {
+            Write-Ok "App container is healthy"
+        } elseif ($appLine -match '\(unhealthy\)') {
+            Write-Warn "App container is unhealthy"
+        } else {
+            Write-Warn "App container is starting or unknown"
+        }
+    } else {
+        Write-Warn "App container not found in compose output"
+    }
+
+    $frontendLine = $stackPs | Where-Object { $_ -match 'unievent-frontend' } | Select-Object -First 1
+    if ($frontendLine) {
+        if ($frontendLine -match '\(healthy\)') {
+            Write-Ok "Frontend container is healthy"
+        } elseif ($frontendLine -match '\(unhealthy\)') {
+            Write-Warn "Frontend container is unhealthy"
+        } else {
+            Write-Warn "Frontend container is starting or unknown"
+        }
+    } else {
+        Write-Warn "Frontend container not found in compose output"
+    }
+}

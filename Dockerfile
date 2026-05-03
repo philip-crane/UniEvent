@@ -2,29 +2,31 @@
 FROM eclipse-temurin:25-jdk-alpine AS builder
 WORKDIR /app
 
-# Install Maven
-RUN apk add --no-cache maven
+# Copy Maven wrapper first (cached unless wrapper version changes)
+COPY .mvn/ .mvn/
+COPY mvnw pom.xml ./
 
-# Copy pom.xml
-COPY pom.xml .
+# Download dependencies (cached unless pom.xml changes)
+RUN ./mvnw dependency:go-offline -B
 
-# Download dependencies
-RUN mvn dependency:go-offline -B
-
-# Copy source code
+# Build
 COPY src src
+RUN ./mvnw package -DskipTests -B
 
-# Build the application (no frontend, no static resources)
-RUN mvn package -DskipTests -B
+# Rename to fixed name then extract layered jar for optimal Docker layer caching
+RUN cp target/*.jar target/app.jar && \
+    java -Djarmode=tools -jar target/app.jar extract --layers --destination target/extracted
 
 # Runtime stage
 FROM eclipse-temurin:25-jre-alpine
 WORKDIR /app
 
-# Copy the built jar from builder stage
-COPY --from=builder /app/target/*.jar app.jar
+# Copy layers least-to-most frequently changed so app code doesn't bust dependency layers
+COPY --from=builder /app/target/extracted/dependencies/ ./
+COPY --from=builder /app/target/extracted/spring-boot-loader/ ./
+COPY --from=builder /app/target/extracted/snapshot-dependencies/ ./
+COPY --from=builder /app/target/extracted/application/ ./
 
 EXPOSE 8080
 
-ENTRYPOINT ["java", "-jar", "app.jar"]
-
+ENTRYPOINT ["java", "org.springframework.boot.loader.launch.JarLauncher"]

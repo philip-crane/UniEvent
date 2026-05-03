@@ -9,6 +9,92 @@ function Write-Warn  { param([string]$Msg) Write-Host "  WARN: $Msg" -Foreground
 function Write-Sep   { Write-Host ("-" * 50) -ForegroundColor DarkGray }
 function Write-Step  { param([string]$Msg) Write-Host "`n  $Msg" -ForegroundColor White }
 
+function Redact-SensitiveText {
+    param([string]$Text)
+
+    if (-not $Text) { return $Text }
+
+    $redacted = $Text
+    $patterns = @(
+        '(?im)((?:token|password|secret|authorization|client_secret|access_token|refresh_token)\s*[:=]\s*)([^\s,;]+)',
+        '(?im)("(?:token|password|secret|authorization|client_secret|access_token|refresh_token)"\s*:\s*")([^"]+)(")',
+        '(?im)(Bearer\s+)([A-Za-z0-9\-\._~\+/=]+)',
+        '(?im)((?:VAULT_TOKEN|VAULT_ROOT_TOKEN|VAULT_UNSEAL_TOKEN|confirmationToken|inviteKey|invitationKey)\s*[:=]\s*)([^\s,;]+)',
+        '(?im)("(?:confirmationToken|inviteKey|invitationKey)"\s*:\s*")([^"]+)(")'
+    )
+
+    foreach ($pattern in $patterns) {
+        $redacted = [regex]::Replace($redacted, $pattern, '$1***REDACTED***')
+    }
+
+    return $redacted
+}
+
+function Resolve-BaseUrl {
+    param([string]$RawBaseUrl)
+
+    $candidate = if ($RawBaseUrl) { $RawBaseUrl.Trim() } else { "" }
+    if (-not $candidate) {
+        throw "Base URL cannot be empty"
+    }
+
+    $uri = $null
+    if (-not [System.Uri]::TryCreate($candidate, [System.UriKind]::Absolute, [ref]$uri)) {
+        throw "Invalid URL format: '$candidate'"
+    }
+
+    if ($uri.Scheme -ne "http" -and $uri.Scheme -ne "https") {
+        throw "Unsupported URL scheme '$($uri.Scheme)'. Use http:// or https://"
+    }
+
+    if ($uri.Scheme -eq "http") {
+        $hostname = $uri.Host.ToLowerInvariant()
+        $isLocal = ($hostname -eq "localhost" -or $hostname -eq "127.0.0.1" -or $hostname -eq "::1")
+        if (-not $isLocal) {
+            throw "Refusing insecure HTTP for non-localhost target '$candidate'. Use HTTPS."
+        }
+    }
+
+    $builder = New-Object System.UriBuilder($uri)
+    $builder.Path = ""
+    $builder.Query = ""
+    $builder.Fragment = ""
+
+    return $builder.Uri.AbsoluteUri.TrimEnd('/')
+}
+
+function Assert-ValidBaseUrl {
+    param([string]$BaseUrl)
+
+    try {
+        return Resolve-BaseUrl -RawBaseUrl $BaseUrl
+    } catch {
+        Write-Err "Invalid base URL: $($_.Exception.Message)"
+        exit 1
+    }
+}
+
+function Assert-NonEmpty {
+    param([string]$Name, [string]$Value)
+
+    if (-not $Value -or -not $Value.Trim()) {
+        Write-Err "$Name must not be empty"
+        exit 1
+    }
+}
+
+function Test-ValidEmail {
+    param([string]$Email)
+
+    if (-not $Email) { return $false }
+    try {
+        $mail = [System.Net.Mail.MailAddress]::new($Email)
+        return ($mail.Address -eq $Email)
+    } catch {
+        return $false
+    }
+}
+
 function Show-Help {
     $cli = if ($IsLinux -or $IsMacOS) { "./tools.sh" } else { "./tools" }
 
@@ -18,20 +104,22 @@ function Show-Help {
     Write-Host "Usage: $cli <command> [options]"
     Write-Host ""
     Write-Host "Commands:"
-    Write-Host "  setup              Check dependencies and configure local dev environment"
-    Write-Host "  docker             Start (or rebuild/restart) the Docker stack"
-    Write-Host "  vault              Initialize and/or unseal Vault"
-    Write-Host "  unseal             Quick unseal Vault (shortcut for restart)"
-    Write-Host "  seed               Clear and re-seed test data"
-    Write-Host "  refresh            Refresh Facebook page tokens (all, or one with -p)"
-    Write-Host "  ingest             Manually ingest from a Facebook page (interactive or -p)"
+    Write-Host "  setup                  Check dependencies and configure local dev environment"
+    Write-Host "  docker                 Start (or rebuild/restart) the Docker stack"
+    Write-Host "  vault                  Initialize and/or unseal Vault"
+    Write-Host "  unseal                 Quick unseal Vault (shortcut for restart)"
+    Write-Host "  seed                   Clear and re-seed test data"
+    Write-Host "  refresh                Refresh Facebook page tokens (all, or one with -p)"
+    Write-Host "  ingest                 Manually ingest from a Facebook page (interactive or -p)"
+    Write-Host "  invite                 Send organizer invite key and test registration flow"
     Write-Host ""
     Write-Host "Flags:"
-    Write-Host "  -r, --remote <url>   Target a remote server (default: https://localhost)"
     Write-Host "  -p, --page <id>      Scope to a single page (refresh, ingest)"
-    Write-Host "  -c, --clear          seed: only clear, skip re-seed"
+    Write-Host "  -e, --email <email>  invite: recipient email (default: test@example.com)"
+    Write-Host "  -n, --orgname <name> invite: organization name (default: Test Organization)"
+    Write-Host "  -w, --wipe           seed: only clear, skip re-seed; docker/vault: destroy data volumes"
     Write-Host "  -d, --down           docker: stop the stack"
-    Write-Host "  -w, --wipe           docker/vault: destroy data volumes (prompts for confirmation)"
+    Write-Host "  -y, --yes            Non-interactive approval for prompts"
     Write-Host "  -v, --verbose        Show extra output"
     Write-Host "  -h, --help           Show this help"
     Write-Host ""
@@ -41,12 +129,13 @@ function Show-Help {
     Write-Host "  $cli docker -d                # stop"
     Write-Host "  $cli docker -v                # start with full compose output"
     Write-Host "  $cli seed                     # clear + re-seed"
-    Write-Host "  $cli seed -c                  # clear only"
+    Write-Host "  $cli seed -w                  # clear only"
     Write-Host "  $cli refresh"
     Write-Host "  $cli refresh -p 1234567890"
     Write-Host "  $cli ingest"
     Write-Host "  $cli ingest -p 1234567890 -v"
     Write-Host "  $cli seed -r https://staging.example.com"
+    Write-Host "  $cli invite -e organizer@company.com -v"
     Write-Host ""
 }
 
@@ -54,14 +143,19 @@ function Show-Help {
 # Resolve the repo root from any script location under cli/.
 # Walks up from $PSScriptRoot looking for .git/ or pom.xml.
 
+$script:_repoRoot = $null
+
 function Get-RepoRoot {
     param([string]$StartFrom = $PSScriptRoot)
+
+    if ($script:_repoRoot) { return $script:_repoRoot }
 
     $dir = Get-Item -LiteralPath $StartFrom
     while ($null -ne $dir) {
         if ((Test-Path (Join-Path $dir.FullName ".git")) -or
             (Test-Path (Join-Path $dir.FullName "pom.xml"))) {
-            return $dir.FullName
+            $script:_repoRoot = $dir.FullName
+            return $script:_repoRoot
         }
         if ($null -eq $dir.Parent) { break }
         $dir = $dir.Parent
@@ -85,7 +179,9 @@ function Load-DotEnv {
         $line = $line.Trim()
         if ($line -eq "" -or $line.StartsWith("#")) { continue }
         if ($line -match "^([^=]+)=(.*)$") {
-            $vars[$Matches[1].Trim()] = $Matches[2].Trim()
+            $raw = $Matches[2].Trim()
+            if (($raw -match '^"(.*)"$') -or ($raw -match "^'(.*)'$")) { $raw = $Matches[1] }
+            $vars[$Matches[1].Trim()] = $raw
         }
     }
     return $vars
@@ -93,20 +189,46 @@ function Load-DotEnv {
 
 function Update-EnvVar {
     param([string]$Key, [string]$Value)
+
+    Update-EnvVars -Pairs @{ $Key = $Value }
+}
+
+function Write-TextFileUtf8NoBom {
+    param(
+        [string]$Path,
+        [string[]]$Lines
+    )
+
+    $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+    $tmpPath = "$Path.tmp"
+    [System.IO.File]::WriteAllLines($tmpPath, $Lines, $utf8NoBom)
+    Move-Item -Path $tmpPath -Destination $Path -Force
+}
+
+function Update-EnvVars {
+    param([hashtable]$Pairs)
+
+    if (-not $Pairs -or $Pairs.Count -eq 0) { return }
+
     $envFile = Join-Path (Get-RepoRoot) ".env"
     if (-not (Test-Path $envFile)) { return }
 
     $lines = @(Get-Content $envFile)
-    $found = $false
-    for ($i = 0; $i -lt $lines.Count; $i++) {
-        if ($lines[$i] -match "^$([regex]::Escape($Key))=") {
-            $lines[$i] = "$Key=$Value"
-            $found = $true
-            break
+
+    foreach ($key in $Pairs.Keys) {
+        $value = "$($Pairs[$key])"
+        $found = $false
+        for ($i = 0; $i -lt $lines.Count; $i++) {
+            if ($lines[$i] -match "^$([regex]::Escape($key))=") {
+                $lines[$i] = "$key=$value"
+                $found = $true
+                break
+            }
         }
+        if (-not $found) { $lines += "$key=$value" }
     }
-    if (-not $found) { $lines += "$Key=$Value" }
-    $lines | Set-Content $envFile
+
+    Write-TextFileUtf8NoBom -Path $envFile -Lines $lines
 }
 
 # ── HTTP ──────────────────────────────────────────────────────────────────────
@@ -114,17 +236,30 @@ function Update-EnvVar {
 # rather than bash/curl - PS 7's -SkipCertificateCheck is the load-bearing feature.
 
 function Invoke-Web {
-    param([string]$Method = "GET", [string]$Uri, [hashtable]$Headers = @{}, [int]$TimeoutSec = 30, [string]$Body = $null)
-    $skipCert = $Uri -match "^https://localhost"
-    if ($PSVersionTable.PSVersion.Major -ge 6) {
-        if ($null -ne $Body -and $Body -ne "") {
-            return Invoke-WebRequest -Uri $Uri -Method $Method -Headers $Headers -Body $Body `
-                -TimeoutSec $TimeoutSec -ErrorAction Stop -SkipCertificateCheck:$skipCert
-        }
-        return Invoke-WebRequest -Uri $Uri -Method $Method -Headers $Headers `
-            -TimeoutSec $TimeoutSec -ErrorAction Stop -SkipCertificateCheck:$skipCert
+    param(
+        [string]$Method = "GET",
+        [string]$Uri,
+        [hashtable]$Headers = @{},
+        [int]$TimeoutSec = 30,
+        [string]$Body = $null,
+        $WebSession = $null
+    )
+    $skipCert = $false
+    try {
+        $parsedUri = [System.Uri]$Uri
+        $hostname = $parsedUri.Host.ToLowerInvariant()
+        $isLocalHost = ($hostname -eq "localhost" -or $hostname -eq "127.0.0.1" -or $hostname -eq "::1")
+        $skipCert = $parsedUri.Scheme -eq "https" -and $isLocalHost
+    } catch {
+        $skipCert = $false
     }
-    
+    if ($PSVersionTable.PSVersion.Major -ge 6) {
+        $splat = @{ Uri=$Uri; Method=$Method; Headers=$Headers; TimeoutSec=$TimeoutSec; ErrorAction="Stop"; SkipCertificateCheck=$skipCert }
+        if ($null -ne $Body -and $Body -ne "") { $splat["Body"] = $Body }
+        if ($null -ne $WebSession) { $splat["WebSession"] = $WebSession }
+        return Invoke-WebRequest @splat
+    }
+
     # PS 5: Cannot use scriptblock callbacks for cert validation (no runspace in .NET callback)
     # Solution: use compiled C# delegate instead of scriptblock
     if ($skipCert) {
@@ -144,58 +279,78 @@ function Invoke-Web {
         $old = [System.Net.ServicePointManager]::ServerCertificateValidationCallback
         [System.Net.ServicePointManager]::ServerCertificateValidationCallback = [System.Net.Security.RemoteCertificateValidationCallback]::CreateDelegate([System.Net.Security.RemoteCertificateValidationCallback], [CertificateBypass], 'IgnoreSSLErrors')
     }
-    
+
     try {
-        if ($null -ne $Body -and $Body -ne "") {
-            return Invoke-WebRequest -Uri $Uri -Method $Method -Headers $Headers -Body $Body `
-                -TimeoutSec $TimeoutSec -ErrorAction Stop
-        }
-        return Invoke-WebRequest -Uri $Uri -Method $Method -Headers $Headers -TimeoutSec $TimeoutSec -ErrorAction Stop
+        $splat = @{ Uri=$Uri; Method=$Method; Headers=$Headers; TimeoutSec=$TimeoutSec; ErrorAction="Stop" }
+        if ($null -ne $Body -and $Body -ne "") { $splat["Body"] = $Body }
+        if ($null -ne $WebSession) { $splat["WebSession"] = $WebSession }
+        return Invoke-WebRequest @splat
     } finally {
         if ($skipCert) { [System.Net.ServicePointManager]::ServerCertificateValidationCallback = $old }
     }
 }
 
 function Test-ServerHealth {
-    param([string]$BaseUrl, [switch]$VerboseOutput)
-    if ($VerboseOutput) { Write-Info "Checking server at $BaseUrl" }
-    try {
-        Invoke-Web -Uri "$BaseUrl/actuator/health" -TimeoutSec 5 | Out-Null
-        return $true
-    } catch {
-        $ex = $_.Exception
-        
-        # DEBUG: Log what exception type we're actually getting
-        if ($VerboseOutput) {
-            Write-Info "Exception type: $($ex.GetType().FullName)"
-            Write-Info "Exception message: $($ex.Message)"
-            if ($ex.InnerException) {
-                Write-Info "Inner exception: $($ex.InnerException.GetType().FullName): $($ex.InnerException.Message)"
+    param([string]$BaseUrl, [switch]$VerboseOutput, [int]$Retries = 3)
+
+    if ($Retries -lt 1) { $Retries = 1 }
+    if ($VerboseOutput) { Write-Info "Checking server health at $BaseUrl" }
+
+    for ($attempt = 1; $attempt -le $Retries; $attempt++) {
+        try {
+            $resp = Invoke-Web -Uri "$BaseUrl/actuator/health" -TimeoutSec 5
+            $statusCode = [int]$resp.StatusCode
+            if ($statusCode -lt 200 -or $statusCode -ge 300) {
+                if ($VerboseOutput) { Write-Warn "Health endpoint returned HTTP $statusCode" }
+            } else {
+                $healthIsUp = $true
+                if ($resp.Content) {
+                    try {
+                        $payload = $resp.Content | ConvertFrom-Json
+                        if ($payload.PSObject.Properties.Name -contains 'status') {
+                            $healthIsUp = ("$($payload.status)".ToUpperInvariant() -eq 'UP')
+                        }
+                    } catch {
+                        if ($VerboseOutput) {
+                            Write-Warn "Health response is not valid JSON; accepting HTTP success"
+                        }
+                    }
+                }
+
+                if ($healthIsUp) {
+                    return $true
+                }
+
+                if ($VerboseOutput) {
+                    Write-Warn "Health endpoint reachable but status is not UP"
+                }
+            }
+        } catch {
+            if ($VerboseOutput) {
+                $ex = $_.Exception
+                Write-Info "Health check attempt $attempt/$Retries failed: $($ex.GetType().Name): $($ex.Message)"
             }
         }
-        
-        # PS7: HttpRequestException wraps an inner HttpRequestError for non-2xx
-        # PS5: WebException with a Response means the server replied (even 401/403)
-        if ($ex -is [System.Net.WebException] -and $null -ne $ex.Response) { return $true }
-        if ($ex -is [System.Net.WebException] -and $ex.Status -eq [System.Net.WebExceptionStatus]::TrustFailure) { return $true }
-        if ($ex.GetType().Name -eq "HttpResponseException") { return $true }
-        
-        # Fallback: if we got ANY Response object, server is responding
-        if ($null -ne $ex.Response) { return $true }
-        
-        # PS5: also check for ConnectFailure which means server is down
-        if ($ex -is [System.Net.WebException] -and $ex.Status -eq [System.Net.WebExceptionStatus]::ConnectFailure) { return $false }
-        
-        return $false
+
+        if ($attempt -lt $Retries) {
+            $delay = [math]::Min(2 * $attempt, 5)
+            Start-Sleep -Seconds $delay
+        }
     }
+
+    return $false
 }
 
-$script:_adminToken = $null
+$script:_adminSessionByBaseUrl = @{}
 
-function Get-AdminToken {
+function Get-AdminSession {
     param([string]$BaseUrl)
 
-    if ($script:_adminToken) { return $script:_adminToken }
+    $BaseUrl = Assert-ValidBaseUrl -BaseUrl $BaseUrl
+
+    if ($script:_adminSessionByBaseUrl.ContainsKey($BaseUrl) -and $script:_adminSessionByBaseUrl[$BaseUrl]) {
+        return $script:_adminSessionByBaseUrl[$BaseUrl]
+    }
 
     $envVars  = Load-DotEnv
     $password = $envVars["ADMIN_PASSWORD"]
@@ -206,52 +361,78 @@ function Get-AdminToken {
         exit 1
     }
 
-    $email = "cli@unievent.internal"
+    $email    = "cli@unievent.internal"
+    $loginBody = @{ email = $email; password = $password } | ConvertTo-Json -Compress
 
-    $loginBody = "{`"email`":`"$email`",`"password`":`"$password`"}"
+    # Create a WebSession so auth cookies from the login response are auto-sent on subsequent requests.
+    $webSession = New-Object Microsoft.PowerShell.Commands.WebRequestSession
     try {
-        $resp  = Invoke-Web -Uri "$BaseUrl/api/auth/login" -Method "POST" `
-            -Headers @{ "Content-Type" = "application/json" } -Body $loginBody -TimeoutSec 15
-        $token = ($resp.Content | ConvertFrom-Json).token
+        $resp      = Invoke-Web -Uri "$BaseUrl/api/auth/login" -Method "POST" `
+            -Headers @{ "Content-Type" = "application/json" } -Body $loginBody -TimeoutSec 15 -WebSession $webSession
+        $csrfToken = ($resp.Content | ConvertFrom-Json).csrfToken
     } catch {
         Write-Err "Could not authenticate CLI service account: $($_.Exception.Message)"
         Write-Warn "Ensure the server is running and ADMIN_PASSWORD matches what the server was started with."
         exit 1
     }
 
-    if (-not $token) {
-        Write-Err "Login succeeded but response contained no token - check server logs"
+    if (-not $csrfToken) {
+        Write-Err "Login succeeded but response contained no csrfToken - check server logs"
         exit 1
     }
 
-    $script:_adminToken = $token
-    return $token
+    $session = @{ WebSession = $webSession; CsrfToken = $csrfToken }
+    $script:_adminSessionByBaseUrl[$BaseUrl] = $session
+    return $session
 }
 
 function Invoke-AdminRequest {
     param([string]$Method, [string]$Url, [switch]$VerboseOutput)
 
-    $uri     = [System.Uri]$Url
-    $baseUrl = "$($uri.Scheme)://$($uri.Authority)"
-    $token   = Get-AdminToken -BaseUrl $baseUrl
+    $uri = $null
+    if (-not [System.Uri]::TryCreate($Url, [System.UriKind]::Absolute, [ref]$uri)) {
+        Write-Err "Invalid request URL: $Url"
+        exit 1
+    }
 
-    $headers = @{ "Content-Type" = "application/json"; "Authorization" = "Bearer $token" }
+    $baseUrl      = "$($uri.Scheme)://$($uri.Authority)"
+    $adminSession = Get-AdminSession -BaseUrl $baseUrl
+
+    $headers = @{ "Content-Type" = "application/json" }
+    # State-changing methods require the CSRF token alongside the auth cookie.
+    if ($Method -in @("POST", "PUT", "PATCH", "DELETE")) {
+        $headers["X-CSRF-Token"] = $adminSession.CsrfToken
+    }
 
     if ($VerboseOutput) {
         Write-Info "$Method $Url"
     }
 
     try {
-        $resp = Invoke-Web -Uri $Url -Method $Method -Headers $headers -TimeoutSec 120
+        $resp = Invoke-Web -Uri $Url -Method $Method -Headers $headers -TimeoutSec 120 -WebSession $adminSession.WebSession
         return @{ StatusCode = $resp.StatusCode; Body = $resp.Content }
     } catch [System.Net.WebException] {
-        $statusCode = [int]$_.Exception.Response.StatusCode
-        $body = ""
-        if ($null -ne $_.Exception.Response) {
-            $stream = $_.Exception.Response.GetResponseStream()
-            $reader = New-Object System.IO.StreamReader($stream)
-            $body = $reader.ReadToEnd()
+        $response = $_.Exception.Response
+        if ($null -eq $response) {
+            Write-Err "Request failed: $($_.Exception.Message)"
+            exit 1
         }
+
+        $statusCode = [int]$response.StatusCode
+        $body = ""
+        $stream = $null
+        $reader = $null
+        try {
+            $stream = $response.GetResponseStream()
+            if ($null -ne $stream) {
+                $reader = New-Object System.IO.StreamReader($stream)
+                $body = $reader.ReadToEnd()
+            }
+        } finally {
+            if ($null -ne $reader) { $reader.Dispose() }
+            if ($null -ne $stream) { $stream.Dispose() }
+        }
+
         return @{ StatusCode = $statusCode; Body = $body }
     } catch {
         # PS7 wraps non-2xx in HttpResponseException. The Response content stream is
@@ -277,18 +458,29 @@ function Handle-Response {
     param([hashtable]$Response, [string]$SuccessMsg, [switch]$VerboseOutput)
 
     switch ($Response.StatusCode) {
-        200 {
+        { $_ -ge 200 -and $_ -lt 300 } {
             Write-Ok $SuccessMsg
             if ($VerboseOutput -and $Response.Body) {
                 Write-Host ""
                 Write-Info "Response:"
                 try {
                     $json = $Response.Body | ConvertFrom-Json
-                    Write-Host ($json | ConvertTo-Json -Depth 5) -ForegroundColor Gray
+                    $output = $json | ConvertTo-Json -Depth 5
+                    Write-Host (Redact-SensitiveText -Text $output) -ForegroundColor Gray
                 } catch {
-                    Write-Host $Response.Body -ForegroundColor Gray
+                    Write-Host (Redact-SensitiveText -Text $Response.Body) -ForegroundColor Gray
                 }
             }
+        }
+        { $_ -eq 400 -or $_ -eq 422 } {
+            Write-Err "Validation error ($($Response.StatusCode))"
+            if ($Response.Body) { Write-Warn (Redact-SensitiveText -Text $Response.Body) }
+            exit 1
+        }
+        { $_ -eq 401 -or $_ -eq 403 } {
+            Write-Err "Unauthorized ($($Response.StatusCode)) - check admin credentials"
+            if ($Response.Body) { Write-Warn (Redact-SensitiveText -Text $Response.Body) }
+            exit 1
         }
         404 {
             Write-Err "Endpoint not found (404)"
@@ -298,12 +490,12 @@ function Handle-Response {
         }
         500 {
             Write-Err "Server error (500)"
-            if ($Response.Body) { Write-Warn $Response.Body }
+            if ($Response.Body) { Write-Warn (Redact-SensitiveText -Text $Response.Body) }
             exit 1
         }
         default {
             Write-Err "Unexpected response: $($Response.StatusCode)"
-            if ($Response.Body) { Write-Warn $Response.Body }
+            if ($Response.Body) { Write-Warn (Redact-SensitiveText -Text $Response.Body) }
             exit 1
         }
     }

@@ -3,7 +3,7 @@
 # CLI install to ~/.local/bin, optional docker stack bringup.
 
 function Invoke-Setup {
-    param([switch]$VerboseOutput)
+    param([switch]$VerboseOutput, [switch]$Yes)
 
     $repoRoot = Get-RepoRoot
 
@@ -76,6 +76,15 @@ function Invoke-Setup {
         Write-Ok "Docker ($dockerPath)"
     }
 
+    $npmCmd = Get-Command npm -ErrorAction SilentlyContinue -CommandType Application | Select-Object -First 1
+    if ($npmCmd) {
+        Write-Ok "npm ($($npmCmd.Source))"
+    } else {
+        Write-Err "Node.js / npm not found"
+        Write-Warn "Install from https://nodejs.org"
+        $failed += "npm"
+    }
+
     if ($failed.Count -gt 0) {
         Write-Host ""
         Write-Err "Missing dependencies: $($failed -join ', ')"
@@ -96,7 +105,28 @@ function Invoke-Setup {
     }
     Write-Ok ".env found"
 
-    # ── Step 3: docker-compose.override.yml ──────────────────────────────────
+    # ── Step 3: Frontend dependencies ────────────────────────────────────────
+
+    Write-Step "Installing frontend dependencies (web/)..."
+    $webDir = Join-Path $repoRoot "web"
+    $nodeModules = Join-Path $webDir "node_modules"
+    if (Test-Path $nodeModules) {
+        Write-Ok "web/node_modules already exists"
+    } else {
+        $prev = $ErrorActionPreference
+        $ErrorActionPreference = "Continue"
+        & npm install --prefix $webDir
+        $npmExit = $LASTEXITCODE
+        $ErrorActionPreference = $prev
+        if ($npmExit -eq 0) {
+            Write-Ok "Frontend dependencies installed"
+        } else {
+            Write-Err "npm install failed (exit $npmExit)"
+            exit 1
+        }
+    }
+
+    # ── Step 5: docker-compose.override.yml ──────────────────────────────────
 
     Write-Step "Checking docker-compose.override.yml..."
     $overrideDst = Join-Path $repoRoot "docker-compose.override.yml"
@@ -111,7 +141,7 @@ function Invoke-Setup {
         Write-Warn "docker-compose.override.yml.example not found - skipping"
     }
 
-    # ── Step 4: TLS certificate ───────────────────────────────────────────────
+    # ── Step 6: TLS certificate ───────────────────────────────────────────────
 
     Write-Step "Checking TLS certificate..."
     $certsDir  = Join-Path $repoRoot "certs"
@@ -133,20 +163,26 @@ function Invoke-Setup {
         Write-Info "Generating self-signed certificate..."
         $subject = "/CN=localhost"
         $ErrorActionPreference = "Continue"
-        & $opensslPath req -x509 -nodes -days 3650 -newkey rsa:2048 `
+        $certOutput = @(& $opensslPath req -x509 -nodes -days 3650 -newkey rsa:2048 `
             -keyout $keyFile -out $certFile `
-            -subj $subject 2>$null
+            -subj $subject 2>&1)
+        $certExitCode = $LASTEXITCODE
         $ErrorActionPreference = "Stop"
 
         if ((Test-Path $certFile) -and (Test-Path $keyFile)) {
             Write-Ok "Self-signed certificate generated (valid 10 years)"
         } else {
             Write-Err "Certificate generation failed - files not created"
+            if ($certExitCode -ne 0 -and $certOutput.Count -gt 0) {
+                $tail = @($certOutput | Select-Object -Last 8)
+                Write-Warn ("OpenSSL output: " + ($tail -join " | "))
+            }
+            Write-Warn "Check that OpenSSL is installed and runnable: openssl version"
             exit 1
         }
     }
 
-    # ── Step 5: Vault TLS certificate ────────────────────────────────────────
+    # ── Step 7: Vault TLS certificate ────────────────────────────────────────
 
     Write-Step "Checking Vault TLS certificate..."
     $vaultCertFile = Join-Path $certsDir "vault.crt"
@@ -174,9 +210,10 @@ subjectAltName = DNS:vault,DNS:localhost,IP:127.0.0.1
         $sanConf | Set-Content -Path $tempConf -Encoding ASCII
 
         $ErrorActionPreference = "Continue"
-        & $opensslPath req -x509 -nodes -days 3650 -newkey rsa:2048 `
+        $vaultCertOutput = @(& $opensslPath req -x509 -nodes -days 3650 -newkey rsa:2048 `
             -keyout $vaultKeyFile -out $vaultCertFile `
-            -config $tempConf 2>$null
+            -config $tempConf 2>&1)
+        $vaultCertExitCode = $LASTEXITCODE
         $ErrorActionPreference = "Stop"
         Remove-Item $tempConf -ErrorAction SilentlyContinue
 
@@ -184,11 +221,16 @@ subjectAltName = DNS:vault,DNS:localhost,IP:127.0.0.1
             Write-Ok "Vault TLS certificate generated (valid 10 years)"
         } else {
             Write-Err "Vault TLS certificate generation failed - files not created"
+            if ($vaultCertExitCode -ne 0 -and $vaultCertOutput.Count -gt 0) {
+                $tail = @($vaultCertOutput | Select-Object -Last 8)
+                Write-Warn ("OpenSSL output: " + ($tail -join " | "))
+            }
+            Write-Warn "Check that OpenSSL is installed and runnable: openssl version"
             exit 1
         }
     }
 
-    # ── Step 7: Install CLI on PATH ───────────────────────────────────────────
+    # ── Step 8: Install CLI on PATH ───────────────────────────────────────────
 
     Write-Step "Installing CLI..."
 
@@ -202,8 +244,25 @@ subjectAltName = DNS:vault,DNS:localhost,IP:127.0.0.1
         }
 
         if (Test-Path $linkPath) {
-            $existing = & readlink -f $linkPath 2>/dev/null
-            if ($existing -eq $scriptPath) {
+            $resolvedScriptPath = (Resolve-Path -LiteralPath $scriptPath).Path
+            $existing = ""
+            try {
+                $linkItem = Get-Item -LiteralPath $linkPath -Force -ErrorAction Stop
+                $target = $linkItem.Target
+                if ($target -is [array]) { $target = $target[0] }
+
+                if ($target) {
+                    $candidate = $target
+                    if (-not ([System.IO.Path]::IsPathRooted($candidate))) {
+                        $candidate = Join-Path (Split-Path $linkPath -Parent) $candidate
+                    }
+                    $existing = (Resolve-Path -LiteralPath $candidate -ErrorAction Stop).Path
+                }
+            } catch {
+                $existing = ""
+            }
+
+            if ($existing -eq $resolvedScriptPath) {
                 Write-Ok "CLI already installed at $linkPath"
             } else {
                 Remove-Item $linkPath -Force
@@ -221,9 +280,9 @@ subjectAltName = DNS:vault,DNS:localhost,IP:127.0.0.1
             Write-Warn "Add this line to your ~/.bashrc or ~/.zshrc:"
             Write-Host '    export PATH="$HOME/.local/bin:$PATH"' -ForegroundColor White
             Write-Warn "Then restart your terminal (or run: source ~/.bashrc)"
-            Write-Warn "After that you can run: tools setup, tools seed, tools clear"
+            Write-Warn "After that you can run: tools setup, tools seed, tools refresh"
         } else {
-            Write-Info "You can now run: tools setup, tools seed, tools clear"
+            Write-Info "You can now run: tools setup, tools seed, tools refresh"
         }
     } else {
         # Windows: drop a stub tools.bat into ~\.local\bin (already on PATH via Claude, etc.)
@@ -314,23 +373,23 @@ subjectAltName = DNS:vault,DNS:localhost,IP:127.0.0.1
             }
         }
 
-        Write-Info "You can now run: tools seed, tools setup, tools clear"
+        Write-Info "You can now run: tools seed, tools setup, tools refresh"
     }
 
-    # ── Step 8: Done ──────────────────────────────────────────────────────────
+    # ── Step 9: Done ──────────────────────────────────────────────────────────
 
     Write-Host ""
     Write-Sep
     Write-Ok "Setup complete!"
     Write-Host ""
 
-    $answer = Read-Host "  Start the Docker stack now? [Y/n]"
+    $answer = if ($Yes) { "Y" } else { Read-Host "  Start the Docker stack now? [Y/n]" }
     if ($answer -eq "" -or $answer -match "^[Yy]") {
         . (Join-Path $PSScriptRoot "vault.ps1")
         . (Join-Path $PSScriptRoot "docker.ps1")
-        Invoke-Docker -VerboseOutput:$VerboseOutput -SkipVaultSetup
+        Invoke-Docker -VerboseOutput:$VerboseOutput -SkipVaultSetup -Yes:$Yes
         Write-Host ""
-        $answer2 = Read-Host "  Initialize / unseal Vault now? [Y/n]"
+        $answer2 = if ($Yes) { "Y" } else { Read-Host "  Initialize / unseal Vault now? [Y/n]" }
         if ($answer2 -eq "" -or $answer2 -match "^[Yy]") {
             Invoke-VaultSetup
         }

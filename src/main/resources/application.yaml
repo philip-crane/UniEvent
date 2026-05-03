@@ -7,11 +7,29 @@ spring:
       - classpath:vault.yaml
       - classpath:media.yaml
       - classpath:api.yaml
+      - classpath:infrastructure.yaml
   data:
     web:
       pageable:
         default-page-size: 20
         max-page-size: 100
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+    protocol: smtp
+    default-encoding: UTF-8
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
 
 logging:
   level:
@@ -48,14 +66,31 @@ unievent:
     cors:
       allowed-origins: ${UNIEVENT_SECURITY_CORS_ALLOWED_ORIGINS:http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173,https://localhost}
       allowed-methods: GET,POST,PUT,DELETE,OPTIONS
-      allowed-headers: Authorization,Content-Type,Accept
+      allowed-headers: Content-Type,Accept,X-CSRF-Token
       allow-credentials: true
       max-age: 3600
+    cookies:
+      access-name: auth_access
+      refresh-name: auth_refresh
+      csrf-name: csrf_token
+      access-max-age: 86400
+      refresh-max-age: 604800
+      csrf-max-age: 3600
+      secure: true
+      same-site: Strict
+    
+      domain: ${UNIEVENT_COOKIE_DOMAIN:}
+      path: /
+    csrf:
+      secret: ${UNIEVENT_SECURITY_CSRF_SECRET}
     jwt:
       secret: ${UNIEVENT_SECURITY_JWT_SECRET}
       expiration-ms: ${UNIEVENT_SECURITY_JWT_EXPIRATION_MS:86400000}
       refresh-secret: ${UNIEVENT_SECURITY_JWT_REFRESH_SECRET}
       refresh-expiration-ms: ${UNIEVENT_SECURITY_JWT_REFRESH_EXPIRATION_MS:604800000}
+    organizer-key:
+      expiration-hours: ${UNIEVENT_ORGANIZER_KEY_EXPIRATION_HOURS:24}
+      confirmation-token-expiration-minutes: ${UNIEVENT_ORGANIZER_KEY_CONFIRMATION_TOKEN_EXPIRATION_MINUTES:10}
   openapi:
     title: ${UNIEVENT_OPENAPI_TITLE:UniEvent API}
     version: ${UNIEVENT_OPENAPI_VERSION:1.0.0}
@@ -70,6 +105,8 @@ unievent:
     app-secret: ${FACEBOOK_APP_SECRET:}
     redirect-uri: ${FACEBOOK_REDIRECT_URI:http://localhost:8080/api/facebook/callback}
     graph-api-version: ${FACEBOOK_GRAPH_VERSION:v25.0}
+    ingestion:
+      page-size: ${FACEBOOK_INGESTION_PAGE_SIZE:50}
 
 frontend:
   url: ${FRONTEND_URL:http://localhost}
