@@ -8,9 +8,9 @@ import dk.unievent.app.db.model.PageEntity;
 import dk.unievent.app.infrastructure.exception.FacebookApiException;
 import dk.unievent.app.tools.models.RefreshResult;
 import dk.unievent.app.tools.models.RefreshSummary;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
@@ -35,8 +35,12 @@ class TokenRefreshServiceTests {
     @Mock
     private VaultService vaultService;
 
-    @InjectMocks
     private TokenRefreshService tokenRefreshService;
+
+    @BeforeEach
+    void setUp() {
+        tokenRefreshService = new TokenRefreshService(pageService, facebookGraphApiService, Optional.of(vaultService));
+    }
 
     @Test
     void refreshOneShouldReturnFailureWhenNoTokenInVault() {

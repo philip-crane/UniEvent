@@ -3,17 +3,17 @@ package dk.unievent.app.application.service;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import dk.unievent.app.api.dto.FbPageResponse;
 import dk.unievent.app.application.dto.PageDTO;
 import dk.unievent.app.application.mapper.PageMapper;
-import dk.unievent.app.application.service.VaultService;
 import dk.unievent.app.db.model.MediaEntity;
 import dk.unievent.app.db.model.PageEntity;
 import dk.unievent.app.db.repository.MediaRepository;
 import dk.unievent.app.db.repository.PageRepository;
-import dk.unievent.app.infrastructure.config.ConstantsConfig;
+import dk.unievent.app.infrastructure.constants.TokenConstants;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
@@ -72,7 +72,7 @@ public class PageService {
     }
 
     public Page<PageEntity> getPagesToRefresh(Pageable pageable) {
-        return pageRepository.findPagesToRefresh(LocalDateTime.now().plusDays(ConstantsConfig.REFRESH_WINDOW_DAYS), pageable);
+        return pageRepository.findPagesToRefresh(LocalDateTime.now().plusDays(TokenConstants.REFRESH_WINDOW_DAYS), pageable);
     }
 
     public Page<PageEntity> getAllPageEntities(Pageable pageable) {
@@ -148,6 +148,7 @@ public class PageService {
         }        
     }
 
+    @Transactional
     public Optional<PageDTO> uploadPicture(String id, MultipartFile file) throws IOException {
         log.info("Uploading picture for page: {}", id);
         Optional<PageEntity> existing = pageRepository.findById(id);
@@ -182,6 +183,7 @@ public class PageService {
         return Optional.of(pageMapper.toDTO(updated));
     }
 
+    @Transactional
     public boolean deletePage(String id) {
         log.info("Deleting page with id: {}", id);
         Optional<PageEntity> page = pageRepository.findById(id);
@@ -233,7 +235,7 @@ public class PageService {
         pageEntity.setLastRefreshAttempt(LocalDateTime.now());
 
         // Token expiration: Facebook long-lived tokens expire in ~60 days
-        LocalDateTime expirationTime = LocalDateTime.now().plusDays(ConstantsConfig.TOKEN_EXPIRATION_DAYS);
+        LocalDateTime expirationTime = LocalDateTime.now().plusDays(TokenConstants.TOKEN_EXPIRATION_DAYS);
         pageEntity.setTokenExpiresAt(expirationTime);
         pageEntity.setTokenExpiresInDays(60);
 
@@ -271,7 +273,7 @@ public class PageService {
             page.setLastRefreshAttempt(LocalDateTime.now());
 
             // Update expiration: refresh adds another ~60 days
-            LocalDateTime expirationTime = LocalDateTime.now().plusDays(ConstantsConfig.TOKEN_EXPIRATION_DAYS);
+            LocalDateTime expirationTime = LocalDateTime.now().plusDays(TokenConstants.TOKEN_EXPIRATION_DAYS);
             page.setTokenExpiresAt(expirationTime);
             page.setTokenExpiresInDays(60);
 

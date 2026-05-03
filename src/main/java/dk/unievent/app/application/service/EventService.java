@@ -3,6 +3,7 @@ package dk.unievent.app.application.service;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import dk.unievent.app.api.dto.FbEventResponse;
@@ -113,6 +114,7 @@ public class EventService {
         return result;
     }
 
+    @Transactional
     public EventDTO createEvent(EventDTO eventDTO) {
         log.info("Creating new event: {}", eventDTO.getTitle());
         EventEntity entity = eventMapper.toEntity(eventDTO);
@@ -131,6 +133,7 @@ public class EventService {
         return eventMapper.toDTO(saved);
     }
 
+    @Transactional
     public Optional<EventDTO> updateEvent(String id, EventDTO eventDTO) {
         log.info("Updating event with id: {}", id);
         Optional<EventEntity> existing = eventRepository.findById(id);
@@ -164,6 +167,7 @@ public class EventService {
         return Optional.of(eventMapper.toDTO(updated));
     }
 
+    @Transactional
     public Optional<EventDTO> uploadCoverImage(String id, MultipartFile file) throws IOException {
         log.info("Uploading cover image for event: {}", id);
         Optional<EventEntity> existing = eventRepository.findById(id);
@@ -198,6 +202,7 @@ public class EventService {
         return Optional.of(eventMapper.toDTO(updated));
     }
 
+    @Transactional
     public boolean deleteEvent(String id) {
         log.info("Deleting event with id: {}", id);
         Optional<EventEntity> event = eventRepository.findById(id);
@@ -292,6 +297,7 @@ public class EventService {
      * @param fbEvent Facebook event response from Graph API
      * @return Persisted EventEntity
      */
+    @Transactional
     public EventEntity createOrUpdateFacebookEvent(String pageId, FbEventResponse fbEvent) {
         log.debug("Processing Facebook event: {} ({})", fbEvent.getName(), fbEvent.getId());
 
