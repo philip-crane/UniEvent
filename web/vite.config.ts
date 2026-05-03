@@ -11,6 +11,10 @@ export default defineConfig({
       '/media': { target: 'http://localhost:8080', changeOrigin: true, secure: false },
     },
   },
+  build: {
+    sourcemap: false,
+    target: 'es2020',
+  },
   test: {
     environment: 'jsdom',
     globals: true,

@@ -5,7 +5,6 @@ import dk.unievent.app.tools.models.PageSummary;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.annotation.Profile;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -21,8 +20,7 @@ import java.util.List;
 @Slf4j
 @RestController
 @RequestMapping("/admin/tools/pages")
-@Tag(name = "Admin Tools - Pages", description = "Local development - list tracked Facebook pages")
-@Profile("dev")
+@Tag(name = "Admin Tools - Pages", description = "List tracked Facebook pages")
 public class PagesController {
 
     private final PageRepository pageRepository;

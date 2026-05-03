@@ -1,5 +1,5 @@
 # Build stage
-FROM node:20.20.2-alpine3.22 AS builder
+FROM node:22.22-alpine3.22 AS builder
 WORKDIR /app
 
 # Install dependencies (cached unless package*.json changes)

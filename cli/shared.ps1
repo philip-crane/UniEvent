@@ -104,6 +104,7 @@ function Show-Help {
     Write-Host "Usage: $cli <command> [options]"
     Write-Host ""
     Write-Host "Commands:"
+    Write-Host "  status                 Show Docker stack and Vault health"
     Write-Host "  setup                  Check dependencies and configure local dev environment"
     Write-Host "  docker                 Start (or rebuild/restart) the Docker stack"
     Write-Host "  vault                  Initialize and/or unseal Vault"

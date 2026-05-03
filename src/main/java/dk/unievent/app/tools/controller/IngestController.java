@@ -8,7 +8,6 @@ import dk.unievent.app.tools.models.IngestResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -26,8 +25,7 @@ import java.util.Map;
 @Slf4j
 @RestController
 @RequestMapping("/admin/tools/ingest")
-@Tag(name = "Admin Tools - Ingest", description = "Local development - manually ingest Facebook events for one page")
-@Profile("dev")
+@Tag(name = "Admin Tools - Ingest", description = "Manually ingest Facebook events for one page")
 public class IngestController {
 
     private final EventService eventService;

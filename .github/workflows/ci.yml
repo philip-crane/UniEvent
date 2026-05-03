@@ -39,7 +39,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: npm
           cache-dependency-path: web/package-lock.json
 
@@ -60,5 +60,4 @@ jobs:
           docker build ./web \
             --build-arg VITE_BACKEND_URL= \
             --build-arg VITE_FACEBOOK_APP_ID= \
-            --build-arg VITE_ORGANIZER_SIGNUP_PASSWORD= \
             -t unievent-frontend:ci

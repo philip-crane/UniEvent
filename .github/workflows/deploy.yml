@@ -5,10 +5,36 @@ on:
     branches: [main]
 
 jobs:
+  build-and-test:
+    name: Build and test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '25'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Run backend tests
+        run: ./mvnw test -B
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Build frontend
+        working-directory: web
+        run: npm ci && npm run build
+
   deploy:
     name: Deploy to server
     runs-on: ubuntu-latest
     environment: production
+    needs: build-and-test
     steps:
       - name: Bootstrap TLS certificates (first deploy only)
         uses: appleboy/ssh-action@v1

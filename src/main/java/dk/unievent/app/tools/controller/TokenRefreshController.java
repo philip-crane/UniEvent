@@ -7,7 +7,6 @@ import dk.unievent.app.tools.services.TokenRefreshService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -17,13 +16,12 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * Manual trigger for the same Facebook page-token refresh logic the
- * FacebookTokenRefresher scheduler runs every 45 days.
+ * FacebookTokenRefresher scheduler runs every 20 days.
  */
 @Slf4j
 @RestController
 @RequestMapping("/admin/tools/refresh-tokens")
-@Tag(name = "Admin Tools - Token Refresh", description = "Local development - manually refresh Facebook page tokens")
-@Profile("dev")
+@Tag(name = "Admin Tools - Token Refresh", description = "Manually refresh Facebook page tokens")
 public class TokenRefreshController {
 
     private final TokenRefreshService tokenRefreshService;

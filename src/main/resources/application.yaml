@@ -1,6 +1,11 @@
+server:
+  shutdown: graceful
+
 spring:
   application:
     name: web
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
   config:
     import:
       - classpath:db.yaml
@@ -50,7 +55,9 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info  # metrics exposed only internally; blocked by SecurityConfig in production
+        # health is required for Docker probes. info is safe only while no git/build contributors
+        # are configured — do NOT add management.info.git/build without re-securing this endpoint.
+        include: health,info
   endpoint:
     health:
       show-details: when_authorized
