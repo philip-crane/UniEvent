@@ -45,6 +45,11 @@ services:
       - seaweedfs-data:/data
     networks:
       - unievent-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/status || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   app:
     build:
@@ -58,6 +63,8 @@ services:
       vault:
         condition: service_healthy
       weed-master:
+        condition: service_healthy
+      weed-volume:
         condition: service_healthy
     environment:
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
@@ -91,6 +98,7 @@ services:
       VAULT_CACERT_PATH: /etc/vault-ca/vault.crt
     volumes:
       - ./certs/vault.crt:/etc/vault-ca/vault.crt:ro
+      - logs:/app/logs
     ports:
       - "127.0.0.1:8080:8080"
     networks:
@@ -199,6 +207,7 @@ volumes:
   vault-data:
   letsencrypt:
   certbot-www:
+  logs:
 
 networks:
   unievent-network:

@@ -1,5 +1,5 @@
 # Build stage
-FROM eclipse-temurin:25-jdk-alpine AS builder
+FROM eclipse-temurin:25.0.3_9-jdk-alpine-3.23 AS builder
 WORKDIR /app
 
 # Copy Maven wrapper first (cached unless wrapper version changes)
@@ -18,7 +18,7 @@ RUN cp target/*.jar target/app.jar && \
     java -Djarmode=tools -jar target/app.jar extract --layers --destination target/extracted
 
 # Runtime stage
-FROM eclipse-temurin:25-jre-alpine
+FROM eclipse-temurin:25.0.3_9-jre-alpine
 WORKDIR /app
 
 # Copy layers least-to-most frequently changed so app code doesn't bust dependency layers

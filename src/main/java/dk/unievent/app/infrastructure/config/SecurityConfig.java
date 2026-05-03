@@ -109,6 +109,9 @@ public class SecurityConfig {
                 .addHeaderWriter((request, response) ->
                     response.setHeader("X-CSRF-Token", "required")
                 )
+                .addHeaderWriter((request, response) ->
+                    response.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=()")
+                )
             )
             .addFilterBefore(cookieAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterAfter(csrfValidationFilter, CookieAuthenticationFilter.class);
