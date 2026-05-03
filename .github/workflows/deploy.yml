@@ -2,7 +2,7 @@ name: Deploy
 
 on:
   push:
-    branches: [main]
+    branches: [live]
 
 jobs:
   build-and-test:
@@ -42,7 +42,7 @@ jobs:
           host: ${{ secrets.LIVE_DEPLOY_HOST }}
           username: ${{ secrets.LIVE_DEPLOY_USER }}
           key: ${{ secrets.LIVE_DEPLOY_SSH_KEY }}
-          known_hosts: ${{ secrets.LIVE_DEPLOY_KNOWN_HOSTS }}
+          fingerprint: ${{ secrets.LIVE_DEPLOY_FINGERPRINT }}
           script: |
             set -e
             cd ${{ secrets.LIVE_DEPLOY_PATH }}
@@ -83,10 +83,10 @@ jobs:
           host: ${{ secrets.LIVE_DEPLOY_HOST }}
           username: ${{ secrets.LIVE_DEPLOY_USER }}
           key: ${{ secrets.LIVE_DEPLOY_SSH_KEY }}
-          known_hosts: ${{ secrets.LIVE_DEPLOY_KNOWN_HOSTS }}
+          fingerprint: ${{ secrets.LIVE_DEPLOY_FINGERPRINT }}
           script: |
             set -e
             cd ${{ secrets.LIVE_DEPLOY_PATH }}
-            git pull origin main
+            git pull origin live
             docker compose up --build -d
             docker image prune -f
