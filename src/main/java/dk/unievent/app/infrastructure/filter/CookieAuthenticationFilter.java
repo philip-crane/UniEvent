@@ -66,11 +66,11 @@ public class CookieAuthenticationFilter extends OncePerRequestFilter {
     }
 
     private void clearCookie(HttpServletResponse response, String cookieName) {
-        Cookie expired = new Cookie(cookieName, "");
-        expired.setMaxAge(0);
-        expired.setPath(cookieConfig.getPath());
-        expired.setHttpOnly(true);
-        expired.setSecure(cookieConfig.isSecure());
-        response.addCookie(expired);
+        // Use Set-Cookie header directly so we can include SameSite, matching the
+        // original cookie attributes and satisfying browsers that require it.
+        String headerValue = String.format(
+                "%s=; Max-Age=0; Path=%s; HttpOnly; Secure; SameSite=%s",
+                cookieName, cookieConfig.getPath(), cookieConfig.getSameSite());
+        response.addHeader("Set-Cookie", headerValue);
     }
 }
