@@ -10,6 +10,47 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     steps:
+      - name: Bootstrap TLS certificates (first deploy only)
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.LIVE_DEPLOY_HOST }}
+          username: ${{ secrets.LIVE_DEPLOY_USER }}
+          key: ${{ secrets.LIVE_DEPLOY_SSH_KEY }}
+          known_hosts: ${{ secrets.LIVE_DEPLOY_KNOWN_HOSTS }}
+          script: |
+            set -e
+            cd ${{ secrets.LIVE_DEPLOY_PATH }}
+            DOMAIN="${{ secrets.LIVE_TLS_DOMAIN }}"
+            EMAIL="${{ secrets.LIVE_LETSENCRYPT_EMAIL }}"
+
+            # Skip if a real cert already exists in the letsencrypt volume
+            if ! docker compose run --no-deps --rm -T certbot \
+                -c "test -f /etc/letsencrypt/live/$DOMAIN/fullchain.pem" >/dev/null 2>&1; then
+
+              # Write a dummy self-signed cert into the letsencrypt volume so
+              # nginx can start and serve port 80 for the ACME webroot challenge
+              docker compose run --no-deps --rm -T certbot -c "
+                mkdir -p /etc/letsencrypt/live/$DOMAIN
+                openssl req -x509 -nodes -newkey rsa:2048 \
+                  -keyout /etc/letsencrypt/live/$DOMAIN/privkey.pem \
+                  -out  /etc/letsencrypt/live/$DOMAIN/fullchain.pem \
+                  -days 1 -subj '/CN=$DOMAIN' 2>/dev/null
+              "
+
+              # Start only nginx + certbot (no app/db needed for ACME)
+              docker compose up -d --no-deps nginx certbot
+              sleep 5
+
+              # Issue the real certificate via webroot
+              docker compose run --no-deps --rm -T certbot -c "
+                certbot certonly --webroot -w /var/www/certbot \
+                  --email '$EMAIL' --agree-tos --no-eff-email -d '$DOMAIN'
+              "
+
+              # Reload nginx to pick up the real certificate
+              docker compose exec nginx nginx -s reload
+            fi
+
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1
         with:

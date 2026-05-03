@@ -1,6 +1,6 @@
 services:
   mysql:
-    image: mysql:lts
+    image: mysql:8.4.9
     container_name: unievent-mysql
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
@@ -21,7 +21,7 @@ services:
       retries: 5
 
   weed-master:
-    image: chrislusf/seaweedfs:latest
+    image: chrislusf/seaweedfs:4.22
     container_name: unievent-weed-master
     command: master -ip=weed-master
     ports:
@@ -35,7 +35,7 @@ services:
       retries: 5
 
   weed-volume:
-    image: chrislusf/seaweedfs:latest
+    image: chrislusf/seaweedfs:4.22
     container_name: unievent-weed-volume
     command: volume -master weed-master:9333 -port 8080 -ip=weed-volume
     depends_on:
@@ -51,7 +51,7 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: unievent-app
-    restart: on-failure
+    restart: unless-stopped
     depends_on:
       mysql:
         condition: service_healthy
@@ -70,6 +70,9 @@ services:
       UNIEVENT_SECURITY_JWT_EXPIRATION_MS: ${UNIEVENT_SECURITY_JWT_EXPIRATION_MS}
       UNIEVENT_SECURITY_JWT_REFRESH_SECRET: ${UNIEVENT_SECURITY_JWT_REFRESH_SECRET}
       UNIEVENT_SECURITY_JWT_REFRESH_EXPIRATION_MS: ${UNIEVENT_SECURITY_JWT_REFRESH_EXPIRATION_MS}
+      UNIEVENT_SECURITY_CSRF_SECRET: ${UNIEVENT_SECURITY_CSRF_SECRET}
+      UNIEVENT_SECURITY_CORS_ALLOWED_ORIGINS: ${UNIEVENT_SECURITY_CORS_ALLOWED_ORIGINS:-}
+      UNIEVENT_COOKIE_DOMAIN: ${UNIEVENT_COOKIE_DOMAIN:-}
       FACEBOOK_ENABLED: ${FACEBOOK_ENABLED}
       FACEBOOK_APP_ID: ${FACEBOOK_APP_ID}
       FACEBOOK_APP_SECRET: ${FACEBOOK_APP_SECRET}
@@ -100,7 +103,7 @@ services:
       retries: 5
 
   certbot:
-    image: certbot/certbot:latest
+    image: certbot/certbot:v5.5.0
     container_name: unievent-certbot
     entrypoint: /bin/sh
     command:
@@ -114,7 +117,7 @@ services:
     restart: unless-stopped
 
   nginx:
-    image: nginx:stable-alpine
+    image: nginx:1.30.0-alpine
     container_name: unievent-nginx
     restart: unless-stopped
     depends_on:
@@ -153,7 +156,7 @@ services:
         VITE_BACKEND_URL: ${VITE_BACKEND_URL:-}
         VITE_FACEBOOK_APP_ID: ${VITE_FACEBOOK_APP_ID:-}
     container_name: unievent-frontend
-    restart: on-failure
+    restart: unless-stopped
     ports:
       - "127.0.0.1:3000:3000"
     networks:
@@ -165,7 +168,7 @@ services:
       retries: 5
 
   vault:
-    image: hashicorp/vault:latest
+    image: hashicorp/vault:2.0.0
     container_name: unievent-vault
     command: vault server -config=/vault/config/vault.hcl
     environment:
