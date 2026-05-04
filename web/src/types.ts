@@ -135,6 +135,25 @@ export interface EventDescriptionProps {
   description: string | undefined;
 }
 
+// response/request types bru
+
+export type CreatePageRequest = {
+    id?: string;
+    name: string;
+    url: string;
+    active: boolean;
+};
+
+export type CreateEventRequest = {
+    pageId: string;
+    title: string;
+    description?: string;
+    startTime: string;
+    endTime?: string;
+    place?: Place;
+    eventUrl?: string;
+};
+
 /**
  * Response from verifying an organizer key
  * Received from: POST /api/auth/organizer-key/verify

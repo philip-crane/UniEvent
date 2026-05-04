@@ -5,7 +5,8 @@
  */
 
 import { API_AUTH_ORGANIZER_KEY_VERIFY, BACKEND_URL } from '../constants';
-import type { ApiResponse, Event, EventApiResponse, OrganizerKeyVerification, Page, PageApiResponse } from '../types';
+import type { ApiResponse, Event, EventApiResponse, OrganizerKeyVerification, Page, PageApiResponse, CreateEventRequest, CreatePageRequest } from '../types';
+import { getCsrfToken } from './csrf';
 import { apiCall } from './http';
 
 function buildBackendUrl(path: string): URL {
@@ -259,4 +260,74 @@ export async function verifyOrganizerKey(key: string): Promise<OrganizerKeyVerif
     return null;
   }
   return response.json() as Promise<OrganizerKeyVerification>;
+}
+
+/**
+ * Create a new page/organizer (authenticated)
+ */
+export async function createPage(payload: CreatePageRequest): Promise<Page> {
+  const response = await apiCall(buildBackendUrlString('/api/pages'), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    throw await createFetchError(response, 'Failed to create page');
+  }
+
+  const data: PageApiResponse = await response.json();
+  return mapPageResponse(data);
+}
+
+/**
+ * Create a new event (authenticated)
+ */
+export async function createEvent(payload: CreateEventRequest): Promise<Event> {
+  const response = await apiCall(buildBackendUrlString('/api/events'), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    throw await createFetchError(response, 'Failed to create event');
+  }
+
+  const data: EventApiResponse = await response.json();
+  return mapEventResponse(data);
+}
+
+/**
+ * Upload a cover image for an event (multipart/form-data)
+ */
+export async function uploadEventCover(eventId: string, file: File): Promise<Event> {
+  const url = buildBackendUrlString(`/api/events/${eventId}/coverImage`);
+
+  const form = new FormData();
+  form.append('file', file, file.name);
+
+  const csrfToken = getCsrfToken();
+  const headers = new Headers();
+  if (csrfToken) {
+    headers.set('X-CSRF-Token', csrfToken);
+  }
+
+  const response = await fetch(url, {
+    method: 'POST',
+    credentials: 'include',
+    headers,
+    body: form,
+  });
+
+  if (!response.ok) {
+    throw await createFetchError(response, 'Failed to upload event cover image');
+  }
+
+  const data: EventApiResponse = await response.json();
+  return mapEventResponse(data);
 }
