@@ -243,7 +243,7 @@ public class EventService {
             // Retrieve page token from Vault
             Optional<String> pageTokenOpt = vaultService.getPageToken(pageId);
             if (pageTokenOpt.isEmpty()) {
-                log.error("No token found in Vault for page: {}", pageId);
+                log.warn("No token found in Vault for page: {}", pageId);
                 throw new FacebookApiException(
                     "No token found for page: " + pageId,
                     0,
@@ -277,8 +277,13 @@ public class EventService {
             return processedEvents;
 
         } catch (FacebookApiException e) {
-            log.error("Facebook API error during event ingestion: {} - {}",
-                e.getStatusCode(), e.getErrorType(), e);
+            if ("TOKEN_NOT_FOUND".equals(e.getErrorType())) {
+                log.warn("Facebook token missing during event ingestion for page: {} - {} ({})",
+                        pageId, e.getErrorType(), e.getStatusCode());
+            } else {
+                log.error("Facebook API error during event ingestion: {} - {}",
+                    e.getStatusCode(), e.getErrorType(), e);
+            }
             throw e;
         } catch (Exception e) {
             log.error("Unexpected error during Facebook event ingestion for page: {}", pageId, e);

@@ -63,8 +63,13 @@ public class FacebookIngestionScheduler {
                         log.info("Successfully ingested events for page: {}", page.getId());
                     } catch (FacebookApiException e) {
                         failureCount++;
-                        log.error("Facebook API error ingesting events for page: {} - {} ({})",
-                            page.getId(), e.getErrorType(), e.getStatusCode());
+                        if ("TOKEN_NOT_FOUND".equals(e.getErrorType())) {
+                            log.warn("Skipping Facebook ingestion for page {} because no token exists in Vault ({})",
+                                page.getId(), e.getStatusCode());
+                        } else {
+                            log.error("Facebook API error ingesting events for page: {} - {} ({})",
+                                page.getId(), e.getErrorType(), e.getStatusCode());
+                        }
                         // An OAuthException means the token is dead - mark it invalid in the registry
                         if ("OAuthException".equals(e.getErrorType())) {
                             vaultService.ifPresent(v -> v.markPageTokenInvalid(page.getId()));

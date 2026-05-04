@@ -112,7 +112,11 @@ switch ($cmdLower) {
     }
     "vault" {
         . (Join-Path $cliDir "vault.ps1")
-        if ($Wipe) { Invoke-VaultWipe -VerboseOutput:$VerboseOutput -Yes:$Yes } else { Invoke-VaultSetup -VerboseOutput:$VerboseOutput }
+        if ($Wipe) {
+            Invoke-VaultWipe -VerboseOutput:$VerboseOutput -Yes:$Yes
+        } else {
+            Invoke-VaultSetup -VerboseOutput:$VerboseOutput -Yes:$Yes -Rebuild:$Rebuild
+        }
         exit 0
     }
     "unseal" {

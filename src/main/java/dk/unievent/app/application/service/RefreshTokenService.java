@@ -64,11 +64,13 @@ public class RefreshTokenService {
             throw new UnauthorizedTokenException("Session expired. Please login again.");
         }
 
-        // Token not found: could be an expired/cleaned-up token or a wiped DB.
-        // Throw 401 (not 403) so the client treats it as an expired session,
-        // not a security compromise.
+        // Token not found: likely a security issue (token was already used/rotated,
+        // or the token family was compromised). Throw 403 to indicate compromise detection.
         RefreshTokenEntity stored = refreshTokenRepository.findByTokenId(tokenId)
-                .orElseThrow(() -> new UnauthorizedTokenException("Session expired. Please login again."));
+                .orElseThrow(() -> {
+                    revokeFamily(familyId);
+                    return new TokenCompromisedException();
+                });
 
         if (stored.getExpiresAt().isBefore(Instant.now())) {
             throw new UnauthorizedTokenException("Session expired. Please login again.");

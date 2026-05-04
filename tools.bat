@@ -7,16 +7,18 @@ set "PSARGS="
 :arg_loop
 if "%~1"=="" goto arg_done
 set "ARG=%~1"
-if /i "!ARG!"=="--verbose" ( set "PSARGS=!PSARGS! -v"       ) else ^
-if /i "!ARG!"=="--down"    ( set "PSARGS=!PSARGS! -d"       ) else ^
-if /i "!ARG!"=="--wipe"    ( set "PSARGS=!PSARGS! -w"       ) else ^
-if /i "!ARG!"=="--yes"     ( set "PSARGS=!PSARGS! -y"       ) else ^
-if /i "!ARG!"=="--help"    ( set "PSARGS=!PSARGS! -h"       ) else ^
-if /i "!ARG!"=="--page"    ( set "PSARGS=!PSARGS! -p"       ) else ^
-if /i "!ARG!"=="--orgname" ( set "PSARGS=!PSARGS! -n"       ) else ^
-if /i "!ARG!"=="--remote"  ( set "PSARGS=!PSARGS! -r"       ) else ^
-if /i "!ARG!"=="--email"   ( set "PSARGS=!PSARGS! -e"       ) else ^
-                             ( set "PSARGS=!PSARGS! !ARG!" )
+set "HANDLED="
+if /i "!ARG!"=="--verbose" ( set "PSARGS=!PSARGS! -v" & set "HANDLED=1" )
+if /i "!ARG!"=="--down"    ( set "PSARGS=!PSARGS! -d" & set "HANDLED=1" )
+if /i "!ARG!"=="--wipe"    ( set "PSARGS=!PSARGS! -w" & set "HANDLED=1" )
+if /i "!ARG!"=="--yes"     ( set "PSARGS=!PSARGS! -y" & set "HANDLED=1" )
+if /i "!ARG!"=="--help"    ( set "PSARGS=!PSARGS! -h" & set "HANDLED=1" )
+if /i "!ARG!"=="--page"    ( set "PSARGS=!PSARGS! -p" & set "HANDLED=1" )
+if /i "!ARG!"=="--orgname" ( set "PSARGS=!PSARGS! -n" & set "HANDLED=1" )
+if /i "!ARG!"=="--remote"  ( set "PSARGS=!PSARGS! -Remote" & set "HANDLED=1" )
+if /i "!ARG!"=="--rebuild" ( set "PSARGS=!PSARGS! -Rebuild" & set "HANDLED=1" )
+if /i "!ARG!"=="--email"   ( set "PSARGS=!PSARGS! -e" & set "HANDLED=1" )
+if not defined HANDLED ( set "PSARGS=!PSARGS! !ARG!" )
 shift
 goto arg_loop
 :arg_done

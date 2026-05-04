@@ -409,7 +409,7 @@ subjectAltName = DNS:vault,DNS:localhost,IP:127.0.0.1
         Write-Host ""
         $answer2 = if ($Yes) { "Y" } else { Read-Host "  Initialize / unseal Vault now? [Y/n]" }
         if ($answer2 -eq "" -or $answer2 -match "^[Yy]") {
-            Invoke-VaultSetup
+            Invoke-VaultSetup -VerboseOutput:$VerboseOutput -Yes:$Yes
         }
     }
     Write-Host ""

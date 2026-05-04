@@ -17,7 +17,8 @@ function Invoke-Status {
     Write-Info "Docker daemon is running"
 
     $stackPs = @(& $dockerPath compose ps 2>&1)
-    if ($LASTEXITCODE -ne 0) {
+    $psExitCode = $LASTEXITCODE
+    if ($psExitCode -ne 0) {
         Write-Warn "Could not query compose stack"
         if ($stackPs.Count -gt 0) { Write-Warn ($stackPs -join " | ") }
         return

@@ -229,7 +229,7 @@ public class AuthController {
         if (refreshCookie != null && !refreshCookie.getValue().isBlank()) {
             return refreshCookie.getValue();
         }
-        throw new UnauthorizedTokenException("Refresh token cookie is missing.");
+        throw new IllegalArgumentException("Refresh token cookie is missing.");
     }
 
     private String resolveOptionalRefreshToken(HttpServletRequest request) {
