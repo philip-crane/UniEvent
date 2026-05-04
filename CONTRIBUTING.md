@@ -272,7 +272,7 @@ Backend
 - [in progress] Auto Facebook token refresh
 - [x] Persist likes to backend (`/api/users/me/likes`)
 - [x] Migrate schema to Flyway - `ddl-auto` is now `validate`; any schema change needs a Flyway migration file before deploy
-- [ ] Add manual ADMIN endpoint for Facebook token refresh and page ingestion (non-dev profile)
+- [In Progress] Add manual ADMIN endpoint for Facebook token refresh and page ingestion (non-dev profile) - on another branch "Admin-FB-Endpoint"
 - [ ] PicoCLI for proper tool CLI
 - [ ] DB: Quartz scheduler
 
