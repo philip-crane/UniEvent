@@ -268,7 +268,7 @@ Backend
 - [x] JWT auth - signed token, expiry, validation filter
 - [x] Pin Docker image versions
 - [in progress] Auto Facebook token refresh
-- [ ] Persist likes to backend (`/api/users/me/likes`) - currently localStorage only
+- [x] Persist likes to backend (`/api/users/me/likes`) - currently localStorage only
 - [ ] Migrate schema to Flyway - `ddl-auto` is now `validate`; any schema change needs a Flyway migration file before deploy
 - [ ] Add manual ADMIN endpoint for Facebook token refresh and page ingestion (non-dev profile)
 - [ ] PicoCLI for proper tool CLI

@@ -80,6 +80,7 @@ public class SecurityConfig {
                             "/", "/index.html", "/assets/**", "/favicon.ico", "/favicon.svg", "/favicon.png").permitAll()
                     .requestMatchers("/api/auth/organizer-key/generate").hasRole("ADMIN")
                     .requestMatchers("/api/auth/**").permitAll()
+                    .requestMatchers("/api/users/me/**").authenticated()
                     .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/**").permitAll()
                     .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/**").authenticated()
                     .requestMatchers(org.springframework.http.HttpMethod.PUT, "/api/**").authenticated()
