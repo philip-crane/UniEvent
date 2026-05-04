@@ -12,6 +12,12 @@ export function Footer() {
             <p className="text-sm text-[var(--text-subtle)]">
               A unified calendar for university events
             </p>
+            <Link
+              to="/organizer/onboarding"
+              className="mt-2 inline-block text-sm text-[var(--link-primary)] hover:text-[var(--link-primary-hover)] transition-colors"
+            >
+              Become an Organizer
+            </Link>
           </div>
 
           {/* Legal */}
