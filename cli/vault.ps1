@@ -77,7 +77,7 @@ function Test-DockerDaemon {
 function Test-VaultContainerRunning {
     param([string]$DockerPath)
 
-    $vaultPsOutput = @(& $DockerPath compose ps -q vault 2>&1)
+    $vaultPsOutput = @(& $DockerPath compose ps -q vault 2>$null)
     if ($LASTEXITCODE -ne 0) {
         $details = ($vaultPsOutput -join " ").Trim()
         Write-Err "Unable to query the Vault service via docker compose"
