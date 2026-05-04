@@ -104,6 +104,13 @@ html.dark body {
   --auth-social-text: #1b2b84;
   --auth-social-shadow: rgba(40, 60, 140, 0.14);
 
+  /* Profile / avatar */
+  --profile-avatar-bg: #0f1020;
+  --profile-avatar-ring: rgba(60,84,240,0.14);
+  --profile-avatar-icon-color: #ffffff;
+  --profile-fallback-gradient-start: rgba(59,130,246,0.35);
+  --profile-fallback-gradient-end: rgba(20,184,166,0.25);
+
 }
 
 /* Dark Mode (Night) - DTU Dark Blue */
@@ -153,8 +160,9 @@ html.dark {
   /* Profile / avatar */
   --profile-fallback-gradient-start: rgba(59,130,246,0.35);
   --profile-fallback-gradient-end: rgba(20,184,166,0.25);
-  --profile-avatar-bg: #0f1020;
+  --profile-avatar-bg: rgba(240,242,255,0.88);
   --profile-avatar-ring: rgba(60,84,240,0.14);
+  --profile-avatar-icon-color: #0f1020;
   --admin-role-pill-bg: var(--dtu-accent);
   --admin-role-border: color-mix(in srgb,var(--dtu-accent) 60%,var(--panel-border) 40%);
   --admin-role-bg: color-mix(in srgb,var(--dtu-accent) 10%,var(--panel-bg) 90%);

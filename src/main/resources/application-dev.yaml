@@ -17,6 +17,7 @@ unievent:
     cookies:
       secure: false
       same-site: Lax
+      domain: ""
     csrf:
       secret: dev-csrf-secret-key-change-in-production
     jwt:

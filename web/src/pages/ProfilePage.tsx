@@ -110,7 +110,7 @@ export function ProfilePage() {
               {profileImage ? (
                 <img src={profileImage} alt={userLabel} className="h-full w-full object-cover" />
               ) : (
-                <CircleUserRound aria-label="Default profile picture" className="h-[86%] w-[86%] text-white" strokeWidth={1.55} />
+                <CircleUserRound aria-label="Default profile picture" className="h-[86%] w-[86%] text-[var(--profile-avatar-icon-color)]" strokeWidth={1.55} />
               )}
             </div>
 

@@ -8,6 +8,7 @@ import dk.unievent.app.application.service.CsrfTokenService;
 import dk.unievent.app.db.model.UserEntity;
 import dk.unievent.app.api.dto.AuthResponse;
 import dk.unievent.app.api.dto.LoginRequest;
+import dk.unievent.app.api.dto.ProfileResponse;
 import dk.unievent.app.api.dto.RegisterRequest;
 import dk.unievent.app.api.dto.OrganizerKeyVerifyRequest;
 import dk.unievent.app.api.dto.OrganizerKeyVerifyResponse;
@@ -37,10 +38,12 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -142,6 +145,20 @@ public class AuthController {
         log.info("User logout processed from ip={}, userAgent={}",
                 httpRequest.getRemoteAddr(), httpRequest.getHeader("User-Agent"));
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/profile")
+    @Operation(summary = "Get current user profile", description = "Returns the authenticated user's role and organizer page names")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Profile retrieved", content = @Content(schema = @Schema(implementation = ProfileResponse.class))),
+            @ApiResponse(responseCode = "401", description = "Not authenticated")
+    })
+    public ResponseEntity<ProfileResponse> getProfile(Authentication auth) {
+        if (auth == null || auth instanceof AnonymousAuthenticationToken) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        UserEntity user = userService.findByEmail(auth.getName());
+        return ResponseEntity.ok(new ProfileResponse(normalizeRole(user.getRole()), List.of()));
     }
 
     @PostMapping("/organizer-key/generate")
