@@ -57,6 +57,8 @@ unievent:
       refresh-expiration-ms: 120000
     organizer-key:
       confirmation-secret: test-organizer-key-confirmation-secret-1234567890
+      expiration-hours: 24
+      confirmation-token-expiration-minutes: 10
 
 resilience4j:
   ratelimiter:

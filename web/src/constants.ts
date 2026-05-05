@@ -13,6 +13,7 @@ export const API_AUTH_ORGANIZER_KEY_VERIFY = '/api/auth/organizer-key/verify';
 export const API_AUTH_REFRESH = '/api/auth/refresh';
 export const API_AUTH_LOGOUT = '/api/auth/logout';
 export const API_AUTH_PROFILE = '/api/auth/profile';
+export const API_USER_LIKES = '/api/users/me/likes';
 
 export const DEBOUNCE_MS = 250;
 export const SHARE_FEEDBACK_MS = 1400;

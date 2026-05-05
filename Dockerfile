@@ -13,23 +13,24 @@ RUN ./mvnw dependency:go-offline -B
 COPY src src
 RUN ./mvnw package -DskipTests -B
 
-# Rename to fixed name then extract layered jar for optimal Docker layer caching
-RUN cp target/*.jar target/app.jar && \
-    java -Djarmode=tools -jar target/app.jar extract --layers --destination target/extracted
+# Extract the Spring Boot JAR for optimal Docker layer caching
+RUN java -Djarmode=tools -jar target/web-*.jar extract --launcher --destination extracted
 
 # Runtime stage
 FROM eclipse-temurin:25.0.3_9-jre-alpine
 WORKDIR /app
 
-# Copy layers least-to-most frequently changed so app code doesn't bust dependency layers
-COPY --from=builder /app/target/extracted/dependencies/ ./
-COPY --from=builder /app/target/extracted/snapshot-dependencies/ ./
-COPY --from=builder /app/target/extracted/application/ ./
+# Copy extracted layers to app root
+COPY --from=builder /app/extracted/BOOT-INF BOOT-INF
+COPY --from=builder /app/extracted/META-INF META-INF
+COPY --from=builder /app/extracted/org org
 
+# Create app user and directories before switching to unprivileged user
 RUN addgroup -S app && adduser -S app -G app && \
-    mkdir -p /app/logs && chown app:app /app/logs
+    mkdir -p /app/logs && \
+    chown -R app:app /app
 USER app
 
 EXPOSE 8080
 
-ENTRYPOINT ["java", "-jar", "app.jar"]
+ENTRYPOINT ["java", "org.springframework.boot.loader.launch.JarLauncher"]

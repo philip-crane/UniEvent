@@ -81,6 +81,7 @@ public class SecurityConfig {
                     .requestMatchers("/api/auth/organizer-key/generate").hasRole("admin")
                     .requestMatchers("/api/auth/**").permitAll()
                     .requestMatchers("/api/admin/**").hasRole("admin")
+                    .requestMatchers("/api/users/me/**").authenticated()
                     .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/**").permitAll()
                     .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/**").authenticated()
                     .requestMatchers(org.springframework.http.HttpMethod.PUT, "/api/**").authenticated()

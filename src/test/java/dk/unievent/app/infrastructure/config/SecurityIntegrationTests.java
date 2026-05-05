@@ -143,6 +143,47 @@ class SecurityIntegrationTests {
     }
 
     @Test
+    void unauthenticatedGetToUserLikesShouldBeForbidden() throws Exception {
+        HttpRequest request = HttpRequest.newBuilder()
+            .uri(URI.create(url("/api/users/me/likes")))
+            .GET()
+            .build();
+
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        assertEquals(403, response.statusCode());
+    }
+
+    @Test
+    void authenticatedGetToUserLikesShouldBeAllowed() throws Exception {
+        String suffix = String.valueOf(System.nanoTime());
+        AuthSession session = registerSession("likes" + suffix, "likes" + suffix + "@example.com");
+
+        HttpRequest request = HttpRequest.newBuilder()
+            .uri(URI.create(url("/api/users/me/likes")))
+            .header("Cookie", session.cookieHeader(ACCESS_COOKIE, CSRF_COOKIE))
+            .GET()
+            .build();
+
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, response.statusCode());
+    }
+
+    @Test
+    void authenticatedPutToUserLikesShouldRequireCsrf() throws Exception {
+        String suffix = String.valueOf(System.nanoTime());
+        AuthSession session = registerSession("likescsrf" + suffix, "likescsrf" + suffix + "@example.com");
+
+        HttpRequest request = HttpRequest.newBuilder()
+            .uri(URI.create(url("/api/users/me/likes/missing-event")))
+            .header("Cookie", session.cookieHeader(ACCESS_COOKIE, CSRF_COOKIE))
+            .PUT(HttpRequest.BodyPublishers.noBody())
+            .build();
+
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        assertEquals(403, response.statusCode());
+    }
+
+    @Test
     void unauthenticatedPutToApiShouldBeForbidden() throws Exception {
         HttpRequest request = HttpRequest.newBuilder()
             .uri(URI.create(url("/api/events/any-id")))

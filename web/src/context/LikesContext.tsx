@@ -25,8 +25,12 @@ export function LikesProvider({ children }: { children: ReactNode }) {
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
 
   const reload = useCallback(async () => {
-    const ids = await getLikedEventIdsAsync(uid);
-    setLikedIds(new Set(ids));
+    try {
+      const ids = await getLikedEventIdsAsync(uid);
+      setLikedIds(new Set(ids));
+    } catch {
+      setLikedIds(new Set());
+    }
   }, [uid]);
 
   useEffect(() => {
