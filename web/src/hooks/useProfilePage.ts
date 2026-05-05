@@ -11,7 +11,7 @@ import type { AccountRole, Event as EventType } from '../types';
 
 export function useProfilePage() {
   const navigate = useNavigate();
-  const { currentUser } = useAuth();
+  const { currentUser, isLoading } = useAuth();
   const { likedIds } = useLikes();
   const [accountRole, setAccountRole] = useState<AccountRole>(currentUser?.role ?? 'user');
   const [organizerNames, setOrganizerNames] = useState<string[]>([]);
@@ -22,10 +22,11 @@ export function useProfilePage() {
   const [isLoadingLikedEvents, setIsLoadingLikedEvents] = useState(true);
 
   useEffect(() => {
+    if (isLoading) return;
     if (currentUser === null) {
       navigate('/login', { replace: true });
     }
-  }, [currentUser, navigate]);
+  }, [currentUser, isLoading, navigate]);
 
   useEffect(() => {
     setAccountRole(currentUser?.role ?? 'user');
@@ -48,7 +49,7 @@ export function useProfilePage() {
     };
     void loadAccountProfile();
     return () => { cancelled = true; };
-  }, [currentUser?.uid, currentUser?.role, currentUser?.organizerNames]);
+  }, [currentUser?.uid, currentUser?.role, currentUser?.organizerNames?.join(',')]);
 
   useEffect(() => {
     let cancelled = false;

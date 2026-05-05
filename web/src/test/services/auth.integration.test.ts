@@ -244,5 +244,17 @@ describe('frontend auth integration flow', () => {
             expect(refreshed).toBe(false);
             expect(getCsrfToken()).toBe('');
         });
+
+        it('returns false on missing refresh cookies and clears state', async () => {
+            mockFetch.mockResolvedValueOnce(csrfResponse('bootstrap-csrf-token'));
+            mockFetch.mockResolvedValueOnce(jsonResponse(authResponse({ csrfToken: 'initial-csrf-token' })));
+            await loginWithEmail('alice@example.com', 'secret123');
+            mockFetch.mockResolvedValueOnce(jsonResponse({ message: 'Refresh token cookie is missing.' }, 400));
+
+            const refreshed = await refreshSession();
+
+            expect(refreshed).toBe(false);
+            expect(getCsrfToken()).toBe('');
+        });
     });
 });

@@ -322,13 +322,19 @@ export async function getAccountProfile(uid?: string): Promise<{ role: AccountRo
     organizerNames,
   };
 
+  const prevOrganizers = Array.isArray(user.organizerNames) ? user.organizerNames : [];
+  const roleChanged = user.role !== profile.role;
+  const organizersChanged =
+    prevOrganizers.length !== profile.organizerNames.length ||
+    prevOrganizers.some((n, i) => n !== profile.organizerNames[i]);
+
   const updatedUser: User = {
     ...user,
     role: profile.role,
     organizerNames: [...profile.organizerNames],
   };
   setCurrentUser(updatedUser);
-  notifyListeners(updatedUser);
+  if (roleChanged || organizersChanged) notifyListeners(updatedUser);
 
   return profile;
 }
