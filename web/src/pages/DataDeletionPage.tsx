@@ -1,4 +1,4 @@
-﻿import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 export function DataDeletionPage() {
   const navigate = useNavigate();
@@ -10,7 +10,7 @@ export function DataDeletionPage() {
           onClick={() => navigate('/')}
           className="text-[var(--link-primary)] hover:text-[var(--link-primary-hover)] font-semibold flex items-center gap-2"
         >
-          Back to Events
+          ← Back to Events
         </button>
       </div>
 
@@ -47,7 +47,7 @@ export function DataDeletionPage() {
           <li>
             <strong>Revoke access in Facebook</strong>
             <ul className="list-disc pl-6 mt-2">
-              <li>Go to Facebook Settings - Business Integrations (or Apps and Websites)</li>
+              <li>Go to Facebook Settings → <strong>Business Integrations</strong> (or Apps and Websites)</li>
               <li>Find <strong>UniEvent</strong></li>
               <li>Click <strong>Remove</strong> / <strong>Revoke</strong></li>
             </ul>

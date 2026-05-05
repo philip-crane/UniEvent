@@ -5,7 +5,8 @@ function Invoke-ComposeUp {
     param(
         [string]$DockerPath,
         [string[]]$ExtraArgs = @(),
-        [switch]$Quiet
+        [switch]$Quiet,
+        [switch]$NoCache
     )
 
     # Temporarily allow native-command stderr without throwing - $LASTEXITCODE
@@ -14,12 +15,35 @@ function Invoke-ComposeUp {
     $prev = $ErrorActionPreference
     $ErrorActionPreference = "Continue"
 
-    $allArgs = @("compose", "up", "-d", "--build") + $ExtraArgs
-    $composeOutput = @()
+    # By default use Docker's layer cache for fast rebuilds.
+    # Pass -NoCache (via --rebuild) to force a full clean build from scratch.
+    $buildArgs = @("compose", "build") + $(if ($NoCache) { @("--no-cache") } else { @() }) + $ExtraArgs
+    $buildOutput = @()
     if ($Quiet) {
-        $composeOutput = @(& $DockerPath @allArgs 2>&1)
+        $msg = if ($NoCache) { "Building Docker images (--no-cache, this may take several minutes)..." } else { "Building Docker images (using cache, a minute or two)..." }
+        Write-Info $msg
+        $buildOutput = @(& $DockerPath @buildArgs 2>&1)
     } else {
-        & $DockerPath @allArgs
+        & $DockerPath @buildArgs
+    }
+    $buildExitCode = $LASTEXITCODE
+
+    if ($buildExitCode -ne 0) {
+        $ErrorActionPreference = $prev
+        if ($Quiet -and $buildOutput.Count -gt 0) {
+            $tail = @($buildOutput | Select-Object -Last 8)
+            Write-Warn ("docker compose build output: " + ($tail -join " | "))
+        }
+        return $false
+    }
+
+    $upArgs = @("compose", "up", "-d") + $ExtraArgs
+    $upOutput = @()
+    if ($Quiet) {
+        Write-Info "Starting containers..."
+        $upOutput = @(& $DockerPath @upArgs 2>&1)
+    } else {
+        & $DockerPath @upArgs
     }
     $exitCode = $LASTEXITCODE
 
@@ -27,33 +51,10 @@ function Invoke-ComposeUp {
 
     if ($exitCode -eq 0) { return $true }
 
-    # Fallback: legacy docker-compose binary
-    $legacy = Get-Command "docker-compose" -ErrorAction SilentlyContinue
-    if ($legacy) {
-        Write-Warn "'docker compose' failed - retrying with legacy 'docker-compose' CLI"
-        $legacyArgs = @("up", "-d", "--build") + $ExtraArgs
-        $ErrorActionPreference = "Continue"
-        $legacyOutput = @()
-        if ($Quiet) {
-            $legacyOutput = @(& docker-compose @legacyArgs 2>&1)
-        } else {
-            & docker-compose @legacyArgs
-        }
-        $exitCode = $LASTEXITCODE
-        $ErrorActionPreference = $prev
-        if ($exitCode -ne 0 -and $Quiet) {
-            $tail = @($legacyOutput | Select-Object -Last 8)
-            if ($tail.Count -gt 0) {
-                Write-Warn ("docker-compose output: " + ($tail -join " | "))
-            }
-        }
-        return ($exitCode -eq 0)
-    }
-
     if ($Quiet) {
-        $tail = @($composeOutput | Select-Object -Last 8)
+        $tail = @($upOutput | Select-Object -Last 8)
         if ($tail.Count -gt 0) {
-            Write-Warn ("docker compose output: " + ($tail -join " | "))
+            Write-Warn ("docker compose up output: " + ($tail -join " | "))
         }
     }
 
@@ -77,8 +78,9 @@ function Test-DockerDaemon {
 function Test-VaultContainerRunning {
     param([string]$DockerPath)
 
-    $vaultPsOutput = @(& $DockerPath compose ps -q vault 2>$null)
-    if ($LASTEXITCODE -ne 0) {
+    $vaultPsOutput = @(& $DockerPath compose ps -q vault 2>&1)
+    $psExitCode = $LASTEXITCODE
+    if ($psExitCode -ne 0) {
         $details = ($vaultPsOutput -join " ").Trim()
         Write-Err "Unable to query the Vault service via docker compose"
         if ($details) { Write-Warn $details }
@@ -86,15 +88,19 @@ function Test-VaultContainerRunning {
         return $false
     }
 
-    $firstLine = $vaultPsOutput | Select-Object -First 1
+    # Filter out Docker warnings (messages starting with time= and level=warning)
+    $cleanOutput = @($vaultPsOutput | Where-Object { $_ -notmatch '^\s*time=' })
+    
+    $firstLine = $cleanOutput | Select-Object -First 1
     $containerId = if ($null -eq $firstLine) { "" } else { "$firstLine".Trim() }
     if (-not $containerId) {
         return $false
     }
 
     $statusLines = @(& $DockerPath inspect -f '{{.State.Status}}' $containerId 2>$null)
+    $inspectExitCode = $LASTEXITCODE
     $status = ($statusLines -join "").Trim()
-    if ($LASTEXITCODE -ne 0 -or -not $status) {
+    if ($inspectExitCode -ne 0 -or -not $status) {
         Write-Err "Could not inspect Vault container state"
         Write-Warn "Check: docker compose ps vault"
         return $false
@@ -148,7 +154,12 @@ function Write-VaultStatusDetails {
 }
 
 function Invoke-VaultSetup {
-    param([switch]$VerboseOutput)
+    param(
+        [switch]$VerboseOutput,
+        [switch]$Yes,
+        [switch]$Rebuild,
+        [switch]$RecoveredFromSealMismatch
+    )
 
     $DockerPath = Find-Executable -Name "docker" -Fallbacks $script:KnownPaths.docker
     if (-not $DockerPath) {
@@ -162,17 +173,9 @@ function Invoke-VaultSetup {
 
     if (-not (Test-VaultContainerRunning -DockerPath $DockerPath)) {
         Write-Info "Starting Vault container..."
-        $prev = $ErrorActionPreference
-        $ErrorActionPreference = "Continue"
-        $startOutput = @(& $DockerPath compose up -d --build vault 2>&1)
-        $exitCode = $LASTEXITCODE
-        $ErrorActionPreference = $prev
-        if ($exitCode -ne 0) {
+        $started = Invoke-ComposeUp -DockerPath $DockerPath -ExtraArgs @("vault") -Quiet -NoCache:$Rebuild
+        if (-not $started) {
             Write-Err "Failed to start Vault container"
-            if ($startOutput.Count -gt 0) {
-                $tail = @($startOutput | Select-Object -Last 8)
-                Write-Warn ("docker compose output: " + ($tail -join " | "))
-            }
             exit 1
         }
         if (-not (Test-VaultContainerRunning -DockerPath $DockerPath)) { exit 1 }
@@ -222,6 +225,9 @@ function Invoke-VaultSetup {
         $unsealKey = $initData.unseal_keys_b64[0]
         $rootToken = $initData.root_token
         Write-Ok "Vault initialized"
+
+        Update-EnvVars -Pairs @{ VAULT_UNSEAL_TOKEN = $unsealKey; VAULT_ROOT_TOKEN = $rootToken }
+        Write-Ok "Vault bootstrap secrets saved to .env"
 
         Write-Info "Unsealing Vault..."
         $unsealOutput = @(& $DockerPath compose exec -T vault vault operator unseal $unsealKey 2>&1)
@@ -282,7 +288,7 @@ function Invoke-VaultSetup {
         Write-Ok "Vault application token saved to .env"
 
         Write-Info "Restarting app with new Vault token..."
-        Invoke-ComposeUp -DockerPath $DockerPath -ExtraArgs @("app") -Quiet | Out-Null
+        Invoke-ComposeUp -DockerPath $DockerPath -ExtraArgs @("app") -Quiet -NoCache | Out-Null
         Write-Ok "App container updated"
 
         Write-Host ""
@@ -307,6 +313,25 @@ function Invoke-VaultSetup {
             if ($unsealOutput.Count -gt 0) {
                 $tail = @($unsealOutput | Select-Object -Last 8)
                 Write-Warn ("vault output: " + ($tail -join " | "))
+            }
+
+            $unsealOutputText = ($unsealOutput -join " ")
+            $canRecover = -not $RecoveredFromSealMismatch -and (
+                $unsealOutputText -match "unable to retrieve stored keys" -or
+                $unsealOutputText -match "invalid key" -or
+                $unsealOutputText -match "message authentication failed" -or
+                $unsealOutputText -match "failed to decrypt keys from storage"
+            )
+
+            if ($canRecover) {
+                if ($Yes) {
+                    Write-Warn "Vault seal data does not match VAULT_UNSEAL_TOKEN - wiping and reinitializing Vault"
+                    Invoke-VaultWipe -Yes
+                    Invoke-VaultSetup -VerboseOutput:$VerboseOutput -Yes:$Yes -Rebuild:$Rebuild -RecoveredFromSealMismatch
+                    return
+                }
+
+                Write-Warn "Vault seal data appears to be stale. Run 'tools vault -w' to wipe Vault, then rerun 'tools setup -y'."
             }
             return
         }

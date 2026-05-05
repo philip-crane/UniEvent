@@ -11,6 +11,7 @@ import dk.unievent.app.infrastructure.exception.OrganizerKeyAlreadyUsedException
 import dk.unievent.app.infrastructure.exception.OrganizerKeyExpiredException;
 import dk.unievent.app.infrastructure.exception.OrganizerKeyNotFoundException;
 import dk.unievent.app.infrastructure.exception.UsernameAlreadyTakenException;
+import dk.unievent.app.infrastructure.constants.RoleConstants;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import lombok.RequiredArgsConstructor;
@@ -45,6 +46,7 @@ public class OrganizerKeyService {
     @Value("${unievent.security.organizer-key.confirmation-token-expiration-minutes:10}")
     private long confirmationTokenExpirationMinutes;
 
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
     private static final String CONFIRMATION_TOKEN_TYPE = "organizer-registration-confirmation";
     private static final String KEY_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
     private static final int KEY_LENGTH = 32;
@@ -155,14 +157,49 @@ public class OrganizerKeyService {
     }
 
     /**
+     * Upgrades an already-authenticated user's role to organizer using a confirmation token.
+     * The key's email must match the authenticated user's email.
+     */
+    @Transactional
+    public UserEntity upgradeToOrganizer(String confirmationToken, String authenticatedEmail) {
+        Long keyId = validateConfirmationToken(confirmationToken);
+
+        OrganizerKeyEntity keyEntity = organizerKeyRepository.findById(keyId)
+                .orElseThrow(OrganizerKeyNotFoundException::new);
+
+        if (keyEntity.getUsedAt() != null) {
+            throw new OrganizerKeyAlreadyUsedException();
+        }
+
+        if (Instant.now().isAfter(keyEntity.getExpiresAt())) {
+            throw new OrganizerKeyExpiredException();
+        }
+
+        if (!keyEntity.getEmail().equalsIgnoreCase(authenticatedEmail)) {
+            throw new IllegalArgumentException("The invitation key was not issued for this account.");
+        }
+
+        UserEntity user = userRepository.findByEmail(authenticatedEmail)
+                .orElseThrow(() -> new IllegalStateException("Authenticated user not found"));
+
+        user.setRole(RoleConstants.ORGANIZER);
+        userRepository.save(user);
+
+        keyEntity.setUsedAt(Instant.now());
+        organizerKeyRepository.save(keyEntity);
+
+        log.info("Upgraded user to organizer: {}", authenticatedEmail);
+        return user;
+    }
+
+    /**
      * Generates a random key of 32 characters.
      */
     private String generateRandomKey() {
-        SecureRandom random = new SecureRandom();
         StringBuilder sb = new StringBuilder(KEY_LENGTH);
 
         for (int i = 0; i < KEY_LENGTH; i++) {
-            sb.append(KEY_ALPHABET.charAt(random.nextInt(KEY_ALPHABET.length())));
+            sb.append(KEY_ALPHABET.charAt(SECURE_RANDOM.nextInt(KEY_ALPHABET.length())));
         }
 
         return sb.toString();

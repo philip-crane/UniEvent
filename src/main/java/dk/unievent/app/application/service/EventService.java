@@ -3,6 +3,7 @@ package dk.unievent.app.application.service;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import dk.unievent.app.api.dto.FbEventResponse;
@@ -113,6 +114,7 @@ public class EventService {
         return result;
     }
 
+    @Transactional
     public EventDTO createEvent(EventDTO eventDTO) {
         log.info("Creating new event: {}", eventDTO.getTitle());
         EventEntity entity = eventMapper.toEntity(eventDTO);
@@ -131,6 +133,7 @@ public class EventService {
         return eventMapper.toDTO(saved);
     }
 
+    @Transactional
     public Optional<EventDTO> updateEvent(String id, EventDTO eventDTO) {
         log.info("Updating event with id: {}", id);
         Optional<EventEntity> existing = eventRepository.findById(id);
@@ -164,6 +167,7 @@ public class EventService {
         return Optional.of(eventMapper.toDTO(updated));
     }
 
+    @Transactional
     public Optional<EventDTO> uploadCoverImage(String id, MultipartFile file) throws IOException {
         log.info("Uploading cover image for event: {}", id);
         Optional<EventEntity> existing = eventRepository.findById(id);
@@ -198,6 +202,7 @@ public class EventService {
         return Optional.of(eventMapper.toDTO(updated));
     }
 
+    @Transactional
     public boolean deleteEvent(String id) {
         log.info("Deleting event with id: {}", id);
         Optional<EventEntity> event = eventRepository.findById(id);
@@ -238,7 +243,7 @@ public class EventService {
             // Retrieve page token from Vault
             Optional<String> pageTokenOpt = vaultService.getPageToken(pageId);
             if (pageTokenOpt.isEmpty()) {
-                log.error("No token found in Vault for page: {}", pageId);
+                log.warn("No token found in Vault for page: {}", pageId);
                 throw new FacebookApiException(
                     "No token found for page: " + pageId,
                     0,
@@ -272,8 +277,13 @@ public class EventService {
             return processedEvents;
 
         } catch (FacebookApiException e) {
-            log.error("Facebook API error during event ingestion: {} - {}",
-                e.getStatusCode(), e.getErrorType(), e);
+            if ("TOKEN_NOT_FOUND".equals(e.getErrorType())) {
+                log.warn("Facebook token missing during event ingestion for page: {} - {} ({})",
+                        pageId, e.getErrorType(), e.getStatusCode());
+            } else {
+                log.error("Facebook API error during event ingestion: {} - {}",
+                    e.getStatusCode(), e.getErrorType(), e);
+            }
             throw e;
         } catch (Exception e) {
             log.error("Unexpected error during Facebook event ingestion for page: {}", pageId, e);
@@ -292,6 +302,7 @@ public class EventService {
      * @param fbEvent Facebook event response from Graph API
      * @return Persisted EventEntity
      */
+    @Transactional
     public EventEntity createOrUpdateFacebookEvent(String pageId, FbEventResponse fbEvent) {
         log.debug("Processing Facebook event: {} ({})", fbEvent.getName(), fbEvent.getId());
 

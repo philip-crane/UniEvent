@@ -8,16 +8,19 @@ import dk.unievent.app.application.service.CsrfTokenService;
 import dk.unievent.app.db.model.UserEntity;
 import dk.unievent.app.api.dto.AuthResponse;
 import dk.unievent.app.api.dto.LoginRequest;
+import dk.unievent.app.api.dto.ProfileResponse;
 import dk.unievent.app.api.dto.RegisterRequest;
 import dk.unievent.app.api.dto.OrganizerKeyVerifyRequest;
 import dk.unievent.app.api.dto.OrganizerKeyVerifyResponse;
 import dk.unievent.app.api.dto.OrganizerRegisterWithKeyRequest;
 import dk.unievent.app.api.dto.GenerateOrganizerKeyRequest;
 import dk.unievent.app.api.dto.GenerateOrganizerKeyResponse;
+import dk.unievent.app.api.dto.UpgradeToOrganizerRequest;
 import dk.unievent.app.infrastructure.config.CookieConfig;
 import dk.unievent.app.infrastructure.security.UserDetailsAdapter;
 import dk.unievent.app.application.service.EmailService;
-import dk.unievent.app.infrastructure.config.RoleConstants;
+import dk.unievent.app.infrastructure.constants.RoleConstants;
+import io.github.resilience4j.ratelimiter.RequestNotPermitted;
 import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -35,10 +38,12 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -46,6 +51,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.util.WebUtils;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -77,6 +83,19 @@ public class AuthController {
         String csrfToken = csrfTokenService.generateToken();
         writeAuthCookies(response, tokenPair, csrfToken);
         return ResponseEntity.ok(buildAuthResponse(user, tokenPair, csrfToken));
+    }
+
+    @GetMapping("/csrf-token")
+    @RateLimiter(name = "csrf-token", fallbackMethod = "csrfTokenFallback")
+    @Operation(summary = "Get CSRF token", description = "Issue a CSRF token and cookie for unauthenticated clients before login or registration")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "CSRF token issued"),
+            @ApiResponse(responseCode = "429", description = "Too many requests")
+    })
+    public ResponseEntity<Map<String, String>> getCsrfToken(HttpServletResponse response) {
+        String csrfToken = csrfTokenService.generateToken();
+        addCookie(response, cookieConfig.getCsrfName(), csrfToken, cookieConfig.getCsrfMaxAge(), false);
+        return ResponseEntity.ok(Map.of("csrfToken", csrfToken));
     }
 
     @PostMapping("/login")
@@ -142,8 +161,22 @@ public class AuthController {
         return ResponseEntity.noContent().build();
     }
 
+    @GetMapping("/profile")
+    @Operation(summary = "Get current user profile", description = "Returns the authenticated user's role and organizer page names")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Profile retrieved", content = @Content(schema = @Schema(implementation = ProfileResponse.class))),
+            @ApiResponse(responseCode = "401", description = "Not authenticated")
+    })
+    public ResponseEntity<ProfileResponse> getProfile(Authentication auth) {
+        if (auth == null || auth instanceof AnonymousAuthenticationToken) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        UserEntity user = userService.findByEmail(auth.getName());
+        return ResponseEntity.ok(new ProfileResponse(normalizeRole(user.getRole()), List.of()));
+    }
+
     @PostMapping("/organizer-key/generate")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('admin')")
     @RateLimiter(name = "generate-organizer-key", fallbackMethod = "generateKeyFallback")
     @Operation(summary = "Generate organizer invitation key", description = "Admin only: Generate a single-use key for organizer registration (sends key via email)")
     @ApiResponses(value = {
@@ -180,6 +213,29 @@ public class AuthController {
         return ResponseEntity.ok(response);
     }
 
+    @PostMapping("/organizer-key/upgrade")
+    @RateLimiter(name = "upgrade-organizer", fallbackMethod = "upgradeOrganizerFallback")
+    @Operation(summary = "Upgrade existing account to organizer", description = "Upgrade an already-authenticated user account to organizer role using a confirmation token from key verification")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Account upgraded to organizer", content = @Content(schema = @Schema(implementation = AuthResponse.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid request body or key email mismatch"),
+            @ApiResponse(responseCode = "401", description = "Not authenticated or confirmation token invalid/expired"),
+            @ApiResponse(responseCode = "410", description = "Invitation key already used")
+    })
+    public ResponseEntity<AuthResponse> upgradeToOrganizer(
+            @Valid @RequestBody UpgradeToOrganizerRequest request,
+            Authentication auth,
+            HttpServletResponse response) {
+        if (auth == null || auth instanceof AnonymousAuthenticationToken) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        UserEntity user = organizerKeyService.upgradeToOrganizer(request.confirmationToken(), auth.getName());
+        RefreshTokenService.TokenPair tokenPair = refreshTokenService.issueTokenPair(user);
+        String csrfToken = csrfTokenService.generateToken();
+        writeAuthCookies(response, tokenPair, csrfToken);
+        return ResponseEntity.ok(buildAuthResponse(user, tokenPair, csrfToken));
+    }
+
     @PostMapping("/register-with-key")
     @RateLimiter(name = "register-with-key", fallbackMethod = "registerWithKeyFallback")
     @Operation(summary = "Register organizer with key", description = "Complete organizer registration using a confirmation token from key verification")
@@ -210,7 +266,7 @@ public class AuthController {
         if (refreshCookie != null && !refreshCookie.getValue().isBlank()) {
             return refreshCookie.getValue();
         }
-        throw new IllegalArgumentException("Refresh token cookie is required.");
+        throw new IllegalArgumentException("Refresh token cookie is missing.");
     }
 
     private String resolveOptionalRefreshToken(HttpServletRequest request) {
@@ -285,32 +341,56 @@ public class AuthController {
         return "ROLE_" + trimmed.toUpperCase();
     }
 
-    // Rate limit fallback methods
+    // Rate limit fallback methods - only intercept RequestNotPermitted (actual rate limit).
+    // All other exceptions are re-thrown so the global exception handler maps them correctly.
+    private static void rethrowIfNotRateLimited(Exception ex) {
+        if (ex instanceof RequestNotPermitted) return;
+        if (ex instanceof RuntimeException re) throw re;
+        throw new RuntimeException(ex);
+    }
+
     public ResponseEntity<AuthResponse> registerFallback(RegisterRequest request, HttpServletResponse response, Exception ex) {
+        rethrowIfNotRateLimited(ex);
+        return ResponseEntity.status(429).body(null);
+    }
+
+    public ResponseEntity<Map<String, String>> csrfTokenFallback(HttpServletResponse response, Exception ex) {
+        rethrowIfNotRateLimited(ex);
         return ResponseEntity.status(429).body(null);
     }
 
     public ResponseEntity<AuthResponse> loginFallback(LoginRequest request, HttpServletResponse response, Exception ex) {
+        rethrowIfNotRateLimited(ex);
         return ResponseEntity.status(429).body(null);
     }
 
     public ResponseEntity<AuthResponse> refreshFallback(HttpServletRequest httpRequest, HttpServletResponse response, Exception ex) {
+        rethrowIfNotRateLimited(ex);
         return ResponseEntity.status(429).body(null);
     }
 
     public ResponseEntity<Void> logoutFallback(HttpServletRequest httpRequest, HttpServletResponse response, Exception ex) {
+        rethrowIfNotRateLimited(ex);
         return ResponseEntity.status(429).build();
     }
 
     public ResponseEntity<GenerateOrganizerKeyResponse> generateKeyFallback(GenerateOrganizerKeyRequest request, Authentication authentication, Exception ex) {
+        rethrowIfNotRateLimited(ex);
         return ResponseEntity.status(429).build();
     }
 
     public ResponseEntity<OrganizerKeyVerifyResponse> verifyKeyFallback(OrganizerKeyVerifyRequest request, Exception ex) {
+        rethrowIfNotRateLimited(ex);
         return ResponseEntity.status(429).build();
     }
 
     public ResponseEntity<AuthResponse> registerWithKeyFallback(OrganizerRegisterWithKeyRequest request, HttpServletResponse response, Exception ex) {
+        rethrowIfNotRateLimited(ex);
+        return ResponseEntity.status(429).body(null);
+    }
+
+    public ResponseEntity<AuthResponse> upgradeOrganizerFallback(UpgradeToOrganizerRequest request, Authentication auth, HttpServletResponse response, Exception ex) {
+        rethrowIfNotRateLimited(ex);
         return ResponseEntity.status(429).body(null);
     }
 }

@@ -4,7 +4,7 @@ import dk.unievent.app.api.dto.FbLongLivedTokenResponse;
 import dk.unievent.app.api.dto.FbPageResponse;
 import dk.unievent.app.api.dto.FbShortLivedTokenResponse;
 import dk.unievent.app.db.model.PageEntity;
-import dk.unievent.app.infrastructure.config.FacebookApiConstants;
+import dk.unievent.app.infrastructure.constants.FacebookApiConstants;
 import dk.unievent.app.infrastructure.exception.FacebookApiException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -103,14 +103,17 @@ public class FacebookOAuthService {
             log.warn("Processing page {} without a valid user token from the OAuth flow", fbPage.getId());
         }
         try {
-            // Store page token in Vault
+            // Store page token in Vault (registry gets status=active, expiresAt set below)
             String pageToken = fbPage.getAccessToken();
             vaultService.storePageToken(fbPage.getId(), pageToken);
             log.debug("Page token stored in Vault for page: {}", fbPage.getId());
 
-            // Create or update PageEntity
+            // Create or update PageEntity - this computes the token expiration date
             PageEntity pageEntity = pageService.createOrUpdatePageFromFacebook(fbPage);
             log.info("Page entity created/updated: {} ({})", pageEntity.getName(), pageEntity.getId());
+
+            // Now that we know the expiry, sync it to the secrets registry
+            vaultService.setPageTokenExpiry(fbPage.getId(), pageEntity.getTokenExpiresAt());
 
             return pageEntity;
 

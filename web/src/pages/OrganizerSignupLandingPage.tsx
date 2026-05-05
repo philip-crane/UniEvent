@@ -4,6 +4,9 @@ import { Footer } from '../components/Footer';
 import { HeaderLogoLink } from '../components/HeaderLogoLink';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { ORGANIZER_REQUEST_FORM_URL } from '../constants';
+import '../styles/SignupPage.css';
+import '../styles/OrganizerSignupFlow.css';
+
 
 export function OrganizerSignupLandingPage() {
     return (

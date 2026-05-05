@@ -139,6 +139,10 @@ function installFakeAuthServer() {
             cookiesSeenByServer: requestCookies,
         });
 
+        if (url.endsWith('/api/auth/csrf-token') && method === 'GET') {
+            return jsonResponse({ csrfToken: 'bootstrap-csrf' });
+        }
+
         if (url.endsWith('/api/auth/login') && method === 'POST') {
             const setCookie = setAuthCookies(cookieJar, 'access-v1', 'refresh-v1', 'csrf-v1');
             return jsonResponse({
@@ -235,7 +239,7 @@ describe('cookie auth + CSRF end-to-end scenario', () => {
         expect(server.cookieJar.auth_refresh).toMatchObject({ value: 'refresh-v1', httpOnly: true, secure: true, sameSite: 'Strict' });
         expect(server.cookieJar.csrf_token).toMatchObject({ value: 'csrf-v1', httpOnly: false, secure: true, sameSite: 'Strict' });
 
-        const loginRequest = server.requests[0];
+        const loginRequest = server.requests[1];
         expect(loginRequest).toMatchObject({
             method: 'POST',
             credentials: 'include',
@@ -252,7 +256,7 @@ describe('cookie auth + CSRF end-to-end scenario', () => {
         expect(server.cookieJar.auth_refresh?.value).toBe('refresh-v2');
         expect(server.cookieJar.csrf_token?.value).toBe('csrf-v2');
 
-        const refreshRequest = server.requests[1];
+        const refreshRequest = server.requests[2];
         expect(refreshRequest).toMatchObject({
             method: 'POST',
             credentials: 'include',
@@ -284,7 +288,7 @@ describe('cookie auth + CSRF end-to-end scenario', () => {
             title: 'Uni Night',
         });
 
-        const createRequest = server.requests[2];
+        const createRequest = server.requests[3];
         expect(createRequest).toMatchObject({
             method: 'POST',
             credentials: 'include',
@@ -308,7 +312,7 @@ describe('cookie auth + CSRF end-to-end scenario', () => {
         expect(server.cookieJar.auth_refresh).toBeUndefined();
         expect(server.cookieJar.csrf_token).toBeUndefined();
 
-        const logoutRequest = server.requests[3];
+        const logoutRequest = server.requests[4];
         expect(logoutRequest).toMatchObject({
             method: 'POST',
             credentials: 'include',
@@ -327,7 +331,7 @@ describe('cookie auth + CSRF end-to-end scenario', () => {
         });
 
         expect(unauthenticatedCreate.status).toBe(403);
-        const unauthenticatedRequest = server.requests[4];
+        const unauthenticatedRequest = server.requests[5];
         expect(unauthenticatedRequest).toMatchObject({
             method: 'POST',
             credentials: 'include',

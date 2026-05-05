@@ -3,6 +3,7 @@ import { BadgeCheck, CalendarCheck2, FileText, KeyRound, ShieldCheck, Sparkles }
 import { Footer } from '../components/Footer';
 import { HeaderLogoLink } from '../components/HeaderLogoLink';
 import { ThemeToggle } from '../components/ThemeToggle';
+import '../styles/BecomeOrganizerOnboardingPage.css';
 
 export function BecomeOrganizerOnboardingPage() {
   return (

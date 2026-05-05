@@ -1,8 +1,5 @@
-package dk.unievent.app.tools.services;
+package dk.unievent.app.application.service;
 
-import dk.unievent.app.application.service.FacebookGraphApiService;
-import dk.unievent.app.application.service.PageService;
-import dk.unievent.app.application.service.VaultService;
 import dk.unievent.app.db.model.PageEntity;
 import dk.unievent.app.infrastructure.exception.FacebookApiException;
 import dk.unievent.app.tools.models.RefreshResult;
@@ -27,12 +24,12 @@ public class TokenRefreshService {
 
     private final PageService pageService;
     private final FacebookGraphApiService facebookGraphApiService;
-    private final VaultService vaultService;
+    private final Optional<VaultService> vaultService;
 
     public TokenRefreshService(
         PageService pageService,
         FacebookGraphApiService facebookGraphApiService,
-        VaultService vaultService
+        Optional<VaultService> vaultService
     ) {
         this.pageService = pageService;
         this.facebookGraphApiService = facebookGraphApiService;
@@ -113,8 +110,16 @@ public class TokenRefreshService {
     public RefreshResult refreshOne(String pageId) {
         log.debug("Refreshing token for page: {}", pageId);
 
+        if (vaultService.isEmpty()) {
+            String msg = "Vault is disabled - token refresh unavailable";
+            log.warn("{} for page: {}", msg, pageId);
+            return new RefreshResult(pageId, false, msg);
+        }
+
+        VaultService vault = vaultService.get();
+
         try {
-            Optional<String> currentTokenOpt = vaultService.getPageToken(pageId);
+            Optional<String> currentTokenOpt = vault.getPageToken(pageId);
             if (currentTokenOpt.isEmpty()) {
                 String msg = "No token found in Vault";
                 log.warn("{} for page: {}", msg, pageId);
@@ -128,8 +133,8 @@ public class TokenRefreshService {
                 var tokenResponse = facebookGraphApiService.refreshPageToken(currentToken);
                 String newToken = tokenResponse.getAccessToken();
 
-                vaultService.updatePageToken(pageId, newToken);
-                pageService.refreshToken(pageId);
+                vault.updatePageToken(pageId, newToken);
+                pageService.updateTokenMetadata(pageId);
                 log.info("Successfully refreshed token for page: {}", pageId);
                 return new RefreshResult(pageId, true, "Token refreshed");
 
@@ -137,12 +142,14 @@ public class TokenRefreshService {
                 String msg = String.format("Facebook API error: %s (status %d)", e.getErrorType(), e.getStatusCode());
                 log.error("Facebook API error refreshing token for page: {} - {}", pageId, msg);
                 pageService.logRefreshFailure(pageId, msg);
+                vault.markPageTokenError(pageId);
                 return new RefreshResult(pageId, false, msg);
             }
 
         } catch (Exception e) {
             log.error("Error refreshing token for page: {}", pageId, e);
             pageService.logRefreshFailure(pageId, e.getMessage());
+            vaultService.ifPresent(v -> v.markPageTokenError(pageId));
             return new RefreshResult(pageId, false, e.getMessage());
         }
     }

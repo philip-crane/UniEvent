@@ -27,12 +27,16 @@ function authResponse(overrides: Partial<{ username: string; email: string; role
     };
 }
 
-import { _resetForTesting, getCurrentUser, loginWithEmail, logout, onUserChanged, signupWithEmail } from '../../services/auth';
+import { _resetForTesting, getCurrentUser, loginWithEmail, logout, onUserChanged, signupWithEmail, setCsrfToken } from '../../services/auth';
 import { mapAuthError } from '../../utils/authUtils';
 
 describe('auth service', () => {
     beforeEach(() => {
         _resetForTesting();
+        // Pre-seed a CSRF token so ensureCsrfToken() returns early without
+        // making a fetch call. Unit tests here verify login/signup behaviour,
+        // not the CSRF bootstrap flow.
+        setCsrfToken('test-csrf');
         mockFetch.mockReset();
         vi.stubGlobal('fetch', mockFetch);
     });

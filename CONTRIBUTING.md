@@ -96,8 +96,6 @@ UniEventServer/
 │   │       ├── application.yaml
 │   │       ├── application-dev.yaml
 │   │       ├── db.yaml
-│   │       ├── db/
-│   │       │   └── migration/        # Flyway schema migrations
 │   │       ├── media.yaml
 │   │       └── vault.yaml
 │   └── test/
@@ -142,7 +140,7 @@ UniEventServer/
 │   │   │   ├── dal.ts           # Data Access Layer - all REST API calls
 │   │   │   ├── auth.ts          # Cookie-based auth state (in-memory store + session helpers)
 │   │   │   ├── facebook.ts      # Facebook OAuth URL builders
-│   │   │   └── likes.ts         # Likes persistence (backend API + in-memory cache; one-time localStorage migration)
+│   │   │   └── likes.ts         # Likes persistence (localStorage + in-memory cache)
 │   │   ├── styles/
 │   │   ├── test/
 │   │   │   ├── pages/
@@ -270,9 +268,11 @@ Backend
 - [x] JWT auth - signed token, expiry, validation filter
 - [x] Pin Docker image versions
 - [in progress] Auto Facebook token refresh
-- [x] Persist likes to backend (`/api/users/me/likes`)
-- [x] Migrate schema to Flyway - `ddl-auto` is now `validate`; any schema change needs a Flyway migration file before deploy
-- [In Progress] Add manual ADMIN endpoint for Facebook token refresh and page ingestion (non-dev profile) - on another branch "Admin-FB-Endpoint"
+- [ ] Actually fix likes rather than just living in localstorage
+- [ ] Clean out controllers to just handle endpoints, put the rest into services
+- [ ] Persist likes to backend (`/api/users/me/likes`) - currently localStorage only
+- [ ] Migrate schema to Flyway - `ddl-auto` is now `validate`; any schema change needs a Flyway migration file before deploy
+- [ ] Add manual ADMIN endpoint for Facebook token refresh and page ingestion (non-dev profile)
 - [ ] PicoCLI for proper tool CLI
 - [ ] DB: Quartz scheduler
 

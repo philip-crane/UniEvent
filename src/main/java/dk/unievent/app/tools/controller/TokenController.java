@@ -1,13 +1,14 @@
 package dk.unievent.app.tools.controller;
 
+import dk.unievent.app.application.service.TokenRefreshService;
 import dk.unievent.app.db.repository.PageRepository;
 import dk.unievent.app.tools.models.RefreshResult;
 import dk.unievent.app.tools.models.RefreshSummary;
-import dk.unievent.app.tools.services.TokenRefreshService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -22,12 +23,13 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/admin/tools/refresh-tokens")
 @Tag(name = "Admin Tools - Token Refresh", description = "Manually refresh Facebook page tokens")
-public class TokenRefreshController {
+@PreAuthorize("hasRole('admin')")
+public class TokenController {
 
     private final TokenRefreshService tokenRefreshService;
     private final PageRepository pageRepository;
 
-    public TokenRefreshController(TokenRefreshService tokenRefreshService, PageRepository pageRepository) {
+    public TokenController(TokenRefreshService tokenRefreshService, PageRepository pageRepository) {
         this.tokenRefreshService = tokenRefreshService;
         this.pageRepository = pageRepository;
     }

@@ -8,7 +8,7 @@ import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.thymeleaf.context.Context;
-import org.thymeleaf.spring6.SpringTemplateEngine;
+import org.thymeleaf.TemplateEngine;
 
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
@@ -23,7 +23,7 @@ import jakarta.mail.internet.MimeMessage;
 public class EmailService {
 
     private final JavaMailSender mailSender;
-    private final SpringTemplateEngine templateEngine;
+    private final TemplateEngine templateEngine;
 
     @Value("${spring.mail.username}")
     private String fromEmail;
@@ -45,7 +45,7 @@ public class EmailService {
     public void sendOrganizerInvitationEmailAsync(String to, String key) {
         try {
             sendOrganizerInvitationEmail(to, key);
-        } catch (MessagingException e) {
+        } catch (Exception e) {
             log.error("Failed to send organizer invitation email to {}: {}", to, e.getMessage(), e);
         }
     }

@@ -7,7 +7,8 @@ import lombok.Setter;
 import jakarta.validation.constraints.*;
 import jakarta.validation.Valid;
 import java.time.LocalDateTime;
-import dk.unievent.app.infrastructure.config.ValidationConstants;
+
+import dk.unievent.app.infrastructure.constants.ValidationConstants;
 
 /**
  * Data Transfer Object for Events - what the frontend receives
@@ -33,7 +34,6 @@ public class EventDTO {
     @NotNull(message = "Start time is required")
     private LocalDateTime startTime;
     
-    @NotNull(message = "End time is required")
     private LocalDateTime endTime;
     
     @Valid
