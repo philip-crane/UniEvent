@@ -73,7 +73,10 @@ public class CsrfValidationFilter extends OncePerRequestFilter {
             return false;
         }
 
-        return true;
+        // Only validate CSRF for authenticated requests. Unauthenticated clients
+        // (login, register) have no session yet and therefore no CSRF token to present.
+        Cookie accessCookie = WebUtils.getCookie(request, cookieConfig.getAccessName());
+        return accessCookie != null;
     }
 
     private boolean isSafeMethod(String method) {

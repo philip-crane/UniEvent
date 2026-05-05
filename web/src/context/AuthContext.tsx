@@ -1,7 +1,6 @@
 ﻿/* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
-  getCurrentUser,
   isTokenExpiredOrExpiringSoon,
   loginWithEmail,
   logout,
@@ -37,21 +36,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Restore session from HttpOnly cookies on page load.
     // Bootstrap a CSRF token for unauthenticated clients so state-changing
     // requests don't later fail with 403.
+    // isLoading stays true until the refresh settles - prevents profile pages
+    // from redirecting to login before we know whether the cookie is valid.
+    let cancelled = false;
+    const unsubscribe = onUserChanged((user) => {
+      setCurrentUser(user);
+    });
     void (async () => {
       try {
         await ensureCsrfToken();
       } catch {
         // ignore; refresh doesn't require CSRF
       }
-      if (getCurrentUser()) {
-        void refreshSession();
-      }
+      await refreshSession();
+      if (!cancelled) setIsLoading(false);
     })();
-    const unsubscribe = onUserChanged((user) => {
-      setCurrentUser(user);
-      setIsLoading(false);
-    });
-    return unsubscribe;
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
   }, []);
 
   useEffect(() => {

@@ -27,41 +27,26 @@ type SignupInput = SignupRequest & {
   organizerNames?: string[];
 };
 
-const USER_KEY = 'unievent_user';
-
 let currentUser: User | null = null;
 let tokenExpiresAt: number | null = null;
 
 const listeners: Array<(user: User | null) => void> = [];
 
+// Evict any stale user data left by the old localStorage-based session strategy.
+try { localStorage.removeItem('unievent_user'); } catch { /* SSR / restricted env */ }
+
 export type AuthUser = User;
 export type { AccountRole };
-
-function getStorage(): Storage | null {
-  if (typeof localStorage === 'undefined') {
-    return null;
-  }
-  if (
-    typeof localStorage.getItem !== 'function'
-    || typeof localStorage.setItem !== 'function'
-    || typeof localStorage.removeItem !== 'function'
-  ) {
-    return null;
-  }
-  return localStorage;
-}
 
 export { getCsrfToken, setCsrfToken };
 
 export function setCurrentUser(user: User): void {
   currentUser = user;
-  getStorage()?.setItem(USER_KEY, JSON.stringify(user));
 }
 
 export function clearCurrentUser(): void {
   currentUser = null;
   tokenExpiresAt = null;
-  getStorage()?.removeItem(USER_KEY);
 }
 
 function clearAuthState(): void {
@@ -161,23 +146,7 @@ export function buildUserFromResponse(data: AuthApiResponse, existing?: User | n
 }
 
 export function getCurrentUser(): User | null {
-  if (currentUser) {
-    return currentUser;
-  }
-
-  const storage = getStorage();
-  const raw = storage?.getItem(USER_KEY);
-  if (!raw) {
-    return null;
-  }
-
-  try {
-    currentUser = JSON.parse(raw) as User;
-    return currentUser;
-  } catch {
-    storage?.removeItem(USER_KEY);
-    return null;
-  }
+  return currentUser;
 }
 
 export async function loginWithEmail(email: string, password: string): Promise<AuthUser> {
@@ -248,11 +217,11 @@ export async function refreshSession(): Promise<boolean> {
     });
 
     if (!response.ok) {
-      if (response.status === 401 || response.status === 403) {
+      if (response.status === 400 || response.status === 401 || response.status === 403) {
         // Clear local state but do not redirect - public pages must remain
         // accessible without authentication. Protected routes handle their own
-        // redirect via route guards. A 403 here means the refresh token was
-        // rejected (e.g. DB reset, token family compromised), not a CSRF attack.
+        // redirect via route guards. A 400 means the refresh cookie was missing
+        // (functionally logged out); 403 means the token was rejected.
         clearAuthState();
       }
       return false;
@@ -344,7 +313,6 @@ export function _resetForTesting(): void {
   currentUser = null;
   tokenExpiresAt = null;
   listeners.length = 0;
-  getStorage()?.removeItem(USER_KEY);
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars

@@ -98,16 +98,17 @@ class CsrfValidationFilterTests {
     }
 
     @Test
-    void postRequestsWithoutAccessCookieShouldStillValidateCsrf() throws Exception {
+    void postRequestsWithoutAccessCookieShouldBypassCsrfValidation() throws Exception {
+        // Unauthenticated clients (login, register) have no session yet and therefore
+        // no CSRF token to present. The filter skips validation when auth_access is absent.
         request.setMethod("POST");
         request.setCookies(new jakarta.servlet.http.Cookie("csrf_token", "cookie-token"));
         request.addHeader("X-CSRF-Token", "header-token");
-        when(csrfTokenService.validateToken("header-token", "cookie-token")).thenReturn(true);
 
         filter.doFilter(request, response, filterChain);
 
         verify(filterChain).doFilter(request, response);
-        verify(csrfTokenService).validateToken("header-token", "cookie-token");
+        verifyNoInteractions(csrfTokenService);
         assertEquals(200, response.getStatus());
     }
 
@@ -169,15 +170,16 @@ class CsrfValidationFilterTests {
     }
 
     @Test
-    void unauthenticatedRequestsShouldStillRequireCsrfValidation() throws Exception {
+    void unauthenticatedPostRequestsShouldBypassCsrfValidation() throws Exception {
+        // No auth_access cookie means the request is unauthenticated (e.g. login/register).
+        // The filter must not block these - they have no session and no CSRF token to present.
         request.setMethod("POST");
         request.setCookies(new jakarta.servlet.http.Cookie("csrf_token", "cookie-token"));
-        when(csrfTokenService.validateToken(isNull(), eq("cookie-token"))).thenReturn(false);
 
         filter.doFilter(request, response, filterChain);
 
-        verifyNoInteractions(filterChain);
-        verify(csrfTokenService).validateToken(isNull(), eq("cookie-token"));
-        assertEquals(403, response.getStatus());
+        verify(filterChain).doFilter(request, response);
+        verifyNoInteractions(csrfTokenService);
+        assertEquals(200, response.getStatus());
     }
 }
