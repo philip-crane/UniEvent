@@ -11,7 +11,7 @@ import dk.unievent.app.infrastructure.exception.OrganizerKeyAlreadyUsedException
 import dk.unievent.app.infrastructure.exception.OrganizerKeyExpiredException;
 import dk.unievent.app.infrastructure.exception.OrganizerKeyNotFoundException;
 import dk.unievent.app.infrastructure.exception.UsernameAlreadyTakenException;
-import dk.unievent.app.infrastructure.config.RoleConstants;
+import dk.unievent.app.infrastructure.constants.RoleConstants;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import lombok.RequiredArgsConstructor;

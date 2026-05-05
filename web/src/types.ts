@@ -138,20 +138,20 @@ export interface EventDescriptionProps {
 // response/request types bru
 
 export type CreatePageRequest = {
-    id?: string;
-    name: string;
-    url: string;
-    active: boolean;
+  id?: string;
+  name: string;
+  url: string;
+  active: boolean;
 };
 
 export type CreateEventRequest = {
-    pageId: string;
-    title: string;
-    description?: string;
-    startTime: string;
-    endTime?: string;
-    place?: Place;
-    eventUrl?: string;
+  pageId: string;
+  title: string;
+  description?: string;
+  startTime: string;
+  endTime?: string;
+  place?: Place;
+  eventUrl?: string;
 };
 
 /**

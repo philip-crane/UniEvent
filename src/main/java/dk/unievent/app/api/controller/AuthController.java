@@ -19,7 +19,7 @@ import dk.unievent.app.api.dto.UpgradeToOrganizerRequest;
 import dk.unievent.app.infrastructure.config.CookieConfig;
 import dk.unievent.app.infrastructure.security.UserDetailsAdapter;
 import dk.unievent.app.application.service.EmailService;
-import dk.unievent.app.infrastructure.config.RoleConstants;
+import dk.unievent.app.infrastructure.constants.RoleConstants;
 import io.github.resilience4j.ratelimiter.RequestNotPermitted;
 import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 import io.swagger.v3.oas.annotations.Operation;
