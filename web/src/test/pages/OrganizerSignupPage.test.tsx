@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
@@ -44,9 +44,15 @@ async function advanceToStep2(user: ReturnType<typeof userEvent.setup>) {
         confirmationToken: 'token-abc',
         email: 'organizer@example.com',
     });
-    await user.type(screen.getByLabelText('Invitation Key'), 'VALID-KEY-32CHARS');
+    fireEvent.change(screen.getByLabelText('Invitation Key'), { target: { value: 'VALID-KEY-32CHARS' } });
     await user.click(screen.getByRole('button', { name: 'Verify Key' }));
     await screen.findByText('STEP 2 OF 2');
+}
+
+function fillRegistrationForm(confirmPassword = 'SecurePassword1!') {
+    fireEvent.change(screen.getByLabelText('Username'), { target: { value: 'orguser' } });
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'SecurePassword1!' } });
+    fireEvent.change(screen.getByLabelText('Confirm Password'), { target: { value: confirmPassword } });
 }
 
 describe('OrganizerSignupPage', () => {
@@ -84,7 +90,7 @@ describe('OrganizerSignupPage', () => {
         });
         renderPage();
 
-        await user.type(screen.getByLabelText('Invitation Key'), '  MY-KEY  ');
+        fireEvent.change(screen.getByLabelText('Invitation Key'), { target: { value: '  MY-KEY  ' } });
         await user.click(screen.getByRole('button', { name: 'Verify Key' }));
 
         expect(mockVerifyOrganizerKey).toHaveBeenCalledWith('MY-KEY');
@@ -106,7 +112,7 @@ describe('OrganizerSignupPage', () => {
         mockMapAuthError.mockReturnValueOnce('Organizer key is invalid or expired.');
         renderPage();
 
-        await user.type(screen.getByLabelText('Invitation Key'), 'BAD-KEY');
+        fireEvent.change(screen.getByLabelText('Invitation Key'), { target: { value: 'BAD-KEY' } });
         await user.click(screen.getByRole('button', { name: 'Verify Key' }));
 
         await waitFor(() => {
@@ -119,7 +125,7 @@ describe('OrganizerSignupPage', () => {
         mockVerifyOrganizerKey.mockResolvedValueOnce(null);
         renderPage();
 
-        await user.type(screen.getByLabelText('Invitation Key'), 'NULL-KEY');
+        fireEvent.change(screen.getByLabelText('Invitation Key'), { target: { value: 'NULL-KEY' } });
         await user.click(screen.getByRole('button', { name: 'Verify Key' }));
 
         await waitFor(() => {
@@ -165,9 +171,9 @@ describe('OrganizerSignupPage', () => {
         renderPage();
 
         await advanceToStep2(user);
-        await user.type(screen.getByLabelText('Username'), 'orguser');
-        await user.type(screen.getByLabelText('Password'), 'short');
-        await user.type(screen.getByLabelText('Confirm Password'), 'short');
+        fireEvent.change(screen.getByLabelText('Username'), { target: { value: 'orguser' } });
+        fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'short' } });
+        fireEvent.change(screen.getByLabelText('Confirm Password'), { target: { value: 'short' } });
         await user.click(screen.getByRole('button', { name: 'Complete Registration' }));
 
         expect(screen.getByText(/at least 12 characters/i)).toBeInTheDocument();
@@ -179,9 +185,7 @@ describe('OrganizerSignupPage', () => {
         renderPage();
 
         await advanceToStep2(user);
-        await user.type(screen.getByLabelText('Username'), 'orguser');
-        await user.type(screen.getByLabelText('Password'), 'SecurePassword1!');
-        await user.type(screen.getByLabelText('Confirm Password'), 'DifferentPassword1!');
+        fillRegistrationForm('DifferentPassword1!');
         await user.click(screen.getByRole('button', { name: 'Complete Registration' }));
 
         expect(screen.getByText('Passwords do not match.')).toBeInTheDocument();
@@ -194,9 +198,7 @@ describe('OrganizerSignupPage', () => {
         renderPage();
 
         await advanceToStep2(user);
-        await user.type(screen.getByLabelText('Username'), 'orguser');
-        await user.type(screen.getByLabelText('Password'), 'SecurePassword1!');
-        await user.type(screen.getByLabelText('Confirm Password'), 'SecurePassword1!');
+        fillRegistrationForm();
         await user.click(screen.getByRole('button', { name: 'Complete Registration' }));
 
         await waitFor(() => {
@@ -216,9 +218,7 @@ describe('OrganizerSignupPage', () => {
         renderPage();
 
         await advanceToStep2(user);
-        await user.type(screen.getByLabelText('Username'), 'orguser');
-        await user.type(screen.getByLabelText('Password'), 'SecurePassword1!');
-        await user.type(screen.getByLabelText('Confirm Password'), 'SecurePassword1!');
+        fillRegistrationForm();
         await user.click(screen.getByRole('button', { name: 'Complete Registration' }));
 
         await waitFor(() => {

@@ -54,6 +54,8 @@ class TokenControllerTests {
         mockMvc.perform(post("/admin/tools/refresh-tokens/missing"))
             .andExpect(status().isNotFound())
             .andExpect(jsonPath("$.message").value("Page not found"));
+
+        verify(tokenRefreshService, never()).refreshOne("missing");
     }
 
     @Test

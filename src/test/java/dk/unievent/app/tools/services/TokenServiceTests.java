@@ -55,6 +55,19 @@ class TokenServiceTests {
     }
 
     @Test
+    void refreshOneShouldReturnFailureWhenVaultIsDisabled() {
+        TokenRefreshService disabledVaultService =
+            new TokenRefreshService(pageService, facebookGraphApiService, Optional.empty());
+
+        RefreshResult result = disabledVaultService.refreshOne("page-1");
+
+        assertFalse(result.isSuccess());
+        assertEquals("Vault is disabled - token refresh unavailable", result.getMessage());
+        verifyNoInteractions(vaultService);
+        verifyNoInteractions(facebookGraphApiService);
+    }
+
+    @Test
     void refreshOneShouldReturnSuccessWhenTokenRefreshed() {
         FbLongLivedTokenResponse response = new FbLongLivedTokenResponse();
         response.setAccessToken("new-token");
@@ -81,6 +94,7 @@ class TokenServiceTests {
         assertFalse(result.isSuccess());
         assertTrue(result.getMessage().contains("OAuthException"));
         verify(pageService).logRefreshFailure(eq("page-1"), anyString());
+        verify(vaultService).markPageTokenError("page-1");
     }
 
     @Test
@@ -91,6 +105,8 @@ class TokenServiceTests {
 
         assertFalse(result.isSuccess());
         assertEquals("Vault down", result.getMessage());
+        verify(pageService).logRefreshFailure("page-1", "Vault down");
+        verify(vaultService).markPageTokenError("page-1");
     }
 
     @Test
@@ -128,5 +144,27 @@ class TokenServiceTests {
 
         assertEquals(1, summary.getRefreshedCount());
         assertEquals(0, summary.getFailedCount());
+    }
+
+    @Test
+    void refreshAllShouldContinueWhenOnePageFails() {
+        PageEntity failingPage = PageEntity.builder().id("p1").name("No Token").build();
+        PageEntity successfulPage = PageEntity.builder().id("p2").name("Fresh Token").build();
+
+        FbLongLivedTokenResponse response = new FbLongLivedTokenResponse();
+        response.setAccessToken("new-token");
+
+        when(pageService.getPagesToRefresh(any()))
+            .thenReturn(new PageImpl<>(List.of(failingPage, successfulPage), PageRequest.of(0, 50), 2));
+        when(vaultService.getPageToken("p1")).thenReturn(Optional.empty());
+        when(vaultService.getPageToken("p2")).thenReturn(Optional.of("old-token"));
+        when(facebookGraphApiService.refreshPageToken("old-token")).thenReturn(response);
+
+        RefreshSummary summary = tokenRefreshService.refreshAll();
+
+        assertEquals(1, summary.getRefreshedCount());
+        assertEquals(1, summary.getFailedCount());
+        verify(pageService).logRefreshFailure("p1", "No token found in Vault");
+        verify(pageService).updateTokenMetadata("p2");
     }
 }

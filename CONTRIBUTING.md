@@ -198,6 +198,60 @@ Infrastructure Layer:
 - **`types.ts`** - all TS types (remember - TS types don't exist when the program is running, unlike in Java/C#)
 - **`constants.ts`** - all magic values: timeouts, thresholds, API paths, feature flags
 
+## Testing
+
+This project does **not** use the PHP Pest framework. The backend is tested with
+JUnit/Spring Boot through Maven, and the frontend is tested with Vitest through
+npm. When someone refers to "PEST tests" in this repository, treat that as a
+small system-suitability checklist, not as a new test framework.
+
+Run the standard suites before opening a PR:
+
+```bash
+./mvnw test
+cd web && npm test
+```
+
+### Backend Tests
+
+- Put Java tests under `src/test/java/dk/unievent/app/...`, mirroring the
+  production package being tested.
+- Use focused unit tests for mappers, DTOs, entities, services, filters, and
+  config classes.
+- Use `MockMvc` controller tests for HTTP status codes, JSON bodies, and auth
+  behavior.
+- Use Spring integration tests only when wiring, persistence, migrations, or
+  security filters are part of the behavior being verified.
+- Use the `test` profile and the existing H2-backed test resources under
+  `src/test/resources`.
+
+### Frontend Tests
+
+- Put Vitest tests under `web/src/test`, grouped by `pages/` and `services/`.
+- Test service modules as pure data-access code: URLs, HTTP methods, headers,
+  request bodies, retry behavior, and error handling.
+- Test pages through user-visible behavior with Testing Library rather than
+  component internals.
+- Keep browser/global state isolated with the existing reset helpers such as
+  `_resetForTesting`, `_resetLikesForTesting`, and `resetCsrfTokenForTesting`.
+
+### PEST Suitability Checklist
+
+Use this lightweight checklist for changes that affect the whole running system,
+especially auth, Facebook ingestion, media, the admin tools, Docker, or the
+PicoCLI migration:
+
+| Area | Meaning for UniEvent | Suitable checks |
+|------|----------------------|-----------------|
+| Performance | Common public flows stay quick with realistic data. | Event list, page search, profile likes, media download, and `/actuator/health` return promptly against a seeded local stack. |
+| Endurance | Scheduled/background flows survive repeated use. | Repeated seed/clear, token refresh, Facebook ingest, and media storage operations leave the app healthy and logs free of repeated failures. |
+| Security | Auth boundaries still hold. | Public routes stay public; protected routes reject anonymous users; admin routes require admin auth; CSRF-protected unsafe methods reject missing/invalid CSRF; cookie and CORS settings match the target environment. |
+| Tooling | Developer tools work across supported environments. | `tools` wrappers, Docker startup, Vault setup, seed, ingest, refresh, invite, and future PicoCLI commands behave consistently on Windows PowerShell and Mac/Linux shells. |
+
+PEST checks do not all need to run in CI. Prefer automated JUnit/Vitest coverage
+for stable behavior, then add documented manual or scriptable checks for local
+Docker/Vault/Facebook flows that depend on external services.
+
 ## API Endpoints
 
 **Public (no auth):**

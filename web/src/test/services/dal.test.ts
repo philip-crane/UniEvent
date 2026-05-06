@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { getEventById, getEvents, getPages } from '../../services/dal';
+import { createEvent, createPage, getEventById, getEvents, getPages, uploadEventCover } from '../../services/dal';
+import { resetCsrfTokenForTesting, setCsrfToken } from '../../services/csrf';
 
 const mockFetch = vi.fn();
 
@@ -14,6 +15,7 @@ function jsonResponse(body: unknown, status = 200, statusText = 'OK'): Response 
 beforeEach(() => {
     mockFetch.mockReset();
     vi.stubGlobal('fetch', mockFetch);
+    resetCsrfTokenForTesting();
 });
 
 describe('dal service', () => {
@@ -229,5 +231,112 @@ describe('dal service', () => {
             createdAt: '2025-12-01T10:00:00.000Z',
             updatedAt: '2025-12-02T10:00:00.000Z',
         });
+    });
+
+    it('posts a new page payload and maps the created page', async () => {
+        mockFetch.mockResolvedValueOnce(jsonResponse({
+            id: 'page-1',
+            name: 'DTU Robotics',
+            url: 'https://facebook.com/dtu-robotics',
+            active: true,
+        }));
+
+        const page = await createPage({
+            id: 'page-1',
+            name: 'DTU Robotics',
+            url: 'https://facebook.com/dtu-robotics',
+            active: true,
+        });
+
+        expect(page).toEqual({
+            id: 'page-1',
+            name: 'DTU Robotics',
+            url: 'https://facebook.com/dtu-robotics',
+            active: true,
+        });
+        const [url, options] = mockFetch.mock.calls[0] as [string, RequestInit];
+        expect(new URL(url).pathname).toBe('/api/pages');
+        expect(options.method).toBe('POST');
+        expect(options.credentials).toBe('include');
+        expect(JSON.parse(options.body as string)).toEqual({
+            id: 'page-1',
+            name: 'DTU Robotics',
+            url: 'https://facebook.com/dtu-robotics',
+            active: true,
+        });
+    });
+
+    it('posts a new event payload and maps the created event', async () => {
+        mockFetch.mockResolvedValueOnce(jsonResponse({
+            id: 'event-1',
+            pageId: 'page-1',
+            title: 'Robotics Night',
+            description: 'Build robots',
+            startTime: '2026-06-01T10:30:00.000Z',
+            endTime: '2026-06-01T12:30:00.000Z',
+            place: { name: 'Oticon Hall' },
+            coverImageId: 12,
+            eventUrl: 'https://example.com/events/event-1',
+            createdAt: '2026-05-01T00:00:00.000Z',
+            updatedAt: '2026-05-01T00:00:00.000Z',
+        }));
+
+        const event = await createEvent({
+            pageId: 'page-1',
+            title: 'Robotics Night',
+            description: 'Build robots',
+            startTime: '2026-06-01T10:30:00.000Z',
+            endTime: '2026-06-01T12:30:00.000Z',
+            place: { name: 'Oticon Hall' },
+        });
+
+        expect(event).toMatchObject({
+            id: 'event-1',
+            pageId: 'page-1',
+            title: 'Robotics Night',
+            coverImageUrl: expect.stringMatching(/\/media\/12$/),
+        });
+        const [url, options] = mockFetch.mock.calls[0] as [string, RequestInit];
+        expect(new URL(url).pathname).toBe('/api/events');
+        expect(options.method).toBe('POST');
+        expect(JSON.parse(options.body as string)).toEqual({
+            pageId: 'page-1',
+            title: 'Robotics Night',
+            description: 'Build robots',
+            startTime: '2026-06-01T10:30:00.000Z',
+            endTime: '2026-06-01T12:30:00.000Z',
+            place: { name: 'Oticon Hall' },
+        });
+    });
+
+    it('uploads an event cover image with the CSRF header', async () => {
+        const file = new File(['image-bytes'], 'cover.png', { type: 'image/png' });
+        setCsrfToken('csrf-token');
+        mockFetch.mockResolvedValueOnce(jsonResponse({
+            id: 'event-1',
+            pageId: 'page-1',
+            title: 'Robotics Night',
+            startTime: '2026-06-01T10:30:00.000Z',
+            coverImageId: 18,
+        }));
+
+        const event = await uploadEventCover('event-1', file);
+
+        expect(event.coverImageUrl).toEqual(expect.stringMatching(/\/media\/18$/));
+        const [url, options] = mockFetch.mock.calls[0] as [string, RequestInit];
+        expect(new URL(url).pathname).toBe('/api/events/event-1/coverImage');
+        expect(options.method).toBe('POST');
+        expect(options.credentials).toBe('include');
+        expect(options.body).toBeInstanceOf(FormData);
+        expect(options.headers).toBeInstanceOf(Headers);
+        expect((options.headers as Headers).get('X-CSRF-Token')).toBe('csrf-token');
+    });
+
+    it('throws a detailed error when uploading an event cover image fails', async () => {
+        const file = new File(['image-bytes'], 'cover.png', { type: 'image/png' });
+        mockFetch.mockResolvedValueOnce(jsonResponse({ message: 'file too large' }, 413, 'Payload Too Large'));
+
+        await expect(uploadEventCover('event-1', file))
+            .rejects.toThrow('Failed to upload event cover image: 413 Payload Too Large - file too large');
     });
 });

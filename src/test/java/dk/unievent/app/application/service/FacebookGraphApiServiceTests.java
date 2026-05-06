@@ -161,6 +161,29 @@ class FacebookGraphApiServiceTests {
     }
 
     @Test
+    void getPageEventsShouldFollowPagingNextUrls() {
+        server.expect(requestTo(containsString("/page-1/events")))
+                .andExpect(method(HttpMethod.GET))
+                .andExpect(header("Authorization", "Bearer pg-tok"))
+                .andRespond(withSuccess(
+                        "{\"data\":[{\"id\":\"e1\",\"name\":\"Event One\"}],\"paging\":{\"next\":\"http://localhost/v22.0/page-1/events?after=cursor\"}}",
+                        MediaType.APPLICATION_JSON));
+        server.expect(requestTo("http://localhost/v22.0/page-1/events?after=cursor"))
+                .andExpect(method(HttpMethod.GET))
+                .andExpect(header("Authorization", "Bearer pg-tok"))
+                .andRespond(withSuccess(
+                        "{\"data\":[{\"id\":\"e2\",\"name\":\"Event Two\"}]}",
+                        MediaType.APPLICATION_JSON));
+
+        var events = service.getPageEvents("page-1", "pg-tok");
+
+        assertEquals(2, events.size());
+        assertEquals("e1", events.get(0).getId());
+        assertEquals("e2", events.get(1).getId());
+        server.verify();
+    }
+
+    @Test
     void getPageEventsShouldReturnEmptyWhenDataEmpty() {
         server.expect(requestTo(containsString("/page-1/events")))
                 .andRespond(withSuccess("{\"data\":[]}", MediaType.APPLICATION_JSON));
@@ -233,6 +256,26 @@ class FacebookGraphApiServiceTests {
                 .andRespond(withStatus(HttpStatus.FORBIDDEN));
 
         assertFalse(service.validatePageToken("page-1", "invalid-tok"));
+    }
+
+    @Test
+    void validatePageTokenShouldReturnFalseWhenIdDoesNotMatch() {
+        server.expect(requestTo(containsString("/page-1")))
+                .andExpect(method(HttpMethod.GET))
+                .andExpect(header("Authorization", "Bearer valid-tok"))
+                .andRespond(withSuccess("{\"id\":\"different-page\"}", MediaType.APPLICATION_JSON));
+
+        assertFalse(service.validatePageToken("page-1", "valid-tok"));
+        server.verify();
+    }
+
+    @Test
+    void validatePageTokenShouldReturnFalseWhenResponseBodyIsEmpty() {
+        server.expect(requestTo(containsString("/page-1")))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withSuccess("", MediaType.APPLICATION_JSON));
+
+        assertFalse(service.validatePageToken("page-1", "valid-tok"));
     }
 
     @Test

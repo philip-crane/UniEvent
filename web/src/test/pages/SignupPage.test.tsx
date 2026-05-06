@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
@@ -39,6 +39,13 @@ function renderPage() {
     );
 }
 
+function fillSignupForm(confirmPassword = '123456789012') {
+    fireEvent.change(screen.getByLabelText('Username'), { target: { value: 'alice' } });
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'alice@example.com' } });
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: '123456789012' } });
+    fireEvent.change(screen.getByLabelText('Confirm Password'), { target: { value: confirmPassword } });
+}
+
 describe('SignupPage', () => {
     beforeEach(() => {
         mockNavigate.mockReset();
@@ -60,10 +67,7 @@ describe('SignupPage', () => {
         const user = userEvent.setup();
         renderPage();
 
-        await user.type(screen.getByLabelText('Username'), 'alice');
-        await user.type(screen.getByLabelText('Email'), 'alice@example.com');
-        await user.type(screen.getByLabelText('Password'), '123456789012');
-        await user.type(screen.getByLabelText('Confirm Password'), '210987654321');
+        fillSignupForm('210987654321');
         await user.click(screen.getByRole('button', { name: /Sign Up/i }));
 
         expect(screen.getByText('Passwords do not match.')).toBeInTheDocument();
@@ -75,10 +79,7 @@ describe('SignupPage', () => {
         mockSignupWithEmail.mockResolvedValueOnce({ uid: 'new-user' });
         renderPage();
 
-        await user.type(screen.getByLabelText('Username'), 'alice');
-        await user.type(screen.getByLabelText('Email'), 'alice@example.com');
-        await user.type(screen.getByLabelText('Password'), '123456789012');
-        await user.type(screen.getByLabelText('Confirm Password'), '123456789012');
+        fillSignupForm();
         await user.click(screen.getByRole('button', { name: /Sign Up/i }));
 
         expect(mockSignupWithEmail).toHaveBeenCalledWith({
@@ -98,10 +99,7 @@ describe('SignupPage', () => {
         mockMapAuthError.mockReturnValueOnce('This email is already in use.');
         renderPage();
 
-        await user.type(screen.getByLabelText('Username'), 'alice');
-        await user.type(screen.getByLabelText('Email'), 'alice@example.com');
-        await user.type(screen.getByLabelText('Password'), '123456789012');
-        await user.type(screen.getByLabelText('Confirm Password'), '123456789012');
+        fillSignupForm();
         await user.click(screen.getByRole('button', { name: /Sign Up/i }));
 
         expect(mockMapAuthError).toHaveBeenCalledWith(error);
