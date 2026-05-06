@@ -123,6 +123,8 @@ export function GenerateOrganizerKeyPage() {
                 <AdminHeader
                     title="Generate Organizer Key"
                     subtitle="Invite new organizers to join the platform"
+                    backTo="/admin"
+                    backLabel="Back to Dashboard"
                 />
                 <main className="flex-1 px-6 md:px-8 pb-12 max-w-3xl mx-auto w-full">
                     <div className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel-bg)] p-6 shadow-lg">
@@ -143,6 +145,8 @@ export function GenerateOrganizerKeyPage() {
             <AdminHeader
                 title="Generate Organizer Key"
                 subtitle="Invite new organizers to join the platform"
+                backTo="/admin"
+                backLabel="Back to Dashboard"
             />
 
             <main className="flex-1 px-6 md:px-8 pb-12 max-w-3xl mx-auto w-full">
