@@ -147,6 +147,54 @@ class TokenServiceTests {
     }
 
     @Test
+    void refreshAllShouldPageThroughAllPagesToRefresh() {
+        PageEntity firstPage = PageEntity.builder().id("p1").name("Expiring One").build();
+        PageEntity secondPage = PageEntity.builder().id("p2").name("Expiring Two").build();
+
+        FbLongLivedTokenResponse response = new FbLongLivedTokenResponse();
+        response.setAccessToken("new-token");
+
+        when(pageService.getPagesToRefresh(PageRequest.of(0, 50)))
+            .thenReturn(new PageImpl<>(List.of(firstPage), PageRequest.of(0, 50), 51));
+        when(pageService.getPagesToRefresh(PageRequest.of(1, 50)))
+            .thenReturn(new PageImpl<>(List.of(secondPage), PageRequest.of(1, 50), 51));
+        when(vaultService.getPageToken(any())).thenReturn(Optional.of("old-token"));
+        when(facebookGraphApiService.refreshPageToken("old-token")).thenReturn(response);
+
+        RefreshSummary summary = tokenRefreshService.refreshAll();
+
+        assertEquals(2, summary.getRefreshedCount());
+        assertEquals(0, summary.getFailedCount());
+        verify(pageService).getPagesToRefresh(PageRequest.of(0, 50));
+        verify(pageService).getPagesToRefresh(PageRequest.of(1, 50));
+        verify(pageService, never()).getPagesToRefresh(PageRequest.of(2, 50));
+    }
+
+    @Test
+    void refreshAllForceShouldPageThroughAllPages() {
+        PageEntity firstPage = PageEntity.builder().id("p1").name("Alpha").build();
+        PageEntity secondPage = PageEntity.builder().id("p2").name("Beta").build();
+
+        FbLongLivedTokenResponse response = new FbLongLivedTokenResponse();
+        response.setAccessToken("new-token");
+
+        when(pageService.getAllPageEntities(PageRequest.of(0, 50)))
+            .thenReturn(new PageImpl<>(List.of(firstPage), PageRequest.of(0, 50), 51));
+        when(pageService.getAllPageEntities(PageRequest.of(1, 50)))
+            .thenReturn(new PageImpl<>(List.of(secondPage), PageRequest.of(1, 50), 51));
+        when(vaultService.getPageToken(any())).thenReturn(Optional.of("old-token"));
+        when(facebookGraphApiService.refreshPageToken("old-token")).thenReturn(response);
+
+        RefreshSummary summary = tokenRefreshService.refreshAllForce();
+
+        assertEquals(2, summary.getRefreshedCount());
+        assertEquals(0, summary.getFailedCount());
+        verify(pageService).getAllPageEntities(PageRequest.of(0, 50));
+        verify(pageService).getAllPageEntities(PageRequest.of(1, 50));
+        verify(pageService, never()).getAllPageEntities(PageRequest.of(2, 50));
+    }
+
+    @Test
     void refreshAllShouldContinueWhenOnePageFails() {
         PageEntity failingPage = PageEntity.builder().id("p1").name("No Token").build();
         PageEntity successfulPage = PageEntity.builder().id("p2").name("Fresh Token").build();

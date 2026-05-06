@@ -84,6 +84,18 @@ describe('GenerateOrganizerKeyPage', () => {
         expect(mockGenerateOrganizerKey).not.toHaveBeenCalled();
     });
 
+    it('shows required validation when organizer email is cleared and blurred', async () => {
+        setAdminUser();
+        renderPage();
+
+        fireEvent.change(screen.getByLabelText('Organizer Email'), { target: { value: 'organizer@example.com' } });
+        fireEvent.change(screen.getByLabelText('Organizer Email'), { target: { value: '' } });
+        fireEvent.blur(screen.getByLabelText('Organizer Email'));
+
+        expect(await screen.findByText('Email is required.')).toBeInTheDocument();
+        expect(mockGenerateOrganizerKey).not.toHaveBeenCalled();
+    });
+
     it('generates an invitation for a trimmed email and shows sanitized success details', async () => {
         setAdminUser();
         mockGenerateOrganizerKey.mockResolvedValueOnce({
@@ -103,6 +115,52 @@ describe('GenerateOrganizerKeyPage', () => {
         expect(screen.getByRole('alert')).toHaveTextContent('&lt;strong&gt;Invitation sent&lt;/strong&gt;');
         expect(screen.getByText('Valid for: 24 hours')).toBeInTheDocument();
         expect(screen.getByLabelText('Organizer Email')).toHaveValue('');
+    });
+
+    it('clears success details when generating another invitation', async () => {
+        setAdminUser();
+        mockGenerateOrganizerKey.mockResolvedValueOnce({
+            message: 'Invitation sent',
+            expiresIn: 86400,
+        });
+        renderPage();
+
+        fireEvent.change(screen.getByLabelText('Organizer Email'), {
+            target: { value: 'organizer@example.com' },
+        });
+        fireEvent.click(screen.getByRole('button', { name: /Generate & Send Invitation/i }));
+
+        expect(await screen.findByText('Invitation sent')).toBeInTheDocument();
+        expect(screen.getByText('Valid for: 24 hours')).toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('button', { name: 'Generate Another' }));
+
+        expect(screen.queryByText('Invitation sent')).not.toBeInTheDocument();
+        expect(screen.queryByText('Valid for: 24 hours')).not.toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /Generate & Send Invitation/i })).toBeInTheDocument();
+    });
+
+    it('sanitizes mapped admin errors and redirects unauthenticated users after a delay', async () => {
+        vi.useFakeTimers();
+        setAdminUser();
+        const error = Object.assign(new Error('unauthenticated'), { status: 401 });
+        mockGenerateOrganizerKey.mockRejectedValueOnce(error);
+        mockMapAdminKeyError.mockReturnValueOnce('<b>Please sign in again.</b>');
+        renderPage();
+
+        fireEvent.change(screen.getByLabelText('Organizer Email'), {
+            target: { value: 'organizer@example.com' },
+        });
+        await act(async () => {
+            fireEvent.click(screen.getByRole('button', { name: /Generate & Send Invitation/i }));
+        });
+
+        expect(screen.getByRole('alert')).toHaveTextContent('&lt;b&gt;Please sign in again.&lt;/b&gt;');
+
+        act(() => {
+            vi.advanceTimersByTime(2000);
+        });
+        expect(mockNavigate).toHaveBeenCalledWith('/login', { replace: true });
     });
 
     it('sanitizes mapped admin errors and redirects unauthorized users after a delay', async () => {

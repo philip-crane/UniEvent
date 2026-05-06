@@ -109,10 +109,42 @@ describe('ProfilePage', () => {
         expect(screen.getByRole('button', { name: 'Connect Facebook Page' })).toBeInTheDocument();
     });
 
+    it('shows admin organizer key link for admin accounts', () => {
+        mockUseProfilePage.mockReturnValue(defaultHookReturn({ accountRole: 'admin' }));
+        renderPage();
+
+        expect(screen.getByRole('link', { name: 'Admin: Generate Organizer Key' }))
+            .toHaveAttribute('href', '/admin/generate-organizer-key');
+    });
+
     it('hides Facebook connect section for regular user', () => {
         renderPage();
 
         expect(screen.queryByRole('button', { name: 'Connect Facebook Page' })).not.toBeInTheDocument();
+    });
+
+    it('calls handleFacebookConnect when the connect button is clicked', async () => {
+        const user = userEvent.setup();
+        const handleFacebookConnect = vi.fn();
+        mockUseProfilePage.mockReturnValue(defaultHookReturn({
+            accountRole: 'organizer',
+            handleFacebookConnect,
+        }));
+        renderPage();
+
+        await user.click(screen.getByRole('button', { name: 'Connect Facebook Page' }));
+
+        expect(handleFacebookConnect).toHaveBeenCalled();
+    });
+
+    it('disables Facebook connect while connection is starting', () => {
+        mockUseProfilePage.mockReturnValue(defaultHookReturn({
+            accountRole: 'organizer',
+            fbConnecting: true,
+        }));
+        renderPage();
+
+        expect(screen.getByRole('button', { name: 'Connecting...' })).toBeDisabled();
     });
 
     it('shows empty saved events state when no events are liked', () => {
@@ -165,6 +197,13 @@ describe('ProfilePage', () => {
         await user.click(screen.getByRole('button', { name: /log out/i }));
 
         expect(handleSignOut).toHaveBeenCalled();
+    });
+
+    it('disables logout button while sign out is in progress', () => {
+        mockUseProfilePage.mockReturnValue(defaultHookReturn({ isSigningOut: true }));
+        renderPage();
+
+        expect(screen.getByRole('button', { name: /log out/i })).toBeDisabled();
     });
 
     it('shows connected organizer names when present', () => {

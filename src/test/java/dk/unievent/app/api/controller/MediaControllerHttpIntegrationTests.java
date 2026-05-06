@@ -13,6 +13,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -95,6 +96,47 @@ class MediaControllerHttpIntegrationTests {
         List<MediaEntity> all = mediaRepository.findAll();
         assertEquals(1, all.size());
         assertEquals("poster.png", all.get(0).getFilename());
+    }
+
+    @Test
+    void uploadListAndDownloadShouldRoundTripStoredBytes() throws Exception {
+        AuthSession session = getAuthSession();
+        String boundary = "----unievent-boundary";
+        byte[] pngMagic = {(byte)0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n'};
+        byte[] body = multipartBody(boundary, "file", "roundtrip.png", "image/png", pngMagic);
+
+        HttpRequest uploadRequest = HttpRequest.newBuilder()
+                .uri(URI.create(url("/media")))
+                .header("Content-Type", "multipart/form-data; boundary=" + boundary)
+                .header("Cookie", session.cookieHeader())
+                .header(CSRF_HEADER, session.csrfToken())
+                .POST(HttpRequest.BodyPublishers.ofByteArray(body))
+                .build();
+
+        HttpResponse<String> uploadResponse = httpClient.send(uploadRequest, HttpResponse.BodyHandlers.ofString());
+        Map<String, Object> uploadPayload = objectMapper.readValue(uploadResponse.body(), new TypeReference<Map<String, Object>>() {});
+        Long mediaId = ((Number) uploadPayload.get("id")).longValue();
+
+        assertEquals(200, uploadResponse.statusCode());
+        assertEquals("roundtrip.png", uploadPayload.get("filename"));
+
+        HttpResponse<String> listResponse = httpClient.send(
+                HttpRequest.newBuilder().uri(URI.create(url("/media"))).GET().build(),
+                HttpResponse.BodyHandlers.ofString());
+        Map<String, Object> page = objectMapper.readValue(listResponse.body(), new TypeReference<Map<String, Object>>() {});
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> items = (List<Map<String, Object>>) page.get("content");
+
+        assertEquals(200, listResponse.statusCode());
+        assertEquals("roundtrip.png", items.get(0).get("filename"));
+        assertEquals("1,test", items.get(0).get("fileId"));
+
+        HttpResponse<byte[]> downloadResponse = httpClient.send(
+                HttpRequest.newBuilder().uri(URI.create(url("/media/" + mediaId))).GET().build(),
+                HttpResponse.BodyHandlers.ofByteArray());
+
+        assertEquals(200, downloadResponse.statusCode());
+        assertArrayEquals(pngMagic, downloadResponse.body());
     }
 
     @Test
@@ -258,6 +300,7 @@ class MediaControllerHttpIntegrationTests {
     static class FakeSeaweedFsClient extends SeaweedFsClient {
         boolean failAssign;
         byte[] downloadPayload = "default".getBytes();
+        Map<String, byte[]> storedFiles = new HashMap<>();
 
         FakeSeaweedFsClient() {
             super(config(), new ObjectMapper());
@@ -272,6 +315,7 @@ class MediaControllerHttpIntegrationTests {
         void reset() {
             failAssign = false;
             downloadPayload = "default".getBytes();
+            storedFiles.clear();
         }
 
         @Override
@@ -284,12 +328,12 @@ class MediaControllerHttpIntegrationTests {
 
         @Override
         public void uploadFile(String publicUrl, String fid, String filename, byte[] bytes) {
-            // no-op for tests
+            storedFiles.put(fid, bytes);
         }
 
         @Override
         public byte[] downloadFile(String fileId) {
-            return downloadPayload;
+            return storedFiles.getOrDefault(fileId, downloadPayload);
         }
 
         @Override

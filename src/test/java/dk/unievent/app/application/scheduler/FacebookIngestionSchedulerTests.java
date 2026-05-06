@@ -46,6 +46,26 @@ class FacebookIngestionSchedulerTests {
     }
 
     @Test
+    void ingestFacebookEventsShouldPageThroughAllActivePages() {
+        PageDTO page1 = pageDto("p1", "Alpha");
+        PageDTO page2 = pageDto("p2", "Beta");
+        when(pageService.getActivePages(PageRequest.of(0, 1)))
+            .thenReturn(new PageImpl<>(List.of(page1), PageRequest.of(0, 1), 2));
+        when(pageService.getActivePages(PageRequest.of(1, 1)))
+            .thenReturn(new PageImpl<>(List.of(page2), PageRequest.of(1, 1), 2));
+
+        FacebookIngestionScheduler scheduler =
+            new FacebookIngestionScheduler(pageService, eventService, Optional.of(vaultService), 1);
+        scheduler.ingestFacebookEvents();
+
+        verify(eventService).ingestFacebookEvents("p1");
+        verify(eventService).ingestFacebookEvents("p2");
+        verify(pageService).getActivePages(PageRequest.of(0, 1));
+        verify(pageService).getActivePages(PageRequest.of(1, 1));
+        verify(pageService, never()).getActivePages(PageRequest.of(2, 1));
+    }
+
+    @Test
     void ingestFacebookEventsShouldMarkPageTokenInvalidOnOAuthException() {
         PageDTO page = pageDto("p1", "Alpha");
         when(pageService.getActivePages(any()))

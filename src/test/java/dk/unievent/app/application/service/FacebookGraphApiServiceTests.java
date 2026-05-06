@@ -133,6 +133,30 @@ class FacebookGraphApiServiceTests {
     }
 
     @Test
+    void getPagesFromUserShouldThrowWhenResponseIsMalformedJson() {
+        server.expect(requestTo(containsString("/me/accounts")))
+                .andRespond(withSuccess("{not-json", MediaType.APPLICATION_JSON));
+
+        FacebookApiException ex = assertThrows(FacebookApiException.class,
+                () -> service.getPagesFromUser("user-token"));
+
+        assertEquals("PAGES_FETCH_ERROR", ex.getErrorType());
+        assertEquals(0, ex.getStatusCode());
+    }
+
+    @Test
+    void getPagesFromUserShouldThrowWhenDataIsNotAnArray() {
+        server.expect(requestTo(containsString("/me/accounts")))
+                .andRespond(withSuccess("{\"data\":{\"id\":\"p1\"}}", MediaType.APPLICATION_JSON));
+
+        FacebookApiException ex = assertThrows(FacebookApiException.class,
+                () -> service.getPagesFromUser("user-token"));
+
+        assertEquals("PAGES_FETCH_ERROR", ex.getErrorType());
+        assertEquals(0, ex.getStatusCode());
+    }
+
+    @Test
     void getPagesFromUserShouldThrowOnHttpError() {
         server.expect(requestTo(containsString("/me/accounts")))
                 .andRespond(withStatus(HttpStatus.UNAUTHORIZED));
@@ -184,6 +208,27 @@ class FacebookGraphApiServiceTests {
     }
 
     @Test
+    void getPageEventsShouldThrowWhenPagedNextRequestIsRateLimited() {
+        server.expect(requestTo(containsString("/page-1/events")))
+                .andExpect(method(HttpMethod.GET))
+                .andExpect(header("Authorization", "Bearer pg-tok"))
+                .andRespond(withSuccess(
+                        "{\"data\":[{\"id\":\"e1\",\"name\":\"Event One\"}],\"paging\":{\"next\":\"http://localhost/v22.0/page-1/events?after=cursor\"}}",
+                        MediaType.APPLICATION_JSON));
+        server.expect(requestTo("http://localhost/v22.0/page-1/events?after=cursor"))
+                .andExpect(method(HttpMethod.GET))
+                .andExpect(header("Authorization", "Bearer pg-tok"))
+                .andRespond(withStatus(HttpStatus.TOO_MANY_REQUESTS));
+
+        FacebookApiException ex = assertThrows(FacebookApiException.class,
+                () -> service.getPageEvents("page-1", "pg-tok"));
+
+        assertEquals("EVENTS_FETCH_ERROR", ex.getErrorType());
+        assertEquals(429, ex.getStatusCode());
+        server.verify();
+    }
+
+    @Test
     void getPageEventsShouldReturnEmptyWhenDataEmpty() {
         server.expect(requestTo(containsString("/page-1/events")))
                 .andRespond(withSuccess("{\"data\":[]}", MediaType.APPLICATION_JSON));
@@ -229,6 +274,18 @@ class FacebookGraphApiServiceTests {
 
         assertEquals("TOKEN_REFRESH_ERROR", ex.getErrorType());
         assertEquals(401, ex.getStatusCode());
+    }
+
+    @Test
+    void refreshPageTokenShouldPreserveRateLimitStatus() {
+        server.expect(requestTo(containsString("/oauth/access_token")))
+                .andRespond(withStatus(HttpStatus.TOO_MANY_REQUESTS));
+
+        FacebookApiException ex = assertThrows(FacebookApiException.class,
+                () -> service.refreshPageToken("rate-limited-token"));
+
+        assertEquals("TOKEN_REFRESH_ERROR", ex.getErrorType());
+        assertEquals(429, ex.getStatusCode());
     }
 
     @Test

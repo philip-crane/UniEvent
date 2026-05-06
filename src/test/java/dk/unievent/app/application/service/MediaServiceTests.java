@@ -22,6 +22,8 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -67,6 +69,18 @@ class MediaServiceTests {
                 new byte[] {(byte) 0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n'});
 
         assertThrows(IllegalArgumentException.class, () -> mediaService.store(file));
+    }
+
+    @Test
+    void storeShouldRejectUnsupportedContentBeforeAssigningStorage() throws IOException {
+        MockMultipartFile file = new MockMultipartFile("file", "notes.txt", "text/plain",
+                "not an image".getBytes());
+
+        IllegalArgumentException exception =
+                assertThrows(IllegalArgumentException.class, () -> mediaService.store(file));
+
+        assertTrue(exception.getMessage().contains("Unsupported file type"));
+        verify(seaweedClient, never()).assignFile();
     }
 
     @Test
@@ -133,5 +147,54 @@ class MediaServiceTests {
 
         assertNotNull(loadResult);
         assertEquals("test-file-123", loadResult.getFileName().toString());
+    }
+
+    @Test
+    void loadAsResourceShouldReturnDownloadedBytes() throws IOException {
+        byte[] imageBytes = new byte[] {1, 2, 3};
+        when(seaweedClient.downloadFile("1,file")).thenReturn(imageBytes);
+
+        var resource = mediaService.loadAsResource("1,file");
+
+        assertArrayEquals(imageBytes, resource.getInputStream().readAllBytes());
+    }
+
+    @Test
+    void loadAsResourceShouldRejectBlankFileId() throws IOException {
+        IOException exception = assertThrows(IOException.class, () -> mediaService.loadAsResource(""));
+
+        assertEquals("Invalid file ID", exception.getMessage());
+        verify(seaweedClient, never()).downloadFile(any());
+    }
+
+    @Test
+    void deleteShouldIgnoreStorageFailures() throws IOException {
+        doThrow(new IOException("already deleted")).when(seaweedClient).deleteFile("1,missing");
+
+        assertDoesNotThrow(() -> mediaService.delete("1,missing"));
+
+        verify(seaweedClient).deleteFile("1,missing");
+    }
+
+    @Test
+    void downloadAndStoreImageShouldRejectNonHttpsUrlsBeforeStorage() throws IOException {
+        mediaService.buildAllowlist();
+
+        IOException exception = assertThrows(IOException.class,
+                () -> mediaService.downloadAndStoreImage("http://facebook.com/image.jpg", "image.jpg"));
+
+        assertTrue(exception.getMessage().contains("Only HTTPS image URLs are permitted"));
+        verify(seaweedClient, never()).assignFile();
+    }
+
+    @Test
+    void downloadAndStoreImageShouldRejectHostsOutsideAllowlistBeforeStorage() throws IOException {
+        mediaService.buildAllowlist();
+
+        IOException exception = assertThrows(IOException.class,
+                () -> mediaService.downloadAndStoreImage("https://example.com/image.jpg", "image.jpg"));
+
+        assertEquals("Image URL host not in allowlist: example.com", exception.getMessage());
+        verify(seaweedClient, never()).assignFile();
     }
 }
