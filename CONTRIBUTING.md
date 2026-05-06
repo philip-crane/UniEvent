@@ -183,7 +183,7 @@ Data Layer:
 Infrastructure Layer:
 - **`/config/`** - Spring config beans
 - **`/exception/`** - one `RuntimeException` subclass per failure case
-- **`tools/`** - `@Profile("dev")` admin endpoints only; never ships to production
+- **`/tools/`** - `@Profile("dev")` admin endpoints only; never ships to production
 
 ---
 
@@ -198,167 +198,50 @@ Infrastructure Layer:
 - **`types.ts`** - all TS types (remember - TS types don't exist when the program is running, unlike in Java/C#)
 - **`constants.ts`** - all magic values: timeouts, thresholds, API paths, feature flags
 
-## API Endpoints
-
-**Public (no auth):**
-| Method | Path | Purpose |
-|--------|------|---------|
-| `GET` | `/api/events` | List all events (paginated) |
-| `GET` | `/api/events/future` | Upcoming events only |
-| `GET` | `/api/events/{id}` | Single event |
-| `GET` | `/api/events/page/{pageId}` | Events for a page |
-| `GET` | `/api/events/page/{pageId}/future` | Upcoming events for a page |
-| `GET` | `/api/events/place/{placeId}` | Events at a venue |
-| `GET` | `/api/pages` | List all pages |
-| `GET` | `/api/pages/active` | Active pages only |
-| `GET` | `/api/pages/{id}` | Single page |
-| `GET` | `/api/pages/search` | Search pages by name |
-| `GET` | `/api/places/{id}` | Single place |
-| `GET` | `/api/places/city/{city}` | Places in a city |
-| `GET` | `/api/places/country/{country}` | Places in a country |
-| `GET` | `/api/places/location/{city}/{country}` | Places in a city + country |
-| `GET` | `/api/places/search` | Search places by name |
-| `GET` | `/api/facebook/auth` | Start Facebook OAuth - returns signed state + auth URL |
-| `GET` | `/api/facebook/callback` | Facebook OAuth callback - validates state, exchanges code for tokens |
-| `GET` | `/api/facebook/health` | Facebook integration health check |
-| `GET` | `/media/{id}` | Download media file |
-| `GET` | `/media` | List all media files (paginated) |
-| `POST` | `/api/auth/register` | Register user |
-| `POST` | `/api/auth/login` | Login |
-| `POST` | `/api/auth/refresh` | Refresh access token |
-| `POST` | `/api/auth/organizer-key/verify` | Verify organizer invite key |
-| `POST` | `/api/auth/register-with-key` | Register as organizer |
-
-**Authenticated:**
-| Method | Path | Purpose |
-|--------|------|---------|
-| `POST` | `/api/events` | Create event |
-| `PUT` | `/api/events/{id}` | Update event |
-| `DELETE` | `/api/events/{id}` | Delete event |
-| `POST` | `/api/events/{id}/coverImage` | Upload cover image |
-| `POST` | `/api/pages` | Create page |
-| `PUT` | `/api/pages/{id}` | Update page |
-| `POST` | `/api/pages/{id}/picture` | Upload page picture |
-| `DELETE` | `/api/pages/{id}` | Delete page (cascades to events) |
-| `POST` | `/api/places` | Create place |
-| `PUT` | `/api/places/{id}` | Update place |
-| `DELETE` | `/api/places/{id}` | Delete place |
-| `POST` | `/media` | Upload media file |
-| `POST` | `/api/auth/logout` | Logout |
-
-**Admin only:**
-| Method | Path | Purpose |
-|--------|------|---------|
-| `POST` | `/api/auth/organizer-key/generate` | Generate organizer invite |
-
-**Dev profile only (`@Profile("dev")`) - not available in production:**
-| Method | Path | Purpose |
-|--------|------|---------|
-| `POST` | `/admin/tools/ingest/{pageId}` | Manually ingest Facebook events for a page |
-| `GET` | `/admin/tools/pages` | List all tracked pages with token status |
-| `POST` | `/admin/tools/seed` | Seed test data |
-| `DELETE` | `/admin/tools/seed` | Clear seeded test data |
-| `POST` | `/admin/tools/refresh-tokens` | Refresh tokens for all pages |
-| `POST` | `/admin/tools/refresh-tokens/{pageId}` | Refresh token for one page |
-
-## TODO
-
-Backend
-
-**Feature & Refactor:**
-- [x] JWT auth - signed token, expiry, validation filter
-- [x] Pin Docker image versions
-- [in progress] Auto Facebook token refresh
-- [ ] Actually fix likes rather than just living in localstorage
-- [ ] Clean out controllers to just handle endpoints, put the rest into services
-- [ ] Persist likes to backend (`/api/users/me/likes`) - currently localStorage only
-- [ ] Migrate schema to Flyway - `ddl-auto` is now `validate`; any schema change needs a Flyway migration file before deploy
-- [ ] Add manual ADMIN endpoint for Facebook token refresh and page ingestion (non-dev profile)
-- [ ] PicoCLI for proper tool CLI
-- [ ] DB: Quartz scheduler
-
-**Security**
-- [ ] Remove insecure JDBC SSL overrides from `db.yaml`; require `serverSslVerification=true` in production
-- [ ] Make Vault CA validation mandatory in `vault.yaml`; fail startup if CA cert missing
-- [ ] Replace localhost Facebook redirect default in `application.yaml`; require explicit production setting
-- [ ] Make CORS validation strict in production; convert warning to startup failure for localhost origins with credentials
-- [ ] Force SeaweedFS URLs to HTTPS in `media.yaml`; update `SeaweedFsClient.java` to preserve configured scheme
-- [ ] Stop sending organizer confirmation keys in email URLs; use safer delivery path in `EmailService.java`
-- [ ] Make email send failures visible in `EmailService.java`; propagate or alert on delivery failures
-- [ ] Reduce `SecretController` exposure; disable or restrict metadata endpoints in production
-- [ ] Reduce refresh token compromise window in `RefreshTokenService.java`; add immediate access-token revocation
-- [ ] Enforce minimum 256-bit entropy for `organizer-key.confirmation-secret` in `ProductionSecretValidator`
-- [ ] Add production-profile integration tests for insecure defaults (DB without SSL, Vault without CA, etc.)
-- [ ] Harden CLI secret redaction; avoid printing raw JSON responses in CI logs
-
-Frontend
-
-**Feature & Refactor:**
-- [in progress] Facebook Page Organizer onboarding flow
-- [in progress] Mobile layout improvements
-- [ ] Facebook OAuth login
-- [ ] Organizer dashboard (event sync status, token expiry)
-- [ ] Create Event page
-- [ ] Business Manager integration for stable API access
-- [ ] Admin Dashboard/Tool for using ADMIN endpoints
-- [ ] Zod + React Hook Form
-
-**Security**
-- [ ] Validate image/media URLs for unsafe schemes; reject `javascript:` and `data:`, allow only `https:` and relative paths
-- [ ] Enforce HTTPS backend in production; call `enforceHttpsBackend(BACKEND_URL)` at app bootstrap
-- [ ] Replace brittle cookie parsing in `csrf.ts` and tests; use robust parser (e.g., `HttpCookie.parse`)
-- [ ] Centralize cookie lifecycle; ensure logout operations use same domain/path/sameSite as creation
-- [ ] Audit all error message display paths; ensure backend `message` fields use `sanitizeErrorMessage` before DOM insertion
-- [ ] Fix Content-Type auto-injection for file uploads; ensure callers set `headers: {}` or use `FormData`
-- [ ] Filter Vite `envDir` to avoid `.env` exposure; document allowed `VITE_*` variables
-- [ ] Tighten CSP in nginx config; remove `unsafe-inline` from `style-src`, remove `data:` from `img-src`, limit `connect-src` to API origin
-- [ ] Add production-profile integration tests for secure cookie attributes and HTTPS backend
-- [ ] Harden `Set-Cookie` parsing in tests; use robust cookie parser instead of substring extraction
-
-
 
 ## Diagrams 
-mermaid
+
+### Infrastructure
+
+```mermaid
 flowchart LR
     Student((Student))
     Organizer((Organizer))
     Admin((Admin))
-    Web[Web Frontend]
-    API[Backend API]
-    FB[Facebook Graph API]
-    Vault[Vault]
-    DB[(MySQL)]
-    Media[(SeaweedFS)]
-    Email[Email/SMTP]
+    CLI[CLI Tools]
+    FB[Facebook\nGraph API]
+    Email[Email / SMTP]
+
+    subgraph Docker Compose
+        Nginx[Nginx\nReverse Proxy]
+        Certbot[Certbot\nSSL]
+        Web[React/Vite\nFrontend]
+        Spring[Spring Boot\nAPI]
+        DB[(MySQL)]
+        Vault[HashiCorp\nVault]
+        SeaweedM[SeaweedFS\nMaster]
+        SeaweedV[(SeaweedFS\nVolume)]
+    end
 
     Student --> Web
     Organizer --> Web
     Admin --> Web
-    Web --> API
-    API --> DB
-    API --> Vault
-    API --> FB
-    API --> Media
-    API --> Email
+	Admin --> CLI
+    Web --> Nginx
+    Nginx --> Spring
+    Certbot -.->|renew certs| Nginx
+    CLI --> Spring
+    Spring --> DB
+    Spring --> Vault
+    Spring --> FB
+    Spring --> SeaweedM
+    Spring --> Email
+    SeaweedM --> SeaweedV
+```
 
-mermaid
-flowchart LR
-    Web[React/Vite Web App]
-    API[Spring Boot API]
-    CLI[CLI Tools]
-    DB[(MySQL)]
-    Vault[Vault]
-    FB[Facebook Graph API]
-    Media[(SeaweedFS)]
+### Database Schema
 
-    Web --> API
-    CLI --> API
-    API --> DB
-    API --> Vault
-    API --> FB
-    API --> Media
-
-mermaid
+```mermaid
 erDiagram
     USERS {
       bigint id PK
@@ -419,8 +302,11 @@ erDiagram
     PLACES ||--o{ EVENTS : hosts
     MEDIA_FILES ||--|| EVENTS : cover_image
     MEDIA_FILES ||--|| PAGES : picture
+```
 
-mermaid
+### Token Refresh Flow
+
+```mermaid
 sequenceDiagram
     autonumber
     participant Scheduler as FacebookTokenRefresher
@@ -436,8 +322,11 @@ sequenceDiagram
         Service->>Vault: updatePageToken(pageId, newToken)
         Service->>DB: updateTokenMetadata(pageId)
     end
+```
 
-mermaid
+### Facebook Event Ingestion
+
+```mermaid
 sequenceDiagram
     autonumber
     participant Scheduler as FacebookIngestionScheduler
@@ -454,8 +343,11 @@ sequenceDiagram
         EventSvc->>Media: downloadAndStoreImage(...)
         EventSvc->>DB: save EventEntity
     end
+```
 
-mermaid
+### Organizer Key Registration
+
+```mermaid
 sequenceDiagram
     autonumber
     actor User
@@ -488,3 +380,128 @@ sequenceDiagram
         Auth->>Tokens: issueTokenPair
         Auth-->>Web: new auth cookies
     end
+```
+
+## API Endpoints
+
+**Public (no auth):**
+| Method | Path | Purpose |
+|--------|------|---------|
+| `GET` | `/api/events` | List all events (paginated) |
+| `GET` | `/api/events/future` | Upcoming events only |
+| `GET` | `/api/events/{id}` | Single event |
+| `GET` | `/api/events/page/{pageId}` | Events for a page |
+| `GET` | `/api/events/page/{pageId}/future` | Upcoming events for a page |
+| `GET` | `/api/events/place/{placeId}` | Events at a venue |
+| `GET` | `/api/pages` | List all pages |
+| `GET` | `/api/pages/active` | Active pages only |
+| `GET` | `/api/pages/{id}` | Single page |
+| `GET` | `/api/pages/search` | Search pages by name |
+| `GET` | `/api/places/{id}` | Single place |
+| `GET` | `/api/places/city/{city}` | Places in a city |
+| `GET` | `/api/places/country/{country}` | Places in a country |
+| `GET` | `/api/places/location/{city}/{country}` | Places in a city + country |
+| `GET` | `/api/places/search` | Search places by name |
+| `GET` | `/api/facebook/auth` | Start Facebook OAuth - returns signed state + auth URL |
+| `GET` | `/api/facebook/callback` | Facebook OAuth callback - validates state, exchanges code for tokens |
+| `GET` | `/api/facebook/health` | Facebook integration health check |
+| `GET` | `/media/{id}` | Download media file |
+| `GET` | `/media` | List all media files (paginated) |
+| `GET` | `/api/auth/csrf-token` | Get CSRF token (call before login or register) |
+| `POST` | `/api/auth/register` | Register user |
+| `POST` | `/api/auth/login` | Login |
+| `POST` | `/api/auth/refresh` | Refresh access token |
+| `POST` | `/api/auth/organizer-key/verify` | Verify organizer invite key |
+| `POST` | `/api/auth/register-with-key` | Register as organizer |
+
+**Authenticated:**
+| Method | Path | Purpose |
+|--------|------|---------|
+| `GET` | `/api/auth/profile` | Get current user profile and role |
+| `POST` | `/api/auth/logout` | Logout |
+| `POST` | `/api/auth/organizer-key/upgrade` | Upgrade existing account to organizer role |
+| `POST` | `/api/events` | Create event |
+| `PUT` | `/api/events/{id}` | Update event |
+| `DELETE` | `/api/events/{id}` | Delete event |
+| `POST` | `/api/events/{id}/coverImage` | Upload cover image |
+| `POST` | `/api/pages` | Create page |
+| `PUT` | `/api/pages/{id}` | Update page |
+| `POST` | `/api/pages/{id}/picture` | Upload page picture |
+| `DELETE` | `/api/pages/{id}` | Delete page (cascades to events) |
+| `POST` | `/api/places` | Create place |
+| `PUT` | `/api/places/{id}` | Update place |
+| `DELETE` | `/api/places/{id}` | Delete place |
+| `POST` | `/media` | Upload media file |
+| `GET` | `/api/users/me/likes` | Get liked event IDs |
+| `POST` | `/api/users/me/likes` | Merge liked event IDs (sync from localStorage) |
+| `PUT` | `/api/users/me/likes/{eventId}` | Like an event |
+| `DELETE` | `/api/users/me/likes/{eventId}` | Unlike an event |
+
+**Admin only:**
+| Method | Path | Purpose |
+|--------|------|---------|
+| `POST` | `/api/auth/organizer-key/generate` | Generate organizer invite |
+| `GET` | `/api/admin/secrets` | List all secrets |
+| `GET` | `/api/admin/secrets/{id}` | Get secret by ID |
+| `GET` | `/api/admin/secrets/by-name/{name}` | Get secret by name |
+| `GET` | `/api/admin/secrets/by-type/{type}` | Get secrets by type |
+| `GET` | `/api/admin/secrets/by-status/{status}` | Get secrets by status |
+| `DELETE` | `/api/admin/secrets/{id}` | Delete secret |
+
+**Dev profile only (`@Profile("dev")`) - not available in production:**
+| Method | Path | Purpose |
+|--------|------|---------|
+| `POST` | `/admin/tools/ingest/{pageId}` | Manually ingest Facebook events for a page |
+| `GET` | `/admin/tools/pages` | List all tracked pages with token status |
+| `POST` | `/admin/tools/seed` | Seed test data |
+| `DELETE` | `/admin/tools/seed` | Clear seeded test data |
+| `POST` | `/admin/tools/refresh-tokens` | Refresh tokens for all pages |
+| `POST` | `/admin/tools/refresh-tokens/{pageId}` | Refresh token for one page |
+
+## TODO
+
+Backend
+
+**Feature & Refactor:**
+- [ ] Clean out controllers to just handle endpoints, put the rest into services
+- [ ] Migrate schema to Flyway - `ddl-auto` is now `validate`; any schema change needs a Flyway migration file before deploy
+- [ ] PicoCLI for proper tool CLI
+- [ ] DB: Quartz scheduler
+
+**Security**
+- [ ] Remove insecure JDBC SSL overrides from `db.yaml`; require `serverSslVerification=true` in production
+- [ ] Make Vault CA validation mandatory in `vault.yaml`; fail startup if CA cert missing
+- [ ] Replace localhost Facebook redirect default in `application.yaml`; require explicit production setting
+- [ ] Make CORS validation strict in production; convert warning to startup failure for localhost origins with credentials
+- [ ] Force SeaweedFS URLs to HTTPS in `media.yaml`; update `SeaweedFsClient.java` to preserve configured scheme
+- [ ] Stop sending organizer confirmation keys in email URLs; use safer delivery path in `EmailService.java`
+- [ ] Make email send failures visible in `EmailService.java`; propagate or alert on delivery failures
+- [ ] Reduce `SecretController` exposure; disable or restrict metadata endpoints in production
+- [ ] Reduce refresh token compromise window in `RefreshTokenService.java`; add immediate access-token revocation
+- [ ] Enforce minimum 256-bit entropy for `organizer-key.confirmation-secret` in `ProductionSecretValidator`
+- [ ] Add production-profile integration tests for insecure defaults (DB without SSL, Vault without CA, etc.)
+- [ ] Harden CLI secret redaction; avoid printing raw JSON responses in CI logs
+
+Frontend
+
+**Feature & Refactor:**
+- [ ] Facebook Page Organizer onboarding flow
+- [ ] Mobile layout improvements
+- [ ] Facebook OAuth login
+- [ ] Organizer dashboard (event sync status, token expiry)
+- [ ] Create Event page
+- [ ] Business Manager integration for stable API access
+- [ ] Admin Dashboard/Tool for using ADMIN endpoints
+- [ ] Zod + React Hook Form
+
+**Security**
+- [ ] Validate image/media URLs for unsafe schemes; reject `javascript:` and `data:`, allow only `https:` and relative paths
+- [ ] Enforce HTTPS backend in production; call `enforceHttpsBackend(BACKEND_URL)` at app bootstrap
+- [ ] Replace brittle cookie parsing in `csrf.ts` and tests; use robust parser (e.g., `HttpCookie.parse`)
+- [ ] Centralize cookie lifecycle; ensure logout operations use same domain/path/sameSite as creation
+- [ ] Audit all error message display paths; ensure backend `message` fields use `sanitizeErrorMessage` before DOM insertion
+- [ ] Fix Content-Type auto-injection for file uploads; ensure callers set `headers: {}` or use `FormData`
+- [ ] Filter Vite `envDir` to avoid `.env` exposure; document allowed `VITE_*` variables
+- [ ] Tighten CSP in nginx config; remove `unsafe-inline` from `style-src`, remove `data:` from `img-src`, limit `connect-src` to API origin
+- [ ] Add production-profile integration tests for secure cookie attributes and HTTPS backend
+- [ ] Harden `Set-Cookie` parsing in tests; use robust cookie parser instead of substring extraction
