@@ -314,3 +314,177 @@ Frontend
 - [ ] Tighten CSP in nginx config; remove `unsafe-inline` from `style-src`, remove `data:` from `img-src`, limit `connect-src` to API origin
 - [ ] Add production-profile integration tests for secure cookie attributes and HTTPS backend
 - [ ] Harden `Set-Cookie` parsing in tests; use robust cookie parser instead of substring extraction
+
+
+
+## Diagrams 
+mermaid
+flowchart LR
+    Student((Student))
+    Organizer((Organizer))
+    Admin((Admin))
+    Web[Web Frontend]
+    API[Backend API]
+    FB[Facebook Graph API]
+    Vault[Vault]
+    DB[(MySQL)]
+    Media[(SeaweedFS)]
+    Email[Email/SMTP]
+
+    Student --> Web
+    Organizer --> Web
+    Admin --> Web
+    Web --> API
+    API --> DB
+    API --> Vault
+    API --> FB
+    API --> Media
+    API --> Email
+
+mermaid
+flowchart LR
+    Web[React/Vite Web App]
+    API[Spring Boot API]
+    CLI[CLI Tools]
+    DB[(MySQL)]
+    Vault[Vault]
+    FB[Facebook Graph API]
+    Media[(SeaweedFS)]
+
+    Web --> API
+    CLI --> API
+    API --> DB
+    API --> Vault
+    API --> FB
+    API --> Media
+
+mermaid
+erDiagram
+    USERS {
+      bigint id PK
+      string email
+      string role
+    }
+    ORGANIZER_KEYS {
+      bigint id PK
+      string keyValue
+      string email
+      datetime expiresAt
+      datetime usedAt
+    }
+    PAGES {
+      string id PK
+      string name
+      datetime tokenExpiresAt
+    }
+    EVENTS {
+      string id PK
+      string title
+      datetime startTime
+      datetime endTime
+    }
+    PLACES {
+      string id PK
+      string name
+      string city
+      string country
+    }
+    MEDIA_FILES {
+      bigint id PK
+      string fileId
+      string contentType
+    }
+    USER_EVENT_LIKES {
+      bigint userId FK
+      string eventId FK
+      datetime createdAt
+    }
+    REFRESH_TOKENS {
+      bigint id PK
+      string tokenId
+      string familyId
+      datetime expiresAt
+    }
+    SECRETS {
+      bigint id PK
+      string name
+      string secretType
+      string vaultPath
+    }
+
+    USERS ||--o{ REFRESH_TOKENS : has
+    USERS ||--o{ USER_EVENT_LIKES : likes
+    EVENTS ||--o{ USER_EVENT_LIKES : liked_by
+    PAGES ||--o{ EVENTS : publishes
+    PLACES ||--o{ EVENTS : hosts
+    MEDIA_FILES ||--|| EVENTS : cover_image
+    MEDIA_FILES ||--|| PAGES : picture
+
+mermaid
+sequenceDiagram
+    autonumber
+    participant Scheduler as FacebookTokenRefresher
+    participant Service as TokenRefreshService
+    participant Vault as VaultService
+    participant FB as FacebookGraphApiService
+    participant DB as PageService
+
+    Scheduler->>Service: refreshAll()
+    loop each page
+        Service->>Vault: getPageToken(pageId)
+        Service->>FB: refreshPageToken(token)
+        Service->>Vault: updatePageToken(pageId, newToken)
+        Service->>DB: updateTokenMetadata(pageId)
+    end
+
+mermaid
+sequenceDiagram
+    autonumber
+    participant Scheduler as FacebookIngestionScheduler
+    participant EventSvc as EventService
+    participant Vault as VaultService
+    participant FB as FacebookGraphApiService
+    participant Media as MediaService/SeaweedFS
+    participant DB as EventRepository
+
+    Scheduler->>EventSvc: ingestFacebookEvents(pageId)
+    EventSvc->>Vault: getPageToken(pageId)
+    EventSvc->>FB: getPageEvents(pageId, token)
+    loop each event
+        EventSvc->>Media: downloadAndStoreImage(...)
+        EventSvc->>DB: save EventEntity
+    end
+
+mermaid
+sequenceDiagram
+    autonumber
+    actor User
+    participant Web as Web UI
+    participant Auth as AuthController
+    participant KeySvc as OrganizerKeyService
+    participant Keys as OrganizerKeyRepository
+    participant Users as UserRepository
+    participant Tokens as RefreshTokenService
+
+    User->>Web: Enter organizer key
+    Web->>Auth: POST /api/auth/organizer-key/verify
+    Auth->>KeySvc: verifyOrganizerKey
+    KeySvc->>Keys: findByKeyValue
+    KeySvc-->>Auth: confirmationToken
+    Auth-->>Web: confirmationToken + email
+
+    alt existing user
+        User->>Web: Upgrade account
+        Web->>Auth: POST /api/auth/organizer-key/upgrade
+        Auth->>KeySvc: upgradeToOrganizer
+        KeySvc->>Users: update role
+        Auth->>Tokens: issueTokenPair
+        Auth-->>Web: new auth cookies
+    else new user
+        User->>Web: Register with key
+        Web->>Auth: POST /api/auth/register-with-key
+        Auth->>KeySvc: completeOrganizerRegistration
+        KeySvc->>Users: create user
+        Auth->>Tokens: issueTokenPair
+        Auth-->>Web: new auth cookies
+    end
