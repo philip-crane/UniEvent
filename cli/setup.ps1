@@ -6,6 +6,7 @@ function Invoke-Setup {
     param([switch]$VerboseOutput, [switch]$Yes, [switch]$Rebuild)
 
     $repoRoot = Get-RepoRoot
+    $envVars = Load-DotEnv
 
     Write-Host ""
     Write-Host "  UniEvent Local Dev Setup" -ForegroundColor Cyan
@@ -320,23 +321,11 @@ subjectAltName = DNS:vault,DNS:localhost,IP:127.0.0.1
     Write-Step "Checking Java truststore..."
     $truststorePath = Join-Path $certsDir "truststore.jks"
 
-    # Prefer environment variable for non-interactive / production runs.
-    $truststorePassword = [Environment]::GetEnvironmentVariable("TRUSTSTORE_PASSWORD")
+    $truststorePassword = if ($envVars.ContainsKey("TRUSTSTORE_PASSWORD")) { $envVars["TRUSTSTORE_PASSWORD"] } else { "" }
     if (-not $truststorePassword) {
-        Write-Info "TRUSTSTORE_PASSWORD not set in environment. Prompting interactively."
-        Write-Info "Enter Java truststore password (input is hidden)."
-        $secureInput = Read-Host "Truststore password" -AsSecureString
-        if ($secureInput -and $secureInput.Length -gt 0) {
-            $bstr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secureInput)
-            try { $truststorePassword = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr) } finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr) }
-            # Only export to the environment if we prompted (do not overwrite an existing env var)
-            $env:TRUSTSTORE_PASSWORD = $truststorePassword
-        } else {
-            Write-Err "Truststore password is required. Aborting."
-            exit 1
-        }
-    } else {
-        Write-Info "Using TRUSTSTORE_PASSWORD from environment."
+        Write-Err "TRUSTSTORE_PASSWORD is not set in .env"
+        Write-Warn "Set TRUSTSTORE_PASSWORD in your .env - the server and Docker Compose read it from there."
+        exit 1
     }
 
     if (Test-Path $truststorePath) {
