@@ -116,7 +116,6 @@
         }
 
         .step {
-            display: flex;
             margin-bottom: 20px;
             padding: 15px;
             background-color: #f9f9f9;
@@ -124,22 +123,23 @@
         }
 
         .step-number {
-            flex-shrink: 0;
             width: 35px;
             height: 35px;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            display: inline-block;
+            line-height: 35px;
+            text-align: center;
             font-weight: bold;
             margin-right: 15px;
-            flex-basis: 35px;
+            vertical-align: top;
         }
 
         .step-content {
-            flex: 1;
+            display: inline-block;
+            vertical-align: top;
+            width: calc(100% - 60px);
         }
 
         .step-content p {
