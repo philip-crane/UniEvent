@@ -5,6 +5,9 @@ import { EventPage } from './pages/EventPage';
 import { LoginPage } from './pages/LoginPage';
 import { SignupPage } from './pages/SignupPage';
 import { ProfilePage } from './pages/ProfilePage.tsx';
+import { ChunkErrorFallback } from './components/ChunkErrorFallback.tsx';
+import { ChunkLoadingFallback } from './components/ChunkLoadingFallback.tsx';
+import { ChunkFallbackPreviewPage } from './pages/ChunkFallbackPreviewPage.tsx';
 
 // Legal and organizer pages are rarely visited - lazy-load them so they
 // don't bloat the initial bundle that every visitor pays to parse.
@@ -30,10 +33,10 @@ const BecomeOrganizerOnboardingPage = lazy(() =>
   import('./pages/BecomeOrganizerOnboardingPage.tsx').then(m => ({ default: m.BecomeOrganizerOnboardingPage }))
 );
 const GenerateOrganizerKeyPage = lazy(() =>
-  import('./pages/admin/GenerateOrganizerKeyPage.tsx').then(m => ({ default: m.GenerateOrganizerKeyPage }))
+  import('./pages/GenerateOrganizerKeyPage.tsx').then(m => ({ default: m.GenerateOrganizerKeyPage }))
 );
 const AdminToolsDashboardPage = lazy(() =>
-  import('./pages/admin/AdminToolsDashboardPage.tsx').then(m => ({ default: m.AdminToolsDashboardPage }))
+  import('./pages/AdminToolsDashboardPage.tsx').then(m => ({ default: m.AdminToolsDashboardPage }))
 );
 
 export const router = createBrowserRouter([
@@ -47,15 +50,18 @@ export const router = createBrowserRouter([
   },
   {
     path: '/terms',
-    element: <Suspense fallback={null}><TermsAndConditionsPage /></Suspense>,
+    element: <Suspense fallback={<ChunkLoadingFallback />}><TermsAndConditionsPage /></Suspense>,
+    errorElement: <ChunkErrorFallback />,
   },
   {
     path: '/privacy',
-    element: <Suspense fallback={null}><PrivacyPolicyPage /></Suspense>,
+    element: <Suspense fallback={<ChunkLoadingFallback />}><PrivacyPolicyPage /></Suspense>,
+    errorElement: <ChunkErrorFallback />,
   },
   {
     path: '/data-deletion',
-    element: <Suspense fallback={null}><DataDeletionPage /></Suspense>,
+    element: <Suspense fallback={<ChunkLoadingFallback />}><DataDeletionPage /></Suspense>,
+    errorElement: <ChunkErrorFallback />,
   },
   {
     path: '/login',
@@ -67,30 +73,40 @@ export const router = createBrowserRouter([
   },
   {
     path: '/signup-organizer-landing',
-    element: <Suspense fallback={null}><OrganizerSignupLandingPage /></Suspense>,
+    element: <Suspense fallback={<ChunkLoadingFallback />}><OrganizerSignupLandingPage /></Suspense>,
+    errorElement: <ChunkErrorFallback />,
   },
   {
     path: '/signup-organizer',
-    element: <Suspense fallback={null}><OrganizerSignupPage /></Suspense>,
+    element: <Suspense fallback={<ChunkLoadingFallback />}><OrganizerSignupPage /></Suspense>,
+    errorElement: <ChunkErrorFallback />,
   },
   {
     path: '/organizer/onboarding',
-    element: <Suspense fallback={null}><BecomeOrganizerOnboardingPage /></Suspense>,
+    element: <Suspense fallback={<ChunkLoadingFallback />}><BecomeOrganizerOnboardingPage /></Suspense>,
+    errorElement: <ChunkErrorFallback />,
   },
   {
     path: '/admin/generate-organizer-key',
     element: <GenerateOrganizerKeyPage />,
+    errorElement: <ChunkErrorFallback />,
   },
   {
     path: '/admin',
     element: <AdminToolsDashboardPage />,
+    errorElement: <ChunkErrorFallback />,
   },
   {
     path: '/profile',
     element: <ProfilePage />,
   },
   {
+    path: '/preview/chunk-fallbacks',
+    element: <ChunkFallbackPreviewPage />,
+  },
+  {
     path: '/organizer/events/new',
-    element: <Suspense fallback={null}><ManualEventPage /></Suspense>,
+    element: <Suspense fallback={<ChunkLoadingFallback />}><ManualEventPage /></Suspense>,
+    errorElement: <ChunkErrorFallback />,
   },
 ]);
