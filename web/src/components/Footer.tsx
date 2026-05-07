@@ -69,7 +69,7 @@ export function Footer() {
               </li>
               <li>
                 <a 
-                  href="https://github.com/phillipcrane/UniEventServer"
+                  href="https://github.com/philip-crane/UniEvent"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-[var(--link-primary)] hover:text-[var(--link-primary-hover)] transition-colors flex items-center gap-2"

@@ -14,7 +14,7 @@ This website will be a central registry for Technical University of Denmark (DTU
 
 Or "TonkaProductions". Note that all contribute code.
 
-- Christian, Phillip - Technical Leads, Backend
+- Christian, Philip - Technical Leads, Backend
 - Espen (joined later) - Backend
 - Akkash, Hannah, Lilian - Frontend
 - Ollie (former) - Backend, testing

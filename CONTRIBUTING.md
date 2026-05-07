@@ -47,7 +47,7 @@ After setup the `tools` CLI is available - see `cli/` in the project structure b
 ## Project Structure
 
 ```text
-UniEventServer/
+UniEvent/
 ├── .github/
 │   └── workflows/
 │       └── deploy.yml            # CI/CD: build gates + SSH deploy + docker compose up
@@ -414,6 +414,7 @@ Backend
 
 **Features & Refactor**
 - [ ] Rename TokenRefreshService to FacebookTokenRefreshService (also test)
+- [ ] Refactor away from using UserDetailsAdapter.java so that the file can be deleted (e.g. adapt inline)
 - [ ] JDoc everywhere.
 - [ ] Move to OpenAPI 
 - [ ] PicoCLI for proper tool CLI

@@ -258,7 +258,7 @@ public class MediaService {
             conn.setConnectTimeout(10000);
             conn.setReadTimeout(10000);
             conn.setRequestProperty("User-Agent",
-                "Mozilla/5.0 (compatible; UniEventServer/1.0; +http://unievent.dk)");
+                "Mozilla/5.0 (compatible; UniEvent/1.0; +http://unievent.dk)");
 
             try (InputStream in = conn.getInputStream()) {
                 String contentType = conn.getContentType();

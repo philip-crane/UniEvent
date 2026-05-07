@@ -101,7 +101,7 @@ export function TermsAndConditionsPage() {
         <p>
           For questions about these Terms or the Service:<br />
           Email: <a href="mailto:support@unievent.dk" className="text-[var(--link-primary)] hover:underline">support@unievent.dk</a><br />
-          GitHub: <a href="https://github.com/phillipcrane/UniEventServer" className="text-[var(--link-primary)] hover:underline">github.com/phillipcrane/UniEventServer</a>
+          GitHub: <a href="https://github.com/philip-crane/UniEvent" className="text-[var(--link-primary)] hover:underline">github.com/philip-crane/UniEvent</a>
         </p>
       </div>
     </div>

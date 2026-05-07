@@ -1,7 +1,7 @@
 /**
  * Data Access Layer (DAL)
  *
- * Communicates with the UniEventServer backend at /api/events, /api/pages, etc.
+ * Communicates with the UniEvent backend at /api/events, /api/pages, etc.
  */
 
 import { API_AUTH_ORGANIZER_KEY_VERIFY, BACKEND_URL } from '../constants';
