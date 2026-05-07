@@ -4,7 +4,7 @@ spring:
       ddl-auto: validate
 
   datasource:
-    url: jdbc:mysql://${DB_HOST:localhost:3306}/unievent?useSSL=true&serverSslVerification=true&allowPublicKeyRetriever=false&serverTimezone=UTC
+    url: jdbc:mysql://${DB_HOST:localhost:3306}/unievent?useSSL=true&serverSslVerification=true&allowPublicKeyRetrieval=false&serverTimezone=UTC
 
 logging:
   level:

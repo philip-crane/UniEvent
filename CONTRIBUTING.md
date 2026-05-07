@@ -470,6 +470,7 @@ Backend
 - [ ] DB: Quartz scheduler
 
 **Security**
+- [ ] Figure out whether writing keys in console is safe, we need to store keys in a safe place (e.g. password manager) either way
 - [ ] Remove insecure JDBC SSL overrides from `db.yaml`; require `serverSslVerification=true` in production
 - [ ] Make Vault CA validation mandatory in `vault.yaml`; fail startup if CA cert missing
 - [ ] Replace localhost Facebook redirect default in `application.yaml`; require explicit production setting
