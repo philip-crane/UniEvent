@@ -414,6 +414,7 @@ Backend
 
 **Features & Refactor**
 - [ ] Rename TokenRefreshService to FacebookTokenRefreshService (also test)
+- [ ] Fix location error (found in docker logs)
 - [ ] Refactor away from using UserDetailsAdapter.java so that the file can be deleted (e.g. adapt inline)
 - [ ] JDoc everywhere.
 - [ ] Move to OpenAPI 
@@ -441,6 +442,7 @@ Frontend
 - [ ] Remove /admin/ directory in /web/src/pages; just flatten the folder with no subfolders.
 - [ ] AdminHeader, Calendar, HeaderLogoLink, adminTools.ts  should have types in types.ts, consts in constants.ts and functions in a util or 
 - [ ] Consolidate styles in /styles into one or two files, and not per page.
+- [ ] "Are you sure you want to log out" pop-up uses browser UI, should use ours. 
 
 **Security**
 - [ ] Validate image/media URLs for unsafe schemes; reject `javascript:` and `data:`, allow only `https:` and relative paths

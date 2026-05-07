@@ -341,16 +341,50 @@ subjectAltName = DNS:vault,DNS:localhost,IP:127.0.0.1
                 exit 1
             }
 
+            # On Linux, keytool is often a symlink through update-alternatives. If the chain
+            # is stale (points to a JDK that has been uninstalled), resolve it; if the final
+            # target is missing, scan /usr/lib/jvm for a real binary.
+            if ($IsLinux) {
+                $canonical = & readlink -f $keytoolPath 2>$null | Select-Object -First 1
+                if ($canonical) { $canonical = $canonical.Trim() }
+                if ($canonical -and (Test-Path $canonical -ErrorAction SilentlyContinue)) {
+                    $keytoolPath = $canonical
+                } else {
+                    $real = & find /usr/lib/jvm -name keytool -type f 2>$null | Select-Object -First 1
+                    if ($real) { $real = $real.Trim() }
+                    if ($real -and (Test-Path $real -ErrorAction SilentlyContinue)) {
+                        Write-Warn "keytool symlink is stale; using $real (found in /usr/lib/jvm)"
+                        $keytoolPath = $real
+                    }
+                }
+            }
+
             # 2. copy JDK cacerts (includes public CAs like Gmail SMTP) then import MySQL CA on
             # top. This way both MySQL SSL and public CA trust work from the same truststore.
             if (-not (Test-Path $truststorePath)) {
                 $cacertsCopied = $false
                 if ($javaPath) {
                     try {
-                        $javaHome = Split-Path (Split-Path $javaPath -Parent) -Parent
-                        $candidate1 = Join-Path $javaHome "lib\security\cacerts"
-                        $candidate2 = Join-Path $javaHome "jre\lib\security\cacerts"
+                        # Derive JAVA_HOME from the java binary, resolving symlinks first.
+                        # On Linux, update-alternatives may be stale so readlink can return a
+                        # path that doesn't exist; fall back to searching /usr/lib/jvm directly.
+                        $javaEffective = $javaPath
+                        if ($IsLinux) {
+                            $javaRes = & readlink -f $javaPath 2>$null | Select-Object -First 1
+                            if ($javaRes) { $javaRes = $javaRes.Trim() }
+                            if ($javaRes -and (Test-Path $javaRes -ErrorAction SilentlyContinue)) { $javaEffective = $javaRes }
+                        }
+                        $javaHome = Split-Path (Split-Path $javaEffective -Parent) -Parent
+                        # Use Path.Combine so forward-slashes are used on Linux.
+                        $candidate1 = [System.IO.Path]::Combine($javaHome, "lib", "security", "cacerts")
+                        $candidate2 = [System.IO.Path]::Combine($javaHome, "jre", "lib", "security", "cacerts")
                         $srcCacerts = if (Test-Path $candidate1) { $candidate1 } elseif (Test-Path $candidate2) { $candidate2 } else { $null }
+                        # If the above failed (stale alternatives), scan /usr/lib/jvm directly.
+                        if (-not $srcCacerts -and $IsLinux) {
+                            $found = & find /usr/lib/jvm -path "*/security/cacerts" -type f 2>$null | Select-Object -First 1
+                            if ($found) { $found = $found.Trim() }
+                            if ($found -and (Test-Path $found -ErrorAction SilentlyContinue)) { $srcCacerts = $found }
+                        }
                         
                         if ($srcCacerts) {
                             Copy-Item -Path $srcCacerts -Destination $truststorePath -Force

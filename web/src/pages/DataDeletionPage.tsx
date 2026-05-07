@@ -58,10 +58,10 @@ export function DataDeletionPage() {
               <li>
                 Email{' '}
                 <a
-                  href="mailto:philippzhuravlev@gmail.com"
+                  href="mailto:philipcrane@protonmail.com"
                   className="text-[var(--link-primary)] hover:underline"
                 >
-                  philippzhuravlev@gmail.com
+                  philipcrane@protonmail.com
                 </a>{' '}
                 or{' '}
                 <a

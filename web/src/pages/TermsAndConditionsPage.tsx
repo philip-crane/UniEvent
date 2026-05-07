@@ -82,7 +82,7 @@ export function TermsAndConditionsPage() {
         <h2 className="text-2xl font-bold mt-8 mb-4">8. Data Deletion (Facebook/Meta)</h2>
         <p>
           If you have linked a Facebook Page and wish to delete the associated data, you may revoke access via
-          Facebook Settings → Business Integrations, or email <strong>philippzhuravlev@gmail.com</strong> with the Page
+          Facebook Settings → Business Integrations, or email <strong>philipcrane@protonmail.com</strong> with the Page
           URL or ID. After verification, UniEvent will delete related tokens and synced data within a reasonable timeframe.
         </p>
 

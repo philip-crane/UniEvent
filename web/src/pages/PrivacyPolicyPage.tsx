@@ -22,9 +22,9 @@ export function PrivacyPolicyPage() {
         <section>
           <h2 className="text-2xl font-bold mt-8 mb-4">1. Data Controller</h2>
           <p>
-            UniEvent is operated by <strong>Philipp Zhuravlev</strong>, who is responsible for how personal data is
+            UniEvent is operated by <strong>Philip Crane</strong>, who is responsible for how personal data is
             collected and used in connection with this Service. For questions about this Privacy Policy or personal
-            data, contact <a href="mailto:philippzhuravlev@gmail.com">philippzhuravlev@gmail.com</a>.
+            data, contact <a href="mailto:philipcrane@protonmail.com">philipcrane@protonmail.com</a>.
           </p>
         </section>
 
@@ -87,7 +87,7 @@ export function PrivacyPolicyPage() {
           <h2 className="text-2xl font-bold mt-8 mb-4">7. Data Deletion</h2>
           <p>
             Facebook Page administrators may revoke UniEvent’s access via Facebook Settings &gt; Business Integrations or
-            by sending a verified deletion request to <a href="mailto:philippzhuravlev@gmail.com">philippzhuravlev@gmail.com</a> with the
+            by sending a verified deletion request to <a href="mailto:philipcrane@protonmail.com">philipcrane@protonmail.com</a> with the
             Page ID or URL. Upon verified request, we will delete stored tokens and related Page data.
           </p>
         </section>
@@ -135,8 +135,8 @@ export function PrivacyPolicyPage() {
           <h2 className="text-2xl font-bold mt-8 mb-4">12. Contact</h2>
           <p>
             Questions about this Privacy Policy should be directed to:<br />
-            Email: <a href="mailto:philippzhuravlev@gmail.com">philippzhuravlev@gmail.com</a><br />
-            UniEvent GitHub: <a href="https://github.com/philippzhuravlev/UniEvent">github.com/philippzhuravlev/UniEvent</a>
+            Email: <a href="mailto:philipcrane@protonmail.com">philipcrane@protonmail.com</a><br />
+            UniEvent GitHub: <a href="https://github.com/philip-crane/UniEvent">github.com/philip-crane/UniEvent</a>
           </p>
         </section>
       </div>
